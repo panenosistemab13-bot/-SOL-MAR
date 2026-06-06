@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Tag, Scissors, ShoppingCart, Grid, Package, Settings } from 'lucide-react';
+import { LayoutDashboard, Tag, Scissors, ShoppingCart, Grid, Package, Settings, MessageSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useInventory } from '../context/InventoryContext';
 
@@ -9,6 +9,7 @@ interface TopNavProps {
 }
 
 const navItems = [
+  { id: 'chat', icon: MessageSquare },
   { id: 'dashboard', icon: LayoutDashboard },
   { id: 'bikinis', icon: Tag },
   { id: 'estoque_encomenda', icon: Package },
@@ -17,7 +18,7 @@ const navItems = [
 ];
 
 export function TopNav({ currentTab, onSelect }: TopNavProps) {
-  const { currentUser } = useInventory();
+  const { currentUser, lowStockItemsCount, unreadMessagesCount } = useInventory();
   const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
   
   const allowedItems = isAdmOrMestre
@@ -55,6 +56,16 @@ export function TopNav({ currentTab, onSelect }: TopNavProps) {
               )}
             >
               <item.icon size={22} className="relative z-10" />
+
+              {item.id === 'dashboard' && lowStockItemsCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-[#18181b]" />
+              )}
+
+              {item.id === 'chat' && unreadMessagesCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-gradient-to-tr from-pink-500 to-amber-500 border border-[#18181b] text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-lg animate-bounce z-20">
+                  {unreadMessagesCount}
+                </span>
+              )}
             </button>
           );
         })}

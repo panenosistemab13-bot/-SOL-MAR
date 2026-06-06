@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Tag, Scissors, ShoppingCart, ChevronLeft, ChevronRight, Package, Settings } from 'lucide-react';
+import { LayoutDashboard, Tag, Scissors, ShoppingCart, ChevronLeft, ChevronRight, Package, Settings, MessageSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useInventory } from '../context/InventoryContext';
 
@@ -8,6 +8,14 @@ interface MainMenuProps {
 }
 
 const menuItems = [
+  { 
+    id: 'chat', 
+    title: 'Mural', 
+    subtitle: 'A V I S O S   I M P O R T A N T E S', 
+    description: 'Comunicados e notícias importantes com acompanhamento de quem visualizou.',
+    icon: MessageSquare,
+    glow: 'rgba(236, 72, 153, 0.5)' // pink-500
+  },
   { 
     id: 'dashboard', 
     title: 'Dashboard', 
@@ -52,7 +60,7 @@ const menuItems = [
 
 export function MainMenu({ onSelect }: MainMenuProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const { lowStockItemsCount, currentUser } = useInventory();
+  const { lowStockItemsCount, unreadMessagesCount, currentUser } = useInventory();
 
   const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
 
@@ -180,6 +188,11 @@ export function MainMenu({ onSelect }: MainMenuProps) {
                {currentItem.id === 'dashboard' && lowStockItemsCount > 0 && (
                   <div className="absolute top-6 right-6 bg-rose-500 border border-rose-400 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-[0_0_20px_rgba(244,63,94,0.5)] animate-pulse">
                      !
+                  </div>
+               )}
+               {currentItem.id === 'chat' && unreadMessagesCount > 0 && (
+                  <div className="absolute top-6 right-6 bg-gradient-to-tr from-pink-500 to-amber-500 border border-pink-400 text-white min-w-8 h-8 px-2 rounded-full flex items-center justify-center font-black text-xs shadow-[0_0_25px_rgba(236,72,153,0.6)] animate-bounce z-20">
+                     {unreadMessagesCount}
                   </div>
                )}
             </button>

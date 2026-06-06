@@ -149,12 +149,7 @@ export function Login() {
             </button>
           </form>
           
-          {/* Quick info tip of credentials */}
-          <div className="mt-6 border-t border-white/5 pt-4 flex flex-col gap-1 text-[11px] text-slate-500 leading-normal font-sans">
-            <span className="text-pink-400/80 font-bold tracking-wide uppercase text-[9px]">Acesso Administrador:</span>
-            <span>Usuário master do sistema: <strong className="text-slate-400 font-mono">jeff</strong></span>
-            <span>Senha master padrão: <strong className="text-slate-400 font-mono">#trescafe28</strong></span>
-          </div>
+
         </div>
       </div>
     </div>

@@ -6,13 +6,15 @@ import { Threads } from './pages/Threads';
 import { Sales } from './pages/Sales';
 import { EstoqueEncomenda } from './pages/EstoqueEncomenda';
 import { Configuracoes } from './pages/Configuracoes';
+import { Chat } from './pages/Chat';
 import { Login } from './components/Login';
 import { MainMenu } from './components/MainMenu';
 import { TopNav } from './components/TopNav';
-import { LayoutDashboard, Tag, Package, Scissors, ShoppingCart, Settings, LogOut, Sparkles } from 'lucide-react';
+import { PwaInstaller } from './components/PwaInstaller';
+import { LayoutDashboard, Tag, Package, Scissors, ShoppingCart, Settings, LogOut, Sparkles, MessageSquare } from 'lucide-react';
 
 function AppContent() {
-  const { lowStockItemsCount, currentUser, logout } = useInventory(); 
+  const { lowStockItemsCount, unreadMessagesCount, currentUser, logout } = useInventory(); 
   
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -33,24 +35,21 @@ function AppContent() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  if (!currentUser) {
-    return <Login />;
-  }
-
   const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
 
   const tabTitles: Record<string, string> = {
     dashboard: 'Gestão de Inventário',
     bikinis: 'Estoque de Biquínis',
+    estoque_encomenda: 'Estoque Encomenda',
     threads: 'Insumos & Fios',
     sales: 'Relatórios & Vendas',
-    estoque_encomenda: 'Estoque Encomenda',
+    chat: 'Mural de Avisos',
     configuracoes: 'Configurações do Sistema'
   };
 
   const navTabs = isAdmOrMestre
-    ? ['dashboard', 'bikinis', 'estoque_encomenda', 'threads', 'sales', 'configuracoes']
-    : ['dashboard', 'bikinis', 'estoque_encomenda', 'threads', 'sales'];
+    ? ['chat', 'dashboard', 'bikinis', 'estoque_encomenda', 'threads', 'sales', 'configuracoes']
+    : ['chat', 'dashboard', 'bikinis', 'estoque_encomenda', 'threads', 'sales'];
 
   React.useEffect(() => {
     // Redirect role-restricted users who somehow land on configuracoes to dashboard
@@ -114,6 +113,10 @@ function AppContent() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [currentTab, navTabs, isMobile]);
+
+  if (!currentUser) {
+    return <Login />;
+  }
 
   const today = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' }).format(new Date());
 
@@ -181,6 +184,7 @@ function AppContent() {
             {currentTab === 'threads' && <Threads />}
             {currentTab === 'sales' && <Sales />}
             {currentTab === 'estoque_encomenda' && <EstoqueEncomenda />}
+            {currentTab === 'chat' && <Chat />}
             {currentTab === 'configuracoes' && <Configuracoes />}
           </div>
         </div>
@@ -207,6 +211,9 @@ function AppContent() {
             } else if (tabId === 'sales') {
               TabIcon = ShoppingCart;
               label = 'Vendas';
+            } else if (tabId === 'chat') {
+              TabIcon = MessageSquare;
+              label = 'Chat';
             } else if (tabId === 'configuracoes') {
               TabIcon = Settings;
               label = 'Ajustes';
@@ -229,8 +236,12 @@ function AppContent() {
                 
                 {/* Micro notification dot on mobile */}
                 {tabId === 'dashboard' && lowStockItemsCount > 0 && (
-                  <span className="absolute top-1.5 right-4 w-2 h-2 rounded-full bg-rose-500 border border-[#09090b] text-[7px] font-black flex items-center justify-center text-white p-0.5">
-                    
+                  <span className="absolute top-1.5 right-4 w-2 h-2 rounded-full bg-rose-500 border border-[#09090b]" />
+                )}
+
+                {tabId === 'chat' && unreadMessagesCount > 0 && (
+                  <span className="absolute -top-0.5 right-3 bg-gradient-to-tr from-pink-500 to-amber-500 border border-[#09090b] text-white text-[7px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-md animate-bounce">
+                    {unreadMessagesCount}
                   </span>
                 )}
                 
@@ -315,6 +326,7 @@ function AppContent() {
             {currentTab === 'threads' && <Threads />}
             {currentTab === 'sales' && <Sales />}
             {currentTab === 'estoque_encomenda' && <EstoqueEncomenda />}
+            {currentTab === 'chat' && <Chat />}
             {currentTab === 'configuracoes' && <Configuracoes />}
           </div>
         </div>
@@ -327,6 +339,7 @@ export default function App() {
   return (
     <InventoryProvider>
       <AppContent />
+      <PwaInstaller />
     </InventoryProvider>
   );
 }

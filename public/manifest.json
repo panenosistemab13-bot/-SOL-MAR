@@ -1,0 +1,23 @@
+{
+  "name": "SOL & MAR - Lu Confecções",
+  "short_name": "Sol & Mar",
+  "description": "Gestão de estoque, insumos, vendas e encomendas da Sol & Mar.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070708",
+  "theme_color": "#070708",
+  "icons": [
+    {
+      "src": "https://i.postimg.cc/ncmfdtMc/111.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://i.postimg.cc/ncmfdtMc/111.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}

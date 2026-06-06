@@ -24,6 +24,7 @@ interface InventoryContextType {
   registerSale: (s: Omit<Sale, 'id'>) => void;
   resetAllStockToZero: () => void;
   lowStockItemsCount: number;
+  unreadMessagesCount: number;
 
   // New Authentication & User Management operations
   login: (username: string, password: string) => boolean;
@@ -128,6 +129,36 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   });
 
   const isReadOnly = currentUser?.role === 'FUNCIONARIO_B';
+
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setUnreadMessagesCount(0);
+      return;
+    }
+
+    const messagesRef = ref(rtdb, 'chat/messages');
+    const unsubscribe = onValue(messagesRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        let unread = 0;
+        Object.values(data).forEach((msg: any) => {
+          const views = msg.views || {};
+          if (!views[currentUser.username]) {
+            unread++;
+          }
+        });
+        setUnreadMessagesCount(unread);
+      } else {
+        setUnreadMessagesCount(0);
+      }
+    }, () => {
+      setUnreadMessagesCount(0);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
 
   // Sync with Realtime Database
   useEffect(() => {
@@ -458,7 +489,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       bikinis, threads, sales, users, logs, currentUser,
       addBikini, addBikiniModel, updateBikiniStock, setBikiniStock, updateBikiniDividedStock, removeBikini, removeBikiniModel,
       addThread, updateThreadStock, setThreadStock, removeThread,
-      registerSale, resetAllStockToZero, lowStockItemsCount,
+      registerSale, resetAllStockToZero, lowStockItemsCount, unreadMessagesCount,
       login, logout, addUser, removeUser, isReadOnly
     }}>
       {children}
