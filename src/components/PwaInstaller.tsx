@@ -160,7 +160,7 @@ export function PwaInstaller() {
         <div className="flex items-center gap-3 mb-5 mt-1">
           <div className="w-12 h-12 rounded-2xl overflow-hidden border border-pink-500/30 shadow-lg shadow-pink-500/10 shrink-0 bg-slate-950">
             <img 
-              src="https://i.postimg.cc/ncmfdtMc/111.jpg" 
+              src="https://i.postimg.cc/FzSYTZHv/sol.jpg" 
               alt="Logo Sol & Mar" 
               className="w-full h-full object-cover" 
               referrerPolicy="no-referrer"
@@ -265,20 +265,22 @@ export function PwaInstaller() {
             Depois
           </button>
           
-          {(isReadyToInstall || deviceOS !== 'ios') && (
+          {isReadyToInstall ? (
             <button
               onClick={handleInstallClick}
-              disabled={!isReadyToInstall}
-              className={`flex-[1.5] text-white font-black text-[11px] py-3 rounded-2xl uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md ${
-                isReadyToInstall 
-                  ? 'bg-gradient-to-r from-pink-500 to-amber-500 hover:from-pink-600 hover:to-amber-600 shadow-pink-500/20 hover:scale-[1.02] active:scale-[0.98]' 
-                  : 'bg-slate-800 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'
-              }`}
+              className="flex-[1.5] text-white font-black text-[11px] py-3 rounded-2xl uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md bg-gradient-to-r from-pink-500 to-amber-500 hover:from-pink-600 hover:to-amber-600 shadow-pink-500/20 hover:scale-[1.02] active:scale-[0.98]"
             >
               <Download size={13} />
-              {isReadyToInstall ? 'Instalar Agora' : 'Aguardando...'}
+              Instalar Agora
             </button>
-          )}
+          ) : deviceOS !== 'ios' ? (
+            <button
+              disabled
+              className="flex-[1.5] text-slate-500 bg-slate-800/50 border border-white/5 font-black text-[11px] py-3 rounded-2xl uppercase tracking-wider cursor-not-allowed opacity-50 flex items-center justify-center gap-1.5"
+            >
+              Aguardando...
+            </button>
+          ) : null}
         </div>
 
         {/* Small warning about compatibility */}
