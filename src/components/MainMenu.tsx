@@ -136,8 +136,25 @@ export function MainMenu({ onSelect }: MainMenuProps) {
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 flex items-center justify-center relative">
              <div className="absolute inset-0 bg-pink-500/20 blur-md rounded-full pointer-events-none"></div>
-             <svg className="relative z-10 text-pink-400" width="36" height="36" viewBox="0 0 24 24" fill="currentColor">
-               <path d="M12 2L2 22h20L12 2zm0 4.5l6.5 13h-13L12 6.5z"/>
+             <svg className="relative z-10" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                {/* Sun and Rays - Glowing Pink */}
+                <g className="text-pink-400">
+                  <circle cx="10" cy="10" r="3.5" fill="currentColor" fillOpacity="0.15" />
+                  <path d="M10 2v1.5" />
+                  <path d="M10 16.5v1.5" />
+                  <path d="M2 10h1.5" />
+                  <path d="M16.5 10H18" />
+                  <path d="m4.34 4.34 1.06 1.06" />
+                  <path d="m14.6 14.6 1.06 1.06" />
+                  <path d="m15.66 4.34-1.06 1.06" />
+                  <path d="m4.34 15.66 1.06 1.06" />
+                </g>
+                {/* Sea Waves - Light Sky Blue */}
+                <g className="text-sky-400">
+                  <path d="M12 14.5c0.8-0.6 1.7-0.6 2.5 0s1.7 0.6 2.5 0" />
+                  <path d="M9 17.5c0.8-0.6 1.7-0.6 2.5 0s1.7 0.6 2.5 0s1.7-0.6 2.5 0" />
+                  <path d="M12 20.5c0.8-0.6 1.7-0.6 2.5 0s1.7 0.6 2.5 0" />
+                </g>
              </svg>
           </div>
           <div>
