@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Bikini, Thread, Sale, BikiniStockDivided } from '../types';
+import { rtdb } from '../lib/firebase';
+import { ref, onValue, set, update } from 'firebase/database';
 
 interface InventoryContextType {
   bikinis: Bikini[];
@@ -19,6 +21,7 @@ interface InventoryContextType {
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
+
 
 const MODELS = [
   'NORONHA BASICO',
@@ -88,6 +91,32 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     return saved ? JSON.parse(saved) : [];
   });
 
+  // Sync with Realtime Database
+  useEffect(() => {
+    const inventoryRef = ref(rtdb, 'inventory');
+    
+    const unsubscribe = onValue(inventoryRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        if (data.bikinis) setBikinis(data.bikinis);
+        if (data.threads) setThreads(data.threads);
+        setSales(data.sales || []);
+      } else {
+        // Uninitialized cloud database: migrate local storage or INITIAL data to server
+        const initialData = {
+          bikinis: bikinis.length > 0 ? bikinis : INITIAL_BIKINIS,
+          threads: threads.length > 0 ? threads : INITIAL_THREADS,
+          sales: sales
+        };
+        set(inventoryRef, initialData);
+      }
+    }, (error) => {
+      console.error('Realtime Database sync error:', error);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('acqualog_bikinis_v4', JSON.stringify(bikinis));
   }, [bikinis]);
@@ -101,52 +130,71 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   }, [sales]);
 
   const addBikini = (b: Omit<Bikini, 'id'>) => {
-    setBikinis(prev => [...prev, { ...b, id: Math.random().toString(36).substr(2, 9) }]);
+    const newBikini = { ...b, id: Math.random().toString(36).substr(2, 9) };
+    const updated = [...bikinis, newBikini];
+    set(ref(rtdb, 'inventory/bikinis'), updated);
   };
 
   const updateBikiniStock = (id: string, delta: number) => {
-    setBikinis(prev => prev.map(b => b.id === id ? { ...b, stock: Math.max(0, b.stock + delta) } : b));
+    const updated = bikinis.map(b => b.id === id ? { ...b, stock: Math.max(0, b.stock + delta) } : b);
+    set(ref(rtdb, 'inventory/bikinis'), updated);
   };
 
   const setBikiniStock = (id: string, stock: number) => {
-    setBikinis(prev => prev.map(b => b.id === id ? { ...b, stock: Math.max(0, stock) } : b));
+    const updated = bikinis.map(b => b.id === id ? { ...b, stock: Math.max(0, stock) } : b);
+    set(ref(rtdb, 'inventory/bikinis'), updated);
   };
 
   const updateBikiniDividedStock = (id: string, dividedStock: BikiniStockDivided) => {
-    setBikinis(prev => prev.map(b => b.id === id ? { ...b, dividedStock } : b));
+    const updated = bikinis.map(b => b.id === id ? { ...b, dividedStock } : b);
+    set(ref(rtdb, 'inventory/bikinis'), updated);
   };
 
   const removeBikini = (id: string) => {
-    setBikinis(prev => prev.filter(b => b.id !== id));
+    const updated = bikinis.filter(b => b.id !== id);
+    set(ref(rtdb, 'inventory/bikinis'), updated);
   };
 
   const addThread = (t: Omit<Thread, 'id'>) => {
-    setThreads(prev => [...prev, { ...t, id: Math.random().toString(36).substr(2, 9) }]);
+    const newThread = { ...t, id: Math.random().toString(36).substr(2, 9) };
+    const updated = [...threads, newThread];
+    set(ref(rtdb, 'inventory/threads'), updated);
   };
 
   const updateThreadStock = (id: string, delta: number) => {
-    setThreads(prev => prev.map(t => t.id === id ? { ...t, stock: Math.max(0, t.stock + delta) } : t));
+    const updated = threads.map(t => t.id === id ? { ...t, stock: Math.max(0, t.stock + delta) } : t);
+    set(ref(rtdb, 'inventory/threads'), updated);
   };
 
   const setThreadStock = (id: string, stock: number) => {
-    setThreads(prev => prev.map(t => t.id === id ? { ...t, stock: Math.max(0, stock) } : t));
+    const updated = threads.map(t => t.id === id ? { ...t, stock: Math.max(0, stock) } : t);
+    set(ref(rtdb, 'inventory/threads'), updated);
   };
 
   const removeThread = (id: string) => {
-    setThreads(prev => prev.filter(b => b.id !== id));
+    const updated = threads.filter(b => b.id !== id);
+    set(ref(rtdb, 'inventory/threads'), updated);
   };
 
   const registerSale = (s: Omit<Sale, 'id'>) => {
     const newSale = { ...s, id: Math.random().toString(36).substr(2, 9) };
-    setSales(prev => [...prev, newSale]);
+    const updatedSales = [...sales, newSale];
 
     // Deduct stock based on sale items
-    s.items.forEach(item => {
-      if (item.type === 'bikini') {
-        updateBikiniStock(item.productId, -item.quantity);
-      } else {
-        updateThreadStock(item.productId, -item.quantity);
-      }
+    const updatedBikinis = bikinis.map(b => {
+      const item = s.items.find(pi => pi.productId === b.id && pi.type === 'bikini');
+      return item ? { ...b, stock: Math.max(0, b.stock - item.quantity) } : b;
+    });
+
+    const updatedThreads = threads.map(t => {
+      const item = s.items.find(pi => pi.productId === t.id && pi.type === 'thread');
+      return item ? { ...t, stock: Math.max(0, t.stock - item.quantity) } : t;
+    });
+
+    update(ref(rtdb, 'inventory'), {
+      sales: updatedSales,
+      bikinis: updatedBikinis,
+      threads: updatedThreads
     });
   };
 
