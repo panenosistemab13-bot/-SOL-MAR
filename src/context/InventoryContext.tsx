@@ -29,7 +29,7 @@ interface InventoryContextType {
   // New Authentication & User Management operations
   login: (username: string, password: string) => boolean;
   logout: () => void;
-  addUser: (user: Omit<UserProfileClient, 'id'>) => void;
+  addUser: (user: Omit<UserProfileClient, 'id'> & { id?: string }) => void;
   removeUser: (id: string) => void;
   isReadOnly: boolean;
 }
@@ -96,7 +96,7 @@ const INITIAL_THREADS: Thread[] = ['FIO', 'RETA'].flatMap((name, i) =>
 const DEFAULT_USERS: UserProfileClient[] = [
   {
     id: 'user_jeff',
-    username: 'jeff',
+    username: 'Jeff',
     name: 'Jefferson',
     role: 'MESTRE',
     avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80',
@@ -172,11 +172,12 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         setSales(data.sales || []);
         if (data.users) {
           const loadedUsers = data.users as UserProfileClient[];
-          const jeffIndex = loadedUsers.findIndex(u => u.username === 'jeff');
-          if (jeffIndex !== -1 && loadedUsers[jeffIndex].password !== '#trescafe28') {
+          const jeffIndex = loadedUsers.findIndex(u => u.username.toLowerCase() === 'jeff');
+          if (jeffIndex !== -1 && (loadedUsers[jeffIndex].password !== '#trescafe28' || loadedUsers[jeffIndex].username !== 'Jeff')) {
             const updatedUsers = [...loadedUsers];
             updatedUsers[jeffIndex] = {
               ...updatedUsers[jeffIndex],
+              username: 'Jeff',
               password: '#trescafe28'
             };
             set(ref(rtdb, 'inventory/users'), updatedUsers);
@@ -271,17 +272,24 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('sol_mar_currentUser');
   };
 
-  const addUser = (newUser: Omit<UserProfileClient, 'id'>) => {
+  const addUser = (newUser: Omit<UserProfileClient, 'id'> & { id?: string }) => {
     if (isReadOnly) return;
-    const cleanUsername = newUser.username.trim().toLowerCase();
+    const cleanUsername = newUser.username.trim();
+    
+    let formattedUsername = cleanUsername;
+    if (cleanUsername.toLowerCase() === 'jeff') {
+      formattedUsername = 'Jeff';
+    } else {
+      formattedUsername = cleanUsername.toLowerCase();
+    }
     
     const createdUser: UserProfileClient = {
       ...newUser,
-      id: 'user_' + Math.random().toString(36).substr(2, 9),
-      username: cleanUsername
+      id: newUser.id || ('user_' + Math.random().toString(36).substr(2, 9)),
+      username: formattedUsername
     };
     
-    if (cleanUsername === 'jeff') {
+    if (formattedUsername === 'Jeff') {
       createdUser.role = 'MESTRE';
     } else {
       if (createdUser.role === 'MESTRE') {
@@ -289,16 +297,19 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const updated = [...users.filter(u => u.username !== cleanUsername), createdUser];
+    const updated = [
+      ...users.filter(u => u.id !== createdUser.id && u.username.toLowerCase() !== formattedUsername.toLowerCase()),
+      createdUser
+    ];
     set(ref(rtdb, 'inventory/users'), cleanData(updated));
-    pushLog(`Criou/atualizou usuário: ${createdUser.name} (${createdUser.role})`);
+    pushLog(`${newUser.id ? 'Editou' : 'Criou/atualizou'} usuário: ${createdUser.name} (${createdUser.role})`);
   };
 
   const removeUser = (id: string) => {
     if (isReadOnly) return;
     const found = users.find(u => u.id === id);
     if (!found) return;
-    if (found.username === 'jeff') {
+    if (found.username.toLowerCase() === 'jeff') {
       return; 
     }
     if (currentUser?.id === id) {

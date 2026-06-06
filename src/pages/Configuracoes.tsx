@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useInventory } from '../context/InventoryContext';
-import { User, Shield, Key, Eye, EyeOff, UserPlus, Trash2, RefreshCw, AlertTriangle, Image, Check, LogOut, Upload } from 'lucide-react';
+import { User, Shield, Key, Eye, EyeOff, UserPlus, Trash2, RefreshCw, AlertTriangle, Image, Check, LogOut, Upload, Edit2 } from 'lucide-react';
 import { UserRole } from '../types';
 
 const AVATARS = [
@@ -24,6 +24,7 @@ export function Configuracoes() {
   const [customAvatarUrl, setCustomAvatarUrl] = useState('');
   const [userError, setUserError] = useState<string | null>(null);
   const [userSuccess, setUserSuccess] = useState<string | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
   // States for dangerous system reset
   const [confirmResetText, setConfirmResetText] = useState('');
@@ -61,7 +62,7 @@ export function Configuracoes() {
     setUserError(null);
     setUserSuccess(null);
 
-    const cleanUsername = newUsername.trim().toLowerCase();
+    const cleanUsername = newUsername.trim();
     const cleanName = newName.trim();
     const cleanPassword = newPassword.trim();
 
@@ -70,13 +71,14 @@ export function Configuracoes() {
       return;
     }
 
-    if (cleanUsername === 'jeff') {
-      setUserError('O login "jeff" é exclusivo do Mestre e não pode ser recriado.');
+    const testLowerUser = cleanUsername.toLowerCase();
+    if (testLowerUser === 'jeff' && editingUserId !== 'user_jeff') {
+      setUserError('O login "Jeff" é exclusivo do Mestre e não pode ser criado/modificado.');
       return;
     }
 
     // Check if user already exists
-    const exists = users.find(u => u.username === cleanUsername);
+    const exists = users.find(u => u.username.toLowerCase() === testLowerUser && u.id !== editingUserId);
     if (exists) {
       setUserError(`O login de usuário "@${cleanUsername}" já está em uso.`);
       return;
@@ -85,18 +87,26 @@ export function Configuracoes() {
     const finalAvatar = customAvatarUrl.trim() ? customAvatarUrl.trim() : newAvatar;
 
     addUser({
+      id: editingUserId || undefined,
       username: cleanUsername,
       name: cleanName,
       password: cleanPassword,
       role: newRole,
       avatarUrl: finalAvatar
-    });
+    } as any);
 
-    setUserSuccess(`Usuário ${cleanName} cadastrado com sucesso!`);
+    if (editingUserId) {
+      setUserSuccess(`Usuário ${cleanName} atualizado com sucesso!`);
+      setEditingUserId(null);
+    } else {
+      setUserSuccess(`Usuário ${cleanName} cadastrado com sucesso!`);
+    }
+
     setNewUsername('');
     setNewName('');
     setNewPassword('');
     setCustomAvatarUrl('');
+    setNewRole('FUNCIONARIO_A');
   };
 
   const handleResetStocks = () => {
@@ -174,7 +184,7 @@ export function Configuracoes() {
           <div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2 border-b border-white/5 pb-3">
               <UserPlus className="w-5 h-5 text-purple-400 animate-pulse" />
-              Adicionar Usuário
+              {editingUserId ? 'Editar Usuário' : 'Adicionar Usuário'}
             </h3>
 
             <form onSubmit={handleCreateUser} className="space-y-4">
@@ -338,12 +348,39 @@ export function Configuracoes() {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold text-xs py-3 rounded-xl transition duration-200 tracking-wider uppercase shadow-md shadow-purple-500/10 cursor-pointer"
-              >
-                Cadastrar Usuário
-              </button>
+              {editingUserId ? (
+                <div className="flex gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingUserId(null);
+                      setNewUsername('');
+                      setNewName('');
+                      setNewPassword('');
+                      setCustomAvatarUrl('');
+                      setNewRole('FUNCIONARIO_A');
+                      setUserSuccess(null);
+                      setUserError(null);
+                    }}
+                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 rounded-xl transition duration-200 tracking-wider uppercase cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold text-xs py-3 rounded-xl transition duration-200 tracking-wider uppercase shadow-md shadow-purple-500/10 cursor-pointer"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold text-xs py-3 rounded-xl transition duration-200 tracking-wider uppercase shadow-md shadow-purple-500/10 cursor-pointer"
+                >
+                  Cadastrar Usuário
+                </button>
+              )}
             </form>
           </div>
         </div>
@@ -365,7 +402,7 @@ export function Configuracoes() {
 
             <div className="overflow-y-auto max-h-[350px] space-y-3 pr-2 custom-scrollbar">
               {users.map(u => {
-                const isJeff = u.username === 'jeff';
+                const isJeff = u.username.toLowerCase() === 'jeff';
                 const isSelf = currentUser?.id === u.id;
                 const canBeDeleted = !isJeff && !isSelf;
                 const showPass = showPassMap[u.id] || false;
@@ -420,17 +457,43 @@ export function Configuracoes() {
                       </div>
                     </div>
 
-                    {/* Delete option */}
+                    {/* Actions panel */}
                     <div className="flex items-center sm:justify-end gap-2 text-right">
                       {isSelf && (
                         <span className="text-[10px] text-sky-400 bg-sky-500/10 px-2 py-1 rounded-lg border border-sky-500/20 font-bold">
                           Sua Conta
                         </span>
                       )}
-                      {isJeff && (
+                      
+                      {isJeff ? (
                         <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20 font-bold">
                           Imutável
                         </span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingUserId(u.id);
+                            setNewUsername(u.username);
+                            setNewName(u.name);
+                            setNewPassword(u.password || '');
+                            setNewRole(u.role);
+                            if (AVATARS.includes(u.avatarUrl)) {
+                              setNewAvatar(u.avatarUrl);
+                              setCustomAvatarUrl('');
+                            } else {
+                              setCustomAvatarUrl(u.avatarUrl);
+                              setNewAvatar('');
+                            }
+                            setUserError(null);
+                            setUserSuccess(null);
+                          }}
+                          className={`p-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:text-white hover:bg-purple-500 rounded-xl transition duration-200 cursor-pointer ${
+                            editingUserId === u.id ? 'bg-purple-600 text-white border-purple-400 ring-2 ring-purple-500/30' : ''
+                          }`}
+                          title="Editar Usuário"
+                        >
+                          <Edit2 size={15} />
+                        </button>
                       )}
 
                       {canBeDeleted && (

@@ -89,7 +89,7 @@ export function Login() {
                 </div>
                 <input
                   type="text"
-                  placeholder="Ex: jeff"
+                  placeholder="Ex: Jeff"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={isSubmitting}
