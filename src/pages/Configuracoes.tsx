@@ -4,11 +4,11 @@ import { User, Shield, Key, Eye, EyeOff, UserPlus, Trash2, RefreshCw, AlertTrian
 import { UserRole } from '../types';
 
 const AVATARS = [
-  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', // Masculino 1
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', // Feminino 2
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', // Masculino 3
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', // Feminino 1
+  'https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', // Feminino 2
+  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', // Feminino 3
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', // Feminino 4
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', // Masculino 5
+  'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', // Feminino 5
   'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80', // Feminino 6
 ];
 
@@ -32,6 +32,31 @@ export function Configuracoes() {
 
   // State for visual password display
   const [showPassMap, setShowPassMap] = useState<Record<string, boolean>>({});
+
+  const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
+  const isEditingSelf = editingUserId === currentUser?.id;
+  const targetUserObj = users.find(u => u.id === editingUserId);
+  const isEditingMestre = targetUserObj ? (targetUserObj.role === 'MESTRE' || targetUserObj.username.toLowerCase() === 'jeff' || targetUserObj.id === 'user_jeff') : false;
+  const canEditGeneralFields = !editingUserId || isEditingSelf || currentUser?.role === 'MESTRE';
+  const canEditRoleField = !isEditingMestre && (currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM');
+
+  // Se não for admin ou mestre, coloca automaticamente no modo de edição do próprio perfil
+  React.useEffect(() => {
+    if (!isAdmOrMestre && currentUser && !editingUserId) {
+      setEditingUserId(currentUser.id);
+      setNewUsername(currentUser.username);
+      setNewName(currentUser.name);
+      setNewPassword(currentUser.password || '');
+      setNewRole(currentUser.role);
+      if (AVATARS.includes(currentUser.avatarUrl)) {
+        setNewAvatar(currentUser.avatarUrl);
+        setCustomAvatarUrl('');
+      } else {
+        setCustomAvatarUrl(currentUser.avatarUrl);
+        setNewAvatar('');
+      }
+    }
+  }, [isAdmOrMestre, currentUser, editingUserId]);
 
   const togglePassVisibility = (id: string) => {
     setShowPassMap(prev => ({ ...prev, [id]: !prev[id] }));
@@ -130,6 +155,11 @@ export function Configuracoes() {
     FUNCIONARIO_B: 'Funcionário B (Visualizador)',
   };
 
+  const visibleUsers = users.filter(u => {
+    const isMestreUser = u.role === 'MESTRE' || u.username.toLowerCase() === 'jeff' || u.id === 'user_jeff';
+    return currentUser?.role === 'MESTRE' || !isMestreUser;
+  });
+
   return (
     <div className="relative rounded-[2.5rem] overflow-hidden border border-white/10 bg-slate-950/80 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] text-white p-6 md:p-8 space-y-8 min-h-[600px]">
       
@@ -184,7 +214,7 @@ export function Configuracoes() {
           <div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2 border-b border-white/5 pb-3">
               <UserPlus className="w-5 h-5 text-purple-400 animate-pulse" />
-              {editingUserId ? 'Editar Usuário' : 'Adicionar Usuário'}
+              {!isAdmOrMestre ? 'Editar Minha Conta' : (editingUserId ? 'Editar Usuário' : 'Adicionar Usuário')}
             </h3>
 
             <form onSubmit={handleCreateUser} className="space-y-4">
@@ -207,33 +237,40 @@ export function Configuracoes() {
                   placeholder="Ex: Ana Souza"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="w-full bg-slate-950/70 border border-white/10 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                  disabled={!canEditGeneralFields}
+                  className="w-full bg-slate-950/70 border border-white/10 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
 
               {/* Login/Username */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Login / Usuário (Letras minúsculas)</label>
-                <input
-                  type="text"
-                  placeholder="Ex: ana.souza"
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                  className="w-full bg-slate-950/70 border border-white/10 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
-                />
-              </div>
+              {canEditGeneralFields && (
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Login / Usuário (Letras minúsculas)</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: ana.souza"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    disabled={!canEditGeneralFields}
+                    className="w-full bg-slate-950/70 border border-white/10 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+              )}
 
               {/* Password */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Senha</label>
-                <input
-                  type="text"
-                  placeholder="Insira a senha inicial"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full bg-slate-950/70 border border-white/10 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
-                />
-              </div>
+              {canEditGeneralFields && (
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Senha</label>
+                  <input
+                    type="text"
+                    placeholder="Insira a senha inicial"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    disabled={!canEditGeneralFields}
+                    className="w-full bg-slate-950/70 border border-white/10 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+              )}
 
               {/* Role Select Group */}
               <div className="space-y-1">
@@ -241,7 +278,8 @@ export function Configuracoes() {
                 <select
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value as UserRole)}
-                  className="w-full bg-slate-950 border border-white/10 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-xs text-slate-300 focus:outline-none cursor-pointer"
+                  disabled={!canEditRoleField}
+                  className="w-full bg-slate-950 border border-white/10 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-xs text-slate-300 focus:outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="ADM">Administrador (ADM)</option>
                   <option value="LIDER">Líder (Tudo menos Configurações)</option>
@@ -278,94 +316,102 @@ export function Configuracoes() {
                 </div>
 
                 {/* Import options */}
-                <div className="space-y-3">
-                  {/* Option A: Import from Device */}
-                  <div>
-                    <label 
-                      htmlFor="avatar-upload-file"
-                      className="flex items-center justify-center gap-2 w-full bg-slate-950 hover:bg-slate-900 border border-purple-500/20 hover:border-purple-500/40 text-purple-300 hover:text-white font-bold text-[11px] py-2.5 px-3 rounded-xl cursor-pointer transition-all uppercase tracking-wider"
-                    >
-                      <Upload size={14} className="animate-bounce" style={{ animationDuration: '3s' }} />
-                      Importar do Dispositivo
-                    </label>
-                    <input
-                      type="file"
-                      id="avatar-upload-file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                  </div>
-
-                  {/* Divider */}
-                  <div className="flex items-center gap-2">
-                    <div className="h-[1px] bg-white/5 flex-1" />
-                    <span className="text-[9px] font-bold text-slate-500 tracking-widest uppercase shrink-0">Ou Galeria</span>
-                    <div className="h-[1px] bg-white/5 flex-1" />
-                  </div>
-
-                  {/* Predefined gallery */}
-                  <div className="grid grid-cols-6 gap-2">
-                    {AVATARS.map((url, i) => (
-                      <button
-                        type="button"
-                        key={i}
-                        onClick={() => {
-                          setNewAvatar(url);
-                          setCustomAvatarUrl('');
-                        }}
-                        className={`relative w-9 h-9 rounded-lg overflow-hidden border-2 transition-all hover:scale-105 active:scale-95 cursor-pointer ${
-                          newAvatar === url && !customAvatarUrl
-                            ? 'border-purple-400 shadow-md shadow-purple-500/20'
-                            : 'border-transparent opacity-60 hover:opacity-100'
-                        }`}
+                {canEditGeneralFields ? (
+                  <div className="space-y-3">
+                    {/* Option A: Import from Device */}
+                    <div>
+                      <label 
+                        htmlFor="avatar-upload-file"
+                        className="flex items-center justify-center gap-2 w-full bg-slate-950 hover:bg-slate-900 border border-purple-500/20 hover:border-purple-500/40 text-purple-300 hover:text-white font-bold text-[11px] py-2.5 px-3 rounded-xl cursor-pointer transition-all uppercase tracking-wider"
                       >
-                        <img src={url} alt={`Avatar ${i}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        {newAvatar === url && !customAvatarUrl && (
-                          <div className="absolute inset-0 bg-purple-500/30 flex items-center justify-center">
-                            <Check className="w-4 h-4 text-white font-bold" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                        <Upload size={14} className="animate-bounce" style={{ animationDuration: '3s' }} />
+                        Importar do Dispositivo
+                      </label>
+                      <input
+                        type="file"
+                        id="avatar-upload-file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                    </div>
 
-                  {/* Option C: Paste Custom Link */}
-                  <div className="pt-1">
-                    <input
-                      type="text"
-                      placeholder="Ou cole o link de uma foto da web"
-                      value={customAvatarUrl.startsWith('data:') ? '' : customAvatarUrl}
-                      onChange={(e) => {
-                        setCustomAvatarUrl(e.target.value);
-                        if (e.target.value) {
-                          setNewAvatar('');
-                        }
-                      }}
-                      className="w-full bg-slate-950/70 border border-white/5 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-[11px] text-white placeholder-slate-600 focus:outline-none transition-all"
-                    />
+                    {/* Divider */}
+                    <div className="flex items-center gap-2">
+                      <div className="h-[1px] bg-white/5 flex-1" />
+                      <span className="text-[9px] font-bold text-slate-500 tracking-widest uppercase shrink-0">Ou Galeria</span>
+                      <div className="h-[1px] bg-white/5 flex-1" />
+                    </div>
+
+                    {/* Predefined gallery */}
+                    <div className="grid grid-cols-6 gap-2">
+                      {AVATARS.map((url, i) => (
+                        <button
+                          type="button"
+                          key={i}
+                          onClick={() => {
+                            setNewAvatar(url);
+                            setCustomAvatarUrl('');
+                          }}
+                          className={`relative w-9 h-9 rounded-lg overflow-hidden border-2 transition-all hover:scale-105 active:scale-95 cursor-pointer ${
+                            newAvatar === url && !customAvatarUrl
+                              ? 'border-purple-400 shadow-md shadow-purple-500/20'
+                              : 'border-transparent opacity-60 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={url} alt={`Avatar ${i}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          {newAvatar === url && !customAvatarUrl && (
+                            <div className="absolute inset-0 bg-purple-500/30 flex items-center justify-center">
+                              <Check className="w-4 h-4 text-white font-bold" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Option C: Paste Custom Link */}
+                    <div className="pt-1">
+                      <input
+                        type="text"
+                        placeholder="Ou cole o link de uma foto da web"
+                        value={customAvatarUrl.startsWith('data:') ? '' : customAvatarUrl}
+                        onChange={(e) => {
+                          setCustomAvatarUrl(e.target.value);
+                          if (e.target.value) {
+                            setNewAvatar('');
+                          }
+                        }}
+                        className="w-full bg-slate-950/70 border border-white/5 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-[11px] text-white placeholder-slate-600 focus:outline-none transition-all"
+                      />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <p className="text-[10px] text-slate-500 leading-normal mt-1">
+                    A foto de perfil é gerenciada pelo próprio usuário.
+                  </p>
+                )}
               </div>
 
               {editingUserId ? (
                 <div className="flex gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingUserId(null);
-                      setNewUsername('');
-                      setNewName('');
-                      setNewPassword('');
-                      setCustomAvatarUrl('');
-                      setNewRole('FUNCIONARIO_A');
-                      setUserSuccess(null);
-                      setUserError(null);
-                    }}
-                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 rounded-xl transition duration-200 tracking-wider uppercase cursor-pointer"
-                  >
-                    Cancelar
-                  </button>
+                  {isAdmOrMestre && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingUserId(null);
+                        setNewUsername('');
+                        setNewName('');
+                        setNewPassword('');
+                        setCustomAvatarUrl('');
+                        setNewRole('FUNCIONARIO_A');
+                        setUserSuccess(null);
+                        setUserError(null);
+                      }}
+                      className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 rounded-xl transition duration-200 tracking-wider uppercase cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  )}
                   <button
                     type="submit"
                     className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold text-xs py-3 rounded-xl transition duration-200 tracking-wider uppercase shadow-md shadow-purple-500/10 cursor-pointer"
@@ -396,13 +442,13 @@ export function Configuracoes() {
                 Usuários Registrados
               </span>
               <span className="text-[10px] bg-purple-500/10 text-purple-300 font-mono px-2.5 py-0.5 rounded-full border border-purple-500/20">
-                {users.length} ATIVOS
+                {visibleUsers.length} ATIVOS
               </span>
             </h3>
 
             <div className="overflow-y-auto max-h-[350px] space-y-3 pr-2 custom-scrollbar">
-              {users.map(u => {
-                const isJeff = u.username.toLowerCase() === 'jeff';
+              {visibleUsers.map(u => {
+                const isJeff = u.username.toLowerCase() === 'jeff' || u.role === 'MESTRE' || u.id === 'user_jeff';
                 const isSelf = currentUser?.id === u.id;
                 const canBeDeleted = !isJeff && !isSelf;
                 const showPass = showPassMap[u.id] || false;
@@ -438,22 +484,26 @@ export function Configuracoes() {
                             {roleLabels[u.role] || u.role}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400 font-medium">@{u.username}</p>
+                        <p className="text-[11px] text-slate-400 font-medium">
+                          @{ (isSelf || currentUser?.role === 'MESTRE') ? u.username : '••••••••' }
+                        </p>
 
                         {/* Show Credentials */}
-                        <div className="flex items-center gap-2 mt-1 bg-[#09090b] border border-white/5 rounded-lg px-2 py-1 w-fit">
-                          <Key size={10} className="text-slate-500 shrink-0" />
-                          <span className="text-[10px] text-slate-400 font-mono select-all">
-                            {showPass ? u.password : '••••••••'}
-                          </span>
-                          <button
-                            onClick={() => togglePassVisibility(u.id)}
-                            className="text-slate-500 hover:text-slate-400 cursor-pointer ml-1"
-                            title="Mostrar Senha"
-                          >
-                            {showPass ? <EyeOff size={11} /> : <Eye size={11} />}
-                          </button>
-                        </div>
+                        { (isSelf || currentUser?.role === 'MESTRE') && (
+                          <div className="flex items-center gap-2 mt-1 bg-[#09090b] border border-white/5 rounded-lg px-2 py-1 w-fit">
+                            <Key size={10} className="text-slate-500 shrink-0" />
+                            <span className="text-[10px] text-slate-400 font-mono select-all">
+                              {showPass ? u.password : '••••••••'}
+                            </span>
+                            <button
+                              onClick={() => togglePassVisibility(u.id)}
+                              className="text-slate-500 hover:text-slate-400 cursor-pointer ml-1"
+                              title="Mostrar Senha"
+                            >
+                              {showPass ? <EyeOff size={11} /> : <Eye size={11} />}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -465,38 +515,40 @@ export function Configuracoes() {
                         </span>
                       )}
                       
-                      {isJeff ? (
+                      {isJeff && !isSelf ? (
                         <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20 font-bold">
                           Imutável
                         </span>
                       ) : (
-                        <button
-                          onClick={() => {
-                            setEditingUserId(u.id);
-                            setNewUsername(u.username);
-                            setNewName(u.name);
-                            setNewPassword(u.password || '');
-                            setNewRole(u.role);
-                            if (AVATARS.includes(u.avatarUrl)) {
-                              setNewAvatar(u.avatarUrl);
-                              setCustomAvatarUrl('');
-                            } else {
-                              setCustomAvatarUrl(u.avatarUrl);
-                              setNewAvatar('');
-                            }
-                            setUserError(null);
-                            setUserSuccess(null);
-                          }}
-                          className={`p-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:text-white hover:bg-purple-500 rounded-xl transition duration-200 cursor-pointer ${
-                            editingUserId === u.id ? 'bg-purple-600 text-white border-purple-400 ring-2 ring-purple-500/30' : ''
-                          }`}
-                          title="Editar Usuário"
-                        >
-                          <Edit2 size={15} />
-                        </button>
+                        (isSelf || currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM') && (
+                          <button
+                            onClick={() => {
+                              setEditingUserId(u.id);
+                              setNewUsername(u.username);
+                              setNewName(u.name);
+                              setNewPassword(u.password || '');
+                              setNewRole(u.role);
+                              if (AVATARS.includes(u.avatarUrl)) {
+                                setNewAvatar(u.avatarUrl);
+                                setCustomAvatarUrl('');
+                              } else {
+                                setCustomAvatarUrl(u.avatarUrl);
+                                setNewAvatar('');
+                              }
+                              setUserError(null);
+                              setUserSuccess(null);
+                            }}
+                            className={`p-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:text-white hover:bg-purple-500 rounded-xl transition duration-200 cursor-pointer ${
+                              editingUserId === u.id ? 'bg-purple-600 text-white border-purple-400 ring-2 ring-purple-500/30' : ''
+                            }`}
+                            title="Editar Usuário"
+                          >
+                            <Edit2 size={15} />
+                          </button>
+                        )
                       )}
 
-                      {canBeDeleted && (
+                      {canBeDeleted && (currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM') && (
                         <button
                           onClick={() => {
                             if (confirm(`Tem certeza de que deseja deletar permanentemente o usuário ${u.name}?`)) {
@@ -517,40 +569,42 @@ export function Configuracoes() {
           </div>
 
           {/* Moved Option: Zerar Estoques e Dados Panel */}
-          <div className="rounded-[2.2rem] border border-rose-500/20 bg-rose-950/10 p-6 backdrop-blur-xl relative space-y-4">
-            <h3 className="text-lg font-bold text-rose-400 flex items-center gap-2.5">
-              <AlertTriangle className="w-5 h-5 shrink-0" />
-              Zerar Estoques e Dados (Ação Destrutiva)
-            </h3>
-            <p className="text-xs text-rose-200/80 leading-normal max-w-xl">
-              Esta opção limpa permanentemente todo o histórico de vendas, redefine todos os estoques individuais de biquínis e aviamentos no banco de dados sincronizado para zero. <strong>Esta ação não pode ser desfeita.</strong>
-            </p>
+          {isAdmOrMestre && (
+            <div className="rounded-[2.2rem] border border-rose-500/20 bg-rose-950/10 p-6 backdrop-blur-xl relative space-y-4">
+              <h3 className="text-lg font-bold text-rose-400 flex items-center gap-2.5">
+                <AlertTriangle className="w-5 h-5 shrink-0" />
+                Zerar Estoques e Dados (Ação Destrutiva)
+              </h3>
+              <p className="text-xs text-rose-200/80 leading-normal max-w-xl">
+                Esta opção limpa permanentemente todo o histórico de vendas, redefine todos os estoques individuais de biquínis e aviamentos no banco de dados sincronizado para zero. <strong>Esta ação não pode ser desfeita.</strong>
+              </p>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-slate-950/70 border border-rose-500/20 p-3 rounded-2xl max-w-lg">
-              <input
-                type="text"
-                placeholder="Digite ZERAR para confirmar"
-                value={confirmResetText}
-                onChange={(e) => setConfirmResetText(e.target.value)}
-                className="bg-transparent text-sm font-semibold text-rose-300 font-mono tracking-wider focus:outline-none px-3 py-2 flex-1 placeholder-red-950"
-              />
-              <button
-                type="button"
-                onClick={handleResetStocks}
-                disabled={confirmResetText !== 'ZERAR'}
-                className="bg-rose-600 hover:bg-rose-700 disabled:bg-rose-950/50 disabled:text-rose-900/60 font-bold text-white text-xs px-4 py-2.5 rounded-xl transition duration-200 tracking-wider uppercase shadow-md shadow-rose-900/20 shrink-0 cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-              >
-                <RefreshCw size={13} className="animate-spin" style={{ animationDuration: '6s' }} />
-                Zerar Todos os Dados
-              </button>
-            </div>
-
-            {isResetSuccess && (
-              <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs p-3.5 rounded-xl animate-fade-in">
-                Concluído: Todos os biquínis, aviamentos e histórico de relatórios foram reiniciados com sucesso!
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-slate-950/70 border border-rose-500/20 p-3 rounded-2xl max-w-lg">
+                <input
+                  type="text"
+                  placeholder="Digite ZERAR para confirmar"
+                  value={confirmResetText}
+                  onChange={(e) => setConfirmResetText(e.target.value)}
+                  className="bg-transparent text-sm font-semibold text-rose-300 font-mono tracking-wider focus:outline-none px-3 py-2 flex-1 placeholder-red-950"
+                />
+                <button
+                  type="button"
+                  onClick={handleResetStocks}
+                  disabled={confirmResetText !== 'ZERAR'}
+                  className="bg-rose-600 hover:bg-rose-700 disabled:bg-rose-950/50 disabled:text-rose-900/60 font-bold text-white text-xs px-4 py-2.5 rounded-xl transition duration-200 tracking-wider uppercase shadow-md shadow-rose-900/20 shrink-0 cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                >
+                  <RefreshCw size={13} className="animate-spin" style={{ animationDuration: '6s' }} />
+                  Zerar Todos os Dados
+                </button>
               </div>
-            )}
-          </div>
+
+              {isResetSuccess && (
+                <div className="bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs p-3.5 rounded-xl animate-fade-in">
+                  Concluído: Todos os biquínis, aviamentos e histórico de relatórios foram reiniciados com sucesso!
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
       </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useInventory } from '../context/InventoryContext';
 import { rtdb } from '../lib/firebase';
 import { ref, onValue, push, set, update } from 'firebase/database';
-import { Send, MessageSquare, Shield, Lock, Eye, CheckCheck, Sparkles, User, Bell, Users, Trash } from 'lucide-react';
+import { Send, MessageSquare, Shield, Lock, Eye, CheckCheck, Sparkles, User, Bell, Users, Trash, Pin } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -12,6 +12,8 @@ interface ChatMessage {
   senderAvatar: string;
   text: string;
   timestamp: string; // ISO Format
+  pinned?: boolean;
+  urgency?: 'comum' | 'prioridade' | 'urgente';
   views?: {
     [username: string]: {
       name: string;
@@ -21,10 +23,12 @@ interface ChatMessage {
 }
 
 export function Chat() {
-  const { currentUser, isReadOnly } = useInventory();
+  const { currentUser, isReadOnly, users } = useInventory();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [urgency, setUrgency] = useState<'comum' | 'prioridade' | 'urgente'>('comum');
+  const [pinnedOnSend, setPinnedOnSend] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const isWriter = currentUser?.role === 'MESTRE' || 
@@ -57,7 +61,14 @@ export function Chat() {
             return false;
           }
           return true;
-        }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        });
+
+        // Ordenação: primeiro os fixados, depois por data de envio (mais antigo primeiro, simulando chat)
+        loadedMessages.sort((a, b) => {
+          if (a.pinned && !b.pinned) return -1;
+          if (!a.pinned && b.pinned) return 1;
+          return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+        });
 
         setMessages(loadedMessages);
 
@@ -104,15 +115,15 @@ export function Chat() {
     });
   }, [messages, currentUser]);
 
-  // 4. Enviar mensagem para o Firebase
+  // 4. Enviar mensagem para o Firebase (Qualquer usuário logado pode enviar agora)
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !currentUser || !isWriter || isReadOnly) return;
+    if (!newMessage.trim() || !currentUser || isReadOnly) return;
 
     const chatRef = ref(rtdb, 'chat/messages');
     const newMsgRef = push(chatRef);
 
-    const messagePayload = {
+    const messagePayload: any = {
       senderId: currentUser.id,
       senderName: currentUser.name,
       senderRole: currentUser.role,
@@ -127,9 +138,21 @@ export function Chat() {
       }
     };
 
+    // Mestre, ADM e Líder podem definir urgência e fixado ao criar
+    if (isWriter) {
+      if (urgency !== 'comum') {
+        messagePayload.urgency = urgency;
+      }
+      if (pinnedOnSend) {
+        messagePayload.pinned = true;
+      }
+    }
+
     set(newMsgRef, messagePayload)
       .then(() => {
         setNewMessage('');
+        setUrgency('comum');
+        setPinnedOnSend(false);
       })
       .catch((err) => {
         console.error("Erro ao enviar mensagem:", err);
@@ -146,6 +169,17 @@ export function Chat() {
       const msgRef = ref(rtdb, `chat/messages/${msgId}`);
       set(msgRef, null).catch(err => console.error("Erro ao remover aviso:", err));
     }
+  };
+
+  // 6. Fixar/Desafixar mensagem (somente Mestre, ADM, Líder podem fazer isso)
+  const handleTogglePin = (msgId: string, currentPinned: boolean) => {
+    if (isReadOnly) return;
+    if (!isWriter) return;
+
+    const msgRef = ref(rtdb, `chat/messages/${msgId}`);
+    update(msgRef, {
+      pinned: !currentPinned
+    }).catch(err => console.error("Erro ao fixar/desafixar comunicado:", err));
   };
 
   const formatRole = (role: string) => {
@@ -215,7 +249,13 @@ export function Chat() {
         ) : (
           <div className="space-y-4 max-w-3xl mx-auto">
             {messages.map((msg) => {
-              const currentViews = Object.values(msg.views || {});
+              const viewEntries = Object.entries(msg.views || {});
+              const filteredEntries = viewEntries.filter(([username]) => {
+                const isMestre = username.toLowerCase() === 'jeff' || users?.find(u => u.username.toLowerCase() === username.toLowerCase())?.role === 'MESTRE';
+                const loggedUserIsMestre = currentUser?.role === 'MESTRE';
+                return !(isMestre && !loggedUserIsMestre);
+              });
+              const currentViews = filteredEntries.map(([, val]) => val);
               const hasViewers = currentViews.length > 0;
               const viewerNames = currentViews.map((v: any) => v.name).join(', ');
               const dateObj = new Date(msg.timestamp);
@@ -248,9 +288,11 @@ export function Chat() {
                       <span className="text-[11px] font-black tracking-tight text-white">{msg.senderName}</span>
                       
                       {/* Role Emblem */}
-                      <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${getRoleBadgeStyle(msg.senderRole)}`}>
-                        {formatRole(msg.senderRole)}
-                      </span>
+                      {(currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM' || currentUser?.role === 'LIDER') && (
+                        <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${getRoleBadgeStyle(msg.senderRole)}`}>
+                          {formatRole(msg.senderRole)}
+                        </span>
+                      )}
 
                       {/* Timestamp */}
                       <span className="text-[9px] text-slate-500 ml-auto font-mono">
@@ -309,15 +351,51 @@ export function Chat() {
         )}
       </div>
 
-      {/* Input panel / Lock alert banner */}
-      {isWriter && (
+      {/* Input panel (Todos os usuários integrados podem escrever agora) */}
+      {currentUser && (
         <div className="p-3 bg-[#0c0c0e]/95 border-t border-white/5 sticky bottom-0 z-20">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto flex flex-col gap-2">
+            
+            {/* Opções extras de fixação e urgência (Apenas Mestre, ADM e Líder) */}
+            {isWriter && (
+              <div className="flex flex-wrap gap-2 items-center px-1">
+                {/* Menu suspenso grau de urgência */}
+                <div className="flex items-center gap-1.5 bg-white/[0.02] border border-white/5 rounded-xl px-2.5 py-1.5 shadow-sm">
+                  <span className="text-[9px] font-black tracking-widest uppercase text-slate-500">Urgência:</span>
+                  <select
+                    value={urgency}
+                    onChange={(e: any) => setUrgency(e.target.value)}
+                    disabled={isReadOnly}
+                    className="bg-transparent text-slate-300 text-[10px] font-bold focus:outline-none cursor-pointer uppercase tracking-wider hover:text-white"
+                  >
+                    <option value="comum" className="bg-slate-950 text-slate-300">Comum</option>
+                    <option value="prioridade" className="bg-slate-950 text-amber-400 font-bold">⚠️ Prioridade</option>
+                    <option value="urgente" className="bg-slate-950 text-red-500 font-black">🔥 Urgente</option>
+                  </select>
+                </div>
+
+                {/* Checkbox fixar no topo */}
+                <label className="flex items-center gap-2 bg-white/[0.02] border border-white/5 rounded-xl px-2.5 py-1.5 shadow-sm cursor-pointer select-none group/lbl hover:bg-white/[0.04] transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={pinnedOnSend}
+                    onChange={(e) => setPinnedOnSend(e.target.checked)}
+                    disabled={isReadOnly}
+                    className="w-3.5 h-3.5 text-pink-500 bg-[#0c0c0e]/80 border-white/10 rounded focus:ring-0 focus:ring-offset-0 focus:outline-none cursor-pointer accent-pink-500"
+                  />
+                  <span className="text-[9px] font-black tracking-widest uppercase text-slate-500 group-hover/lbl:text-slate-300 transition-colors flex items-center gap-1">
+                    <Pin size={10} className="text-pink-400 shrink-0" />
+                    Fixar no Topo
+                  </span>
+                </label>
+              </div>
+            )}
+
             <form onSubmit={handleSendMessage} className="flex gap-2 items-center">
               <textarea
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Escreva um comunicado ou aviso importante..."
+                placeholder="Escreva uma mensagem ou comunicado para a confecção..."
                 disabled={isReadOnly}
                 className="flex-1 bg-white/[0.03] border border-white/10 rounded-2xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500/20 transition-all resize-none max-h-24 min-h-[44px]"
                 onKeyDown={(e) => {

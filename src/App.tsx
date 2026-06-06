@@ -47,16 +47,7 @@ function AppContent() {
     configuracoes: 'Configurações do Sistema'
   };
 
-  const navTabs = isAdmOrMestre
-    ? ['chat', 'dashboard', 'bikinis', 'estoque_encomenda', 'threads', 'sales', 'configuracoes']
-    : ['chat', 'dashboard', 'bikinis', 'estoque_encomenda', 'threads', 'sales'];
-
-  React.useEffect(() => {
-    // Redirect role-restricted users who somehow land on configuracoes to dashboard
-    if (currentTab === 'configuracoes' && !isAdmOrMestre) {
-      setCurrentTab('menu');
-    }
-  }, [currentTab, isAdmOrMestre]);
+  const navTabs = ['chat', 'dashboard', 'bikinis', 'estoque_encomenda', 'threads', 'sales', 'configuracoes'];
 
   React.useEffect(() => {
     if (isMobile && currentTab === 'menu') {

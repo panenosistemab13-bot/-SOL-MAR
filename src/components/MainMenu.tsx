@@ -62,21 +62,17 @@ export function MainMenu({ onSelect }: MainMenuProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const { lowStockItemsCount, unreadMessagesCount, currentUser } = useInventory();
 
-  const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
-
-  const allowedMenuItems = isAdmOrMestre
-    ? [
-        ...menuItems,
-        {
-          id: 'configuracoes',
-          title: 'Configurações',
-          subtitle: 'A J U S T E S   D O   S I S T E M A',
-          description: 'Gestão de usuários, foto de perfil, controle de acessos e dados.',
-          icon: Settings,
-          glow: 'rgba(168, 85, 247, 0.5)', // purple-500
-        },
-      ]
-    : menuItems;
+  const allowedMenuItems = [
+    ...menuItems,
+    {
+      id: 'configuracoes',
+      title: 'Configurações',
+      subtitle: 'A J U S T E S   D O   S I S T E M A',
+      description: 'Gestão de usuários, foto de perfil, controle de acessos e dados.',
+      icon: Settings,
+      glow: 'rgba(168, 85, 247, 0.5)', // purple-500
+    },
+  ];
   
   const today = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(new Date());
   const time = new Intl.DateTimeFormat('pt-BR', { timeStyle: 'medium' }).format(new Date());

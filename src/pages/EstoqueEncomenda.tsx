@@ -260,7 +260,7 @@ export function EstoqueEncomenda() {
             <div className="w-8 h-8 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-400 border border-yellow-500/15 shadow-sm">
               <Factory size={14} />
             </div>
-            <span className="text-[9px] text-slate-400 uppercase tracking-widest font-black">Produção</span>
+            <span className="text-[9px] text-slate-400 uppercase tracking-widest font-black">Em Produção</span>
           </div>
           <div className="mt-4">
             <span className="text-2xl font-black font-mono text-white">{totalStats.emProducao}</span>
@@ -601,7 +601,7 @@ export function EstoqueEncomenda() {
                                <div className="flex items-center justify-between text-slate-400">
                                  <span className="text-[9px] uppercase tracking-wider font-extrabold flex items-center gap-1.5">
                                    <Factory size={11} className="text-yellow-400" /> 
-                                   Produção
+                                   Em Produção
                                  </span>
                                </div>
                                <input 
