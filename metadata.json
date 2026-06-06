@@ -1,0 +1,8 @@
+{
+  "name": "SOL \u0026 MAR",
+  "description": "Sistema integrado de estoque para moda praia e controle logístico",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
