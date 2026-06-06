@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Tag, Scissors, ShoppingCart, Grid, Package, Settings, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Tag, Scissors, ShoppingCart, Grid, Package, Settings, MessageSquare, CalendarCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useInventory } from '../context/InventoryContext';
 
@@ -10,6 +10,7 @@ interface TopNavProps {
 
 const navItems = [
   { id: 'chat', icon: MessageSquare },
+  { id: 'attendance', icon: CalendarCheck },
   { id: 'dashboard', icon: LayoutDashboard },
   { id: 'bikinis', icon: Tag },
   { id: 'estoque_encomenda', icon: Package },

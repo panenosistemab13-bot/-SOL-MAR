@@ -12,7 +12,8 @@ import { MainMenu } from './components/MainMenu';
 import { TopNav } from './components/TopNav';
 import { PwaInstaller } from './components/PwaInstaller';
 import { GlobalPinnedAlerts } from './components/GlobalPinnedAlerts';
-import { LayoutDashboard, Tag, Package, Scissors, ShoppingCart, Settings, LogOut, Sparkles, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Tag, Package, Scissors, ShoppingCart, Settings, LogOut, Sparkles, MessageSquare, CalendarCheck } from 'lucide-react';
+import { Attendance } from './pages/Attendance';
 
 function AppContent() {
   const { lowStockItemsCount, unreadMessagesCount, currentUser, logout } = useInventory(); 
@@ -45,10 +46,11 @@ function AppContent() {
     threads: 'Insumos & Fios',
     sales: 'Relatórios & Vendas',
     chat: 'Mural de Avisos',
+    attendance: 'Lista de Presença',
     configuracoes: 'Configurações do Sistema'
   };
 
-  const navTabs = ['chat', 'dashboard', 'bikinis', 'estoque_encomenda', 'threads', 'sales', 'configuracoes'];
+  const navTabs = ['chat', 'dashboard', 'bikinis', 'estoque_encomenda', 'threads', 'sales', 'attendance', 'configuracoes'];
 
   React.useEffect(() => {
     if (isMobile && currentTab === 'menu') {
@@ -177,6 +179,7 @@ function AppContent() {
             {currentTab === 'sales' && <Sales />}
             {currentTab === 'estoque_encomenda' && <EstoqueEncomenda />}
             {currentTab === 'chat' && <Chat />}
+            {currentTab === 'attendance' && <Attendance />}
             {currentTab === 'configuracoes' && <Configuracoes />}
           </div>
         </div>
@@ -206,6 +209,9 @@ function AppContent() {
             } else if (tabId === 'chat') {
               TabIcon = MessageSquare;
               label = 'Chat';
+            } else if (tabId === 'attendance') {
+              TabIcon = CalendarCheck;
+              label = 'Presença';
             } else if (tabId === 'configuracoes') {
               TabIcon = Settings;
               label = 'Ajustes';
@@ -319,6 +325,7 @@ function AppContent() {
             {currentTab === 'sales' && <Sales />}
             {currentTab === 'estoque_encomenda' && <EstoqueEncomenda />}
             {currentTab === 'chat' && <Chat />}
+            {currentTab === 'attendance' && <Attendance />}
             {currentTab === 'configuracoes' && <Configuracoes />}
           </div>
         </div>

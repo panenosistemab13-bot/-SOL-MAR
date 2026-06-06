@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Tag, Scissors, ShoppingCart, ChevronLeft, ChevronRight, Package, Settings, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Tag, Scissors, ShoppingCart, ChevronLeft, ChevronRight, Package, Settings, MessageSquare, CalendarCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useInventory } from '../context/InventoryContext';
 
@@ -15,6 +15,14 @@ const menuItems = [
     description: 'Comunicados e notícias importantes com acompanhamento de quem visualizou.',
     icon: MessageSquare,
     glow: 'rgba(236, 72, 153, 0.5)' // pink-500
+  },
+  { 
+    id: 'attendance', 
+    title: 'Presença', 
+    subtitle: 'L I S T A   D E   P R E S E N Ç A', 
+    description: 'Controle de frequência e horários da equipe.',
+    icon: CalendarCheck,
+    glow: 'rgba(52, 211, 153, 0.5)' // emerald-400
   },
   { 
     id: 'dashboard', 
