@@ -5,9 +5,14 @@ import { cn } from '../lib/utils';
 import { Plus, Minus, Search, AlertCircle, Sun, Waves, Sparkles, Anchor, ChevronRight, Eye, Layers } from 'lucide-react';
 
 export function Bikinis() {
-  const { bikinis, updateBikiniStock, setBikiniStock } = useInventory();
+  const { bikinis, updateBikiniStock, setBikiniStock, addBikiniModel, removeBikiniModel, currentUser, isReadOnly } = useInventory();
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [newModelName, setNewModelName] = useState('');
+  const [isAddingModel, setIsAddingModel] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
 
   // Group all bikinis by model
   const groupedByModel = useMemo(() => {
@@ -125,7 +130,78 @@ export function Bikinis() {
             <span className="text-[11px] font-black tracking-widest text-sky-400 uppercase bg-sky-500/10 px-3 py-1 rounded-full border border-sky-500/20 flex items-center gap-1.5 shadow-sm">
               <Layers size={12} className="text-sky-300 animate-pulse" /> MODELOS DISPONÍVEIS
             </span>
+            {isAdmOrMestre && !isReadOnly && (
+              <button
+                onClick={() => {
+                  setIsAddingModel(!isAddingModel);
+                  setErrorMsg(null);
+                  setNewModelName('');
+                }}
+                className="text-[10px] font-bold text-sky-400 hover:text-white bg-sky-500/10 hover:bg-sky-500 border border-sky-500/25 px-2.5 py-1 rounded-lg transition-all cursor-pointer hover:scale-[1.03] active:scale-[0.97]"
+                title="Adicionar Novo Modelo"
+              >
+                + Novo
+              </button>
+            )}
           </div>
+
+          {isAddingModel && (
+            <div className="p-4 rounded-[1.5rem] bg-slate-900/60 border border-sky-500/30 space-y-3 animate-in fade-in zoom-in-95 duration-200">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-sky-300">Novo Modelo de Biquíni</h4>
+              <p className="text-[9px] text-slate-400 leading-normal">
+                Insira o nome da nova modelagem. O sistema criará as variações correspondentes de tamanhos (P, M, G) e todas as cores com quantidade inicial 0.
+              </p>
+              
+              <div className="space-y-1.5">
+                <input
+                  type="text"
+                  placeholder="Nome do Modelo"
+                  value={newModelName}
+                  onChange={e => setNewModelName(e.target.value)}
+                  className="w-full bg-slate-950 border border-white/10 focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none uppercase"
+                />
+                {errorMsg && (
+                  <p className="text-[9px] text-rose-400 font-medium">{errorMsg}</p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const name = newModelName.trim().toUpperCase();
+                    if (!name) {
+                      setErrorMsg('Digite um nome válido.');
+                      return;
+                    }
+                    if (bikinis.some(b => b.model.toUpperCase() === name)) {
+                      setErrorMsg('Esse modelo já existe.');
+                      return;
+                    }
+                    addBikiniModel(name);
+                    setSelectedModel(name);
+                    setIsAddingModel(false);
+                    setNewModelName('');
+                    setErrorMsg(null);
+                  }}
+                  className="bg-sky-500 hover:bg-sky-600 text-white font-bold text-[10px] px-3.5 py-2 rounded-xl transition duration-150 uppercase tracking-wider cursor-pointer"
+                >
+                  Criar Modelo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddingModel(false);
+                    setNewModelName('');
+                    setErrorMsg(null);
+                  }}
+                  className="bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-[10px] px-3.5 py-2 rounded-xl transition duration-150 uppercase tracking-wider cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
 
           {groupedByModel.length === 0 ? (
             <div className="bg-slate-900/20 rounded-[2rem] border border-white/5 p-8 text-center shadow-xl backdrop-blur-lg">
@@ -226,7 +302,23 @@ export function Bikinis() {
                     <span className="text-[9px] font-black text-pink-300 bg-pink-500/10 border border-pink-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
                       Variações Ativas
                     </span>
-                    <h3 className="text-xl font-extrabold text-white tracking-widest uppercase mt-1">{selectedModel}</h3>
+                    <div className="flex items-center gap-3.5 mt-1.5 flex-wrap">
+                      <h3 className="text-xl font-extrabold text-white tracking-widest uppercase leading-none">{selectedModel}</h3>
+                      {isAdmOrMestre && !isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`ATENÇÃO: Tem certeza de que deseja deletar PERMANENTEMENTE o modelo "${selectedModel}" e TODAS as suas variações associadas? Esta ação excluirá todos os seus estoques correspondentes.`)) {
+                              removeBikiniModel(selectedModel);
+                              setSelectedModel(null);
+                            }
+                          }}
+                          className="text-[9px] font-bold text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-600 border border-rose-500/20 hover:border-transparent px-2.5 py-1 rounded-xl transition duration-150 cursor-pointer shadow-sm hover:shadow-rose-500/10"
+                        >
+                          Remover Modelo
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 

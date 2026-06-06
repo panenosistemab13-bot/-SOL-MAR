@@ -1,5 +1,25 @@
 export type Size = 'PP' | 'P' | 'M' | 'G' | 'GG';
 
+export type UserRole = 'MESTRE' | 'ADM' | 'LIDER' | 'FUNCIONARIO_A' | 'FUNCIONARIO_B';
+
+export interface UserProfileClient {
+  id: string;
+  username: string; // login id, lowercase
+  name: string;
+  role: UserRole;
+  avatarUrl: string;
+  password?: string;
+}
+
+export interface ActionLog {
+  id: string;
+  username: string;
+  workerName: string;
+  action: string;
+  timestamp: string; // ISO string
+}
+
+
 export interface BikiniStockDivided {
   embalados: number;
   naBase: number;

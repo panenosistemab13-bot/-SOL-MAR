@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Tag, Scissors, ShoppingCart, ChevronLeft, ChevronRight, Package } from 'lucide-react';
+import { LayoutDashboard, Tag, Scissors, ShoppingCart, ChevronLeft, ChevronRight, Package, Settings } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useInventory } from '../context/InventoryContext';
 
@@ -52,20 +52,36 @@ const menuItems = [
 
 export function MainMenu({ onSelect }: MainMenuProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const { lowStockItemsCount } = useInventory();
+  const { lowStockItemsCount, currentUser } = useInventory();
+
+  const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
+
+  const allowedMenuItems = isAdmOrMestre
+    ? [
+        ...menuItems,
+        {
+          id: 'configuracoes',
+          title: 'Configurações',
+          subtitle: 'A J U S T E S   D O   S I S T E M A',
+          description: 'Gestão de usuários, foto de perfil, controle de acessos e dados.',
+          icon: Settings,
+          glow: 'rgba(168, 85, 247, 0.5)', // purple-500
+        },
+      ]
+    : menuItems;
   
   const today = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium' }).format(new Date());
   const time = new Intl.DateTimeFormat('pt-BR', { timeStyle: 'medium' }).format(new Date());
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % menuItems.length);
+    setCurrentIndex((prev) => (prev + 1) % allowedMenuItems.length);
   };
 
   const handlePrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + menuItems.length) % menuItems.length);
+    setCurrentIndex((prev) => (prev - 1 + allowedMenuItems.length) % allowedMenuItems.length);
   };
 
-  const currentItem = menuItems[currentIndex];
+  const currentItem = allowedMenuItems[currentIndex] || allowedMenuItems[0];
   const Icon = currentItem.icon;
 
   React.useEffect(() => {
@@ -94,7 +110,7 @@ export function MainMenu({ onSelect }: MainMenuProps) {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentIndex, onSelect]);
+  }, [currentIndex, onSelect, allowedMenuItems]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] flex flex-col items-center justify-between font-sans selection:bg-pink-200 selection:text-pink-900 relative overflow-hidden text-white">

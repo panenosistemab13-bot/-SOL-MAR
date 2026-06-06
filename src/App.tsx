@@ -5,22 +5,40 @@ import { Bikinis } from './pages/Bikinis';
 import { Threads } from './pages/Threads';
 import { Sales } from './pages/Sales';
 import { EstoqueEncomenda } from './pages/EstoqueEncomenda';
+import { Configuracoes } from './pages/Configuracoes';
+import { Login } from './components/Login';
 import { MainMenu } from './components/MainMenu';
 import { TopNav } from './components/TopNav';
 
 function AppContent() {
+  const { lowStockItemsCount, currentUser, logout } = useInventory(); 
   const [currentTab, setCurrentTab] = useState('menu');
-  const { lowStockItemsCount } = useInventory(); 
   
+  if (!currentUser) {
+    return <Login />;
+  }
+
+  const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
+
   const tabTitles: Record<string, string> = {
     dashboard: 'Gestão de Inventário',
     bikinis: 'Estoque de Biquínis',
     threads: 'Insumos & Fios',
     sales: 'Relatórios & Vendas',
     estoque_encomenda: 'Estoque Encomenda',
+    configuracoes: 'Configurações do Sistema'
   };
 
-  const navTabs = ['dashboard', 'bikinis', 'estoque_encomenda', 'threads', 'sales'];
+  const navTabs = isAdmOrMestre
+    ? ['dashboard', 'bikinis', 'estoque_encomenda', 'threads', 'sales', 'configuracoes']
+    : ['dashboard', 'bikinis', 'estoque_encomenda', 'threads', 'sales'];
+
+  React.useEffect(() => {
+    // Redirect role-restricted users who somehow land on configuracoes to dashboard
+    if (currentTab === 'configuracoes' && !isAdmOrMestre) {
+      setCurrentTab('menu');
+    }
+  }, [currentTab, isAdmOrMestre]);
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -36,19 +54,31 @@ function AppContent() {
         if (e.key === 'Backspace') {
           e.preventDefault();
           setCurrentTab('menu');
-        } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        } else if (e.key === 'ArrowRight') {
           e.preventDefault();
           const index = navTabs.indexOf(currentTab);
           if (index !== -1) {
             const nextIndex = (index + 1) % navTabs.length;
             setCurrentTab(navTabs[nextIndex]);
           }
-        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        } else if (e.key === 'ArrowLeft') {
           e.preventDefault();
           const index = navTabs.indexOf(currentTab);
           if (index !== -1) {
             const prevIndex = (index - 1 + navTabs.length) % navTabs.length;
             setCurrentTab(navTabs[prevIndex]);
+          }
+        } else if (e.key === 'ArrowDown') {
+          const container = document.getElementById('main-scroll-container');
+          if (container) {
+            e.preventDefault();
+            container.scrollBy({ top: 120, behavior: 'smooth' });
+          }
+        } else if (e.key === 'ArrowUp') {
+          const container = document.getElementById('main-scroll-container');
+          if (container) {
+            e.preventDefault();
+            container.scrollBy({ top: -120, behavior: 'smooth' });
           }
         }
       }
@@ -58,7 +88,7 @@ function AppContent() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentTab]);
+  }, [currentTab, navTabs]);
 
   const today = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' }).format(new Date());
 
@@ -90,26 +120,48 @@ function AppContent() {
           </div>
 
           {/* Right section */}
-          <div className="flex-1 flex items-center justify-end gap-4">
+          <div className="flex-1 flex items-center justify-end gap-3.5">
             {lowStockItemsCount > 0 && (
-              <div className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-4 py-2 rounded-full text-[12px] font-semibold tracking-wide flex items-center gap-2 shadow-sm">
+              <div className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-3.5 py-1.5 rounded-full text-[12px] font-semibold tracking-wide hidden sm:flex items-center gap-2 shadow-sm">
                 <span className="shrink-0 leading-none">⚠️</span> 
                 {lowStockItemsCount} Críticos
               </div>
             )}
-            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 shadow-md">
-              <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80" alt="User" className="w-full h-full object-cover" />
-            </div>
+            
+            {currentUser && (
+              <div className="flex items-center gap-2.5">
+                <div className="text-right hidden md:block">
+                  <p className="text-[12px] font-bold text-white leading-none">{currentUser.name}</p>
+                  <p className="text-[9px] text-[#a855f7] uppercase font-black tracking-wider mt-1">{currentUser.role === 'MESTRE' ? 'Mestre' : currentUser.role}</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/20 shadow-md">
+                  <img src={currentUser.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"} alt={currentUser.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                </div>
+                <button
+                  onClick={() => logout()}
+                  className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+                  title="Sair da Conta"
+                  id="header-logout-btn"
+                >
+                  <svg className="w-5 h-5 hover:scale-105 active:scale-95 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
         </header>
         
-        <div className="flex-1 overflow-y-auto p-8 md:p-12 relative">
+        <div id="main-scroll-container" className="flex-1 overflow-y-auto p-8 md:p-12 relative">
           <div className="max-w-7xl mx-auto h-full relative z-10">
             {currentTab === 'dashboard' && <Dashboard />}
             {currentTab === 'bikinis' && <Bikinis />}
             {currentTab === 'threads' && <Threads />}
             {currentTab === 'sales' && <Sales />}
             {currentTab === 'estoque_encomenda' && <EstoqueEncomenda />}
+            {currentTab === 'configuracoes' && <Configuracoes />}
           </div>
         </div>
       </main>

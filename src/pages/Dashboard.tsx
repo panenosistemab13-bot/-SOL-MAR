@@ -1,12 +1,11 @@
 import React from 'react';
 import { useInventory } from '../context/InventoryContext';
-import { Package, AlertTriangle, Scissors, Sun, Waves, Sparkles, Anchor, RefreshCw } from 'lucide-react';
+import { Package, AlertTriangle, Scissors, Sun, Waves, Sparkles, Anchor, History, Bell } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 import { cn } from '../lib/utils';
 
 export function Dashboard() {
-  const { bikinis, threads, lowStockItemsCount, resetAllStockToZero } = useInventory();
-  const [isConfirmingReset, setIsConfirmingReset] = React.useState(false);
+  const { bikinis, threads, lowStockItemsCount, logs, users } = useInventory();
 
   // Aggregate stock by model
   const stockByModel = bikinis.reduce((acc, current) => {
@@ -64,36 +63,6 @@ export function Dashboard() {
 
         {/* Actions section */}
         <div className="flex items-center gap-4 relative z-10 flex-wrap">
-          {/* Zerar Dados Button with confirmation inline */}
-          {!isConfirmingReset ? (
-            <button
-              onClick={() => setIsConfirmingReset(true)}
-              className="text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 px-4 py-3 rounded-xl transition duration-300 flex items-center gap-2 cursor-pointer shadow-sm hover:shadow-rose-500/5 hover:-translate-y-0.5 active:translate-y-0"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Zerar Estoques e Dados
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 bg-rose-950/40 border border-rose-500/30 p-2 rounded-xl backdrop-blur-md">
-              <span className="text-[10px] text-rose-200 font-bold tracking-wider px-2 uppercase">Zerar Tudo?</span>
-              <button
-                onClick={() => {
-                  resetAllStockToZero();
-                  setIsConfirmingReset(false);
-                }}
-                className="text-[11px] font-bold text-white bg-rose-600 hover:bg-rose-700 px-3 py-1.5 rounded-lg transition duration-200 cursor-pointer shadow-sm"
-              >
-                Sim, Zerar!
-              </button>
-              <button
-                onClick={() => setIsConfirmingReset(false)}
-                className="text-[11px] font-semibold text-slate-300 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition duration-200 cursor-pointer"
-              >
-                Cancelar
-              </button>
-            </div>
-          )}
-
           {/* Sand-glass counter badge */}
           <div className="flex items-center gap-4 bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4 backdrop-blur-md shadow-lg">
             <div className="text-right">
@@ -354,6 +323,66 @@ export function Dashboard() {
           </div>
         </div>
 
+      </div>
+
+      {/* Real-time Change Alerts & Notifications Logs */}
+      <div className="rounded-[2.2rem] border border-white/10 bg-slate-900/40 backdrop-blur-xl p-6 md:p-8 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/5 blur-[100px] rounded-full pointer-events-none" />
+        
+        <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-6 relative z-10">
+          <div>
+            <h3 className="text-lg font-black font-sans text-white uppercase tracking-[0.15em] flex items-center gap-2">
+              <Bell size={18} className="text-purple-400" /> Histórico de Alterações e Notificações
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">Alterações e atualizações recentes efetuadas no sistema por usuários habilitados.</p>
+          </div>
+          <span className="text-[10px] bg-[#a855f7]/10 text-purple-300 font-bold px-3 py-1 rounded-full border border-purple-500/20">
+            ÚLTIMAS ATIVIDADES
+          </span>
+        </div>
+
+        <div className="space-y-3 relative z-10 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+          {logs && logs.length > 0 ? (
+            logs.map(log => {
+              const userMatch = users?.find(u => u.username === log.username);
+              const avatar = userMatch?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80";
+              const parsedTime = new Date(log.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' - ' + new Date(log.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
+              return (
+                <div 
+                  key={log.id} 
+                  className="p-4 rounded-2xl bg-white/[0.015] hover:bg-white/[0.04] border border-white/5 hover:border-purple-500/20 transition-all duration-300 flex items-center justify-between gap-4"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <img 
+                      src={avatar} 
+                      alt={log.workerName} 
+                      className="w-10 h-10 rounded-md object-cover shrink-0 border border-white/10"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs text-slate-200 font-medium leading-normal">
+                        <strong className="text-purple-300 font-bold tracking-wider uppercase">{log.workerName.toUpperCase()}</strong> {log.action}
+                      </p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        <span>@{log.username}</span>
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <span className="text-[10px] text-slate-400 bg-white/5 border border-white/5 px-2.5 py-1 rounded-lg font-mono shrink-0">
+                    {parsedTime}
+                  </span>
+                </div>
+              );
+            })
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 text-slate-500 text-center gap-2">
+              <History size={24} className="text-purple-400/50" />
+              <p className="font-sans text-xs uppercase tracking-widest font-black">Nenhuma alteração recente registrada</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

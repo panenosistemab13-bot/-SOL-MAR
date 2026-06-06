@@ -1,6 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, Tag, Scissors, ShoppingCart, Grid, Package } from 'lucide-react';
+import { LayoutDashboard, Tag, Scissors, ShoppingCart, Grid, Package, Settings } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useInventory } from '../context/InventoryContext';
 
 interface TopNavProps {
   currentTab: string;
@@ -16,6 +17,13 @@ const navItems = [
 ];
 
 export function TopNav({ currentTab, onSelect }: TopNavProps) {
+  const { currentUser } = useInventory();
+  const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
+  
+  const allowedItems = isAdmOrMestre
+    ? [...navItems, { id: 'configuracoes', icon: Settings }]
+    : navItems;
+
   return (
     <div className="flex items-center bg-[#18181b] border border-white/5 rounded-[1.5rem] p-1.5 shadow-2xl backdrop-blur-md">
       <button
@@ -33,7 +41,7 @@ export function TopNav({ currentTab, onSelect }: TopNavProps) {
       <div className="w-[1px] h-6 bg-white/10 mx-2" />
       
       <div className="flex items-center gap-1.5 border-l border-transparent">
-        {navItems.map(item => {
+        {allowedItems.map(item => {
           const isActive = currentTab === item.id;
           return (
             <button
