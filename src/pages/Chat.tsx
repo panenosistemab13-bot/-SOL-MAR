@@ -182,6 +182,17 @@ export function Chat() {
     }).catch(err => console.error("Erro ao fixar/desafixar comunicado:", err));
   };
 
+  const handleClearAll = () => {
+    if (isReadOnly) return;
+    const canDelete = currentUser?.role === 'MESTRE';
+    if (!canDelete) return;
+
+    if (window.confirm("Deseja realmente apagar TODOS os comunicados deste mural? Esta ação é irreversível.")) {
+      const chatRef = ref(rtdb, `chat/messages`);
+      set(chatRef, null).catch(err => console.error("Erro ao apagar mural:", err));
+    }
+  };
+
   const formatRole = (role: string) => {
     if (role === 'MESTRE') return 'Mestre';
     if (role === 'ADM') return 'Administrador';
@@ -205,7 +216,7 @@ export function Chat() {
       <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-sky-500/5 blur-[100px] rounded-full pointer-events-none" />
 
       {/* Top Bar / Info panel */}
-      <div className="p-4 bg-[#0c0c0e]/80 border-b border-white/5 flex items-center justify-between z-10">
+      <div className="p-4 bg-[#0c0c0e]/80 border-b border-white/5 flex items-center justify-between z-10 flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-500/20 to-amber-500/20 flex items-center justify-center border border-pink-500/20">
             <Bell size={18} className="text-pink-400 animate-bounce" />
@@ -221,11 +232,21 @@ export function Chat() {
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2.5 bg-white/[0.02] border border-white/5 px-3 py-1.5 rounded-2xl">
-          <Users size={14} className="text-pink-400" />
-          <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">
-            Confecção Sol & Mar
-          </span>
+        <div className="flex items-center gap-2.5">
+          {currentUser?.role === 'MESTRE' && (
+            <button
+              onClick={handleClearAll}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-rose-500/20 transition-colors cursor-pointer"
+            >
+              <Trash size={12} /> Limpar Tudo
+            </button>
+          )}
+          <div className="hidden sm:flex items-center gap-2.5 bg-white/[0.02] border border-white/5 px-3 py-1.5 rounded-2xl">
+            <Users size={14} className="text-pink-400" />
+            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">
+              Confecção Sol & Mar
+            </span>
+          </div>
         </div>
       </div>
 

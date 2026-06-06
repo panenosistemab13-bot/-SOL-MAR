@@ -11,6 +11,7 @@ import { Login } from './components/Login';
 import { MainMenu } from './components/MainMenu';
 import { TopNav } from './components/TopNav';
 import { PwaInstaller } from './components/PwaInstaller';
+import { GlobalPinnedAlerts } from './components/GlobalPinnedAlerts';
 import { LayoutDashboard, Tag, Package, Scissors, ShoppingCart, Settings, LogOut, Sparkles, MessageSquare } from 'lucide-react';
 
 function AppContent() {
@@ -329,6 +330,7 @@ function AppContent() {
 export default function App() {
   return (
     <InventoryProvider>
+      <GlobalPinnedAlerts />
       <AppContent />
       <PwaInstaller />
     </InventoryProvider>

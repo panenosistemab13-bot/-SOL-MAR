@@ -148,7 +148,7 @@ export function Configuracoes() {
   };
 
   const roleLabels: Record<UserRole, string> = {
-    MESTRE: 'Mestre da Confecção',
+    MESTRE: 'mestre desenvolvedor',
     ADM: 'Administrador (ADM)',
     LIDER: 'Líder de Equipe',
     FUNCIONARIO_A: 'Funcionário A',

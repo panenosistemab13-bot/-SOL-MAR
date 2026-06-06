@@ -99,7 +99,7 @@ const DEFAULT_USERS: UserProfileClient[] = [
     username: 'Jeff',
     name: 'Jefferson',
     role: 'MESTRE',
-    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80',
+    avatarUrl: 'https://i.postimg.cc/dVfY4TLn/Whats-App-Image-2026-06-06-at-02-34-52.jpg',
     password: '#trescafe28'
   }
 ];
@@ -173,12 +173,18 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         if (data.users) {
           const loadedUsers = data.users as UserProfileClient[];
           const jeffIndex = loadedUsers.findIndex(u => u.username.toLowerCase() === 'jeff');
-          if (jeffIndex !== -1 && (loadedUsers[jeffIndex].password !== '#trescafe28' || loadedUsers[jeffIndex].username !== 'Jeff')) {
+          if (jeffIndex !== -1 && (
+            loadedUsers[jeffIndex].password !== '#trescafe28' || 
+            loadedUsers[jeffIndex].username !== 'Jeff' ||
+            loadedUsers[jeffIndex].avatarUrl === 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80' || 
+            !loadedUsers[jeffIndex].avatarUrl?.includes('Whats-App')
+          )) {
             const updatedUsers = [...loadedUsers];
             updatedUsers[jeffIndex] = {
               ...updatedUsers[jeffIndex],
               username: 'Jeff',
-              password: '#trescafe28'
+              password: '#trescafe28',
+              avatarUrl: 'https://i.postimg.cc/dVfY4TLn/Whats-App-Image-2026-06-06-at-02-34-52.jpg'
             };
             set(ref(rtdb, 'inventory/users'), updatedUsers);
             setUsers(updatedUsers);
