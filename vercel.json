@@ -1,12 +1,21 @@
 {
   "cleanUrls": true,
-  "routes": [
+  "headers": [
     {
-      "handle": "filesystem"
+      "source": "/(sw.js|service-worker.js)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
     }
+  ],
+  "routes": [
+    { "handle": "filesystem" },
+    { "source": "/(.*)", "dest": "/index.html" }
   ]
 }

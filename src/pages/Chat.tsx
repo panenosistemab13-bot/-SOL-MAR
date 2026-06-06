@@ -31,7 +31,7 @@ export function Chat() {
                    currentUser?.role === 'ADM' || 
                    currentUser?.role === 'LIDER';
 
-  // 1. Escutar mensagens do Firebase em tempo real
+  // 1. Escutar mensagens do Firebase em tempo real e remover automaticamente as com mais de 3 dias
   useEffect(() => {
     const chatRef = ref(rtdb, 'chat/messages');
     setIsLoading(true);
@@ -39,13 +39,35 @@ export function Chat() {
     const unsubscribe = onValue(chatRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        // Converte objeto em array e ordena por timestamp
+        const now = new Date().getTime();
+        const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+        const expiredIds: string[] = [];
+
+        // Converte objeto em array e filtra mensagens com menos de 3 dias de envio
         const loadedMessages: ChatMessage[] = Object.entries(data).map(([key, val]: [string, any]) => ({
           id: key,
           ...val
-        })).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        })).filter(msg => {
+          if (!msg.timestamp) return true;
+          const msgTime = new Date(msg.timestamp).getTime();
+          if (isNaN(msgTime)) return true;
+          const isExpired = (now - msgTime) > threeDaysMs;
+          if (isExpired) {
+            expiredIds.push(msg.id);
+            return false;
+          }
+          return true;
+        }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
         setMessages(loadedMessages);
+
+        // Se houver mensagens expiradas, remove-as definitivamente do banco de dados Firebase
+        if (expiredIds.length > 0 && !isReadOnly) {
+          expiredIds.forEach(id => {
+            const expiredRef = ref(rtdb, `chat/messages/${id}`);
+            set(expiredRef, null).catch(err => console.error("Erro ao limpar aviso antigo:", err));
+          });
+        }
       } else {
         setMessages([]);
       }
@@ -53,7 +75,7 @@ export function Chat() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [isReadOnly]);
 
   // 2. Rolar para o final do chat quando houver novas mensagens
   const scrollToBottom = () => {
