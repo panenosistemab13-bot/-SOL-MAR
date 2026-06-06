@@ -20,6 +20,46 @@ function AppContent() {
     estoque_encomenda: 'Estoque Encomenda',
   };
 
+  const navTabs = ['dashboard', 'bikinis', 'estoque_encomenda', 'threads', 'sales'];
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      const isInputActive = active && (
+        active.tagName === 'INPUT' || 
+        active.tagName === 'TEXTAREA' || 
+        (active as HTMLElement).isContentEditable
+      );
+      if (isInputActive) return;
+
+      if (currentTab !== 'menu') {
+        if (e.key === 'Backspace') {
+          e.preventDefault();
+          setCurrentTab('menu');
+        } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const index = navTabs.indexOf(currentTab);
+          if (index !== -1) {
+            const nextIndex = (index + 1) % navTabs.length;
+            setCurrentTab(navTabs[nextIndex]);
+          }
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          const index = navTabs.indexOf(currentTab);
+          if (index !== -1) {
+            const prevIndex = (index - 1 + navTabs.length) % navTabs.length;
+            setCurrentTab(navTabs[prevIndex]);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [currentTab]);
+
   const today = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' }).format(new Date());
 
   if (currentTab === 'menu') {
@@ -33,7 +73,14 @@ function AppContent() {
           {/* Left section */}
           <div className="flex-1 flex flex-col justify-center">
             <h1 className="text-2xl font-serif font-bold text-white m-0 tracking-tight">{tabTitles[currentTab]}</h1>
-            <p className="text-[13px] font-light tracking-wide text-sky-400 m-0 mt-1 capitalize">{today}</p>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-[13px] font-light tracking-wide text-sky-400 m-0 capitalize leading-none">{today}</p>
+              <div className="hidden md:flex items-center gap-1.5 text-[10px] text-white/30 bg-white/[0.02] border border-white/5 px-2.5 py-0.5 rounded-full font-mono select-none">
+                <span className="flex gap-0.5 bg-white/5 px-1 rounded text-[9px] border border-white/10 text-white/50 font-sans">← →</span> Mudar aba
+                <span className="text-white/10">•</span>
+                <span className="bg-white/5 px-1 rounded text-[9px] border border-white/10 text-white/50 font-sans">Backspace</span> Voltar ao Menu
+              </div>
+            </div>
           </div>
           
           {/* Center section - Dynamic TopNav */}

@@ -5,7 +5,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { cn } from '../lib/utils';
 
 export function Dashboard() {
-  const { bikinis, threads, lowStockItemsCount } = useInventory();
+  const { bikinis, threads, lowStockItemsCount, resetAllStockToZero } = useInventory();
+  const [isConfirmingReset, setIsConfirmingReset] = React.useState(false);
 
   // Aggregate stock by model
   const stockByModel = bikinis.reduce((acc, current) => {
@@ -61,14 +62,47 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Sand-glass counter badge */}
-        <div className="flex items-center gap-4 bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4 backdrop-blur-md relative z-10 shadow-lg">
-          <div className="text-right">
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Ritmo dos Mares</p>
-            <p className="text-xs text-sky-300 font-mono mt-0.5">Estoque sincronizado</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-400/20 flex items-center justify-center text-sky-400">
-            <Anchor className="w-5 h-5 animate-pulse" />
+        {/* Actions section */}
+        <div className="flex items-center gap-4 relative z-10 flex-wrap">
+          {/* Zerar Dados Button with confirmation inline */}
+          {!isConfirmingReset ? (
+            <button
+              onClick={() => setIsConfirmingReset(true)}
+              className="text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 px-4 py-3 rounded-xl transition duration-300 flex items-center gap-2 cursor-pointer shadow-sm hover:shadow-rose-500/5 hover:-translate-y-0.5 active:translate-y-0"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Zerar Estoques e Dados
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 bg-rose-950/40 border border-rose-500/30 p-2 rounded-xl backdrop-blur-md">
+              <span className="text-[10px] text-rose-200 font-bold tracking-wider px-2 uppercase">Zerar Tudo?</span>
+              <button
+                onClick={() => {
+                  resetAllStockToZero();
+                  setIsConfirmingReset(false);
+                }}
+                className="text-[11px] font-bold text-white bg-rose-600 hover:bg-rose-700 px-3 py-1.5 rounded-lg transition duration-200 cursor-pointer shadow-sm"
+              >
+                Sim, Zerar!
+              </button>
+              <button
+                onClick={() => setIsConfirmingReset(false)}
+                className="text-[11px] font-semibold text-slate-300 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition duration-200 cursor-pointer"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+
+          {/* Sand-glass counter badge */}
+          <div className="flex items-center gap-4 bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4 backdrop-blur-md shadow-lg">
+            <div className="text-right">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Ritmo dos Mares</p>
+              <p className="text-xs text-sky-300 font-mono mt-0.5">Estoque sincronizado</p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-sky-500/15 border border-sky-400/20 flex items-center justify-center text-sky-400">
+              <Anchor className="w-5 h-5 animate-pulse" />
+            </div>
           </div>
         </div>
       </div>

@@ -68,6 +68,34 @@ export function MainMenu({ onSelect }: MainMenuProps) {
   const currentItem = menuItems[currentIndex];
   const Icon = currentItem.icon;
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      const isInputActive = activeElement && (
+        activeElement.tagName === 'INPUT' || 
+        activeElement.tagName === 'TEXTAREA' || 
+        (activeElement as HTMLElement).isContentEditable
+      );
+      if (isInputActive) return;
+
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        handleNext();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        handlePrev();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        onSelect(currentItem.id);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [currentIndex, onSelect]);
+
   return (
     <div className="min-h-screen bg-[#0a0a0b] flex flex-col items-center justify-between font-sans selection:bg-pink-200 selection:text-pink-900 relative overflow-hidden text-white">
       {/* Background ambient glow based on current item */}
@@ -153,6 +181,14 @@ export function MainMenu({ onSelect }: MainMenuProps) {
                
                <p className="text-slate-400 text-sm font-light tracking-wide px-4">
                  {currentItem.description}
+                </p>
+                <div className="mt-6 flex items-center justify-center gap-1.5 bg-white/[0.02] border border-white/5 px-4 py-2 rounded-full text-[11px] font-medium tracking-wide text-white/50 shadow-inner select-none max-w-sm mx-auto">
+                  <span className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded text-[10px] font-semibold text-white/80 border border-white/10">← →</span> ou
+                  <span className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded text-[10px] font-semibold text-white/80 border border-white/10">↑ ↓</span>
+                  <span className="text-slate-600 mx-0.5">•</span>
+                  <span className="bg-white/5 px-2 py-0.5 rounded text-[10px] font-semibold text-white/95 border border-white/10">Enter</span> para Entrar
+                </div>
+                <p className="hidden">
                </p>
             </div>
           </div>

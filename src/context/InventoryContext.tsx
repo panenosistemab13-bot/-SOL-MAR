@@ -17,6 +17,7 @@ interface InventoryContextType {
   setThreadStock: (id: string, stock: number) => void;
   removeThread: (id: string) => void;
   registerSale: (s: Omit<Sale, 'id'>) => void;
+  resetAllStockToZero: () => void;
   lowStockItemsCount: number;
 }
 
@@ -58,7 +59,7 @@ const INITIAL_BIKINIS: Bikini[] = MODELS.flatMap((model, i) =>
       colorName: color.name,
       colorHex: color.hex,
       size: size as any,
-      stock: 100,
+      stock: 0,
       minStockAlert: 30
     }))
   )
@@ -70,7 +71,7 @@ const INITIAL_THREADS: Thread[] = ['FIO', 'RETA'].flatMap((name, i) =>
     name: name,
     colorName: color.name,
     colorHex: color.hex,
-    stock: 50,
+    stock: 0,
     minStockAlert: 20
   }))
 );
@@ -198,6 +199,32 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const resetAllStockToZero = () => {
+    const clearedBikinis = bikinis.map(b => ({
+      ...b,
+      stock: 0,
+      dividedStock: undefined
+    }));
+    const clearedThreads = threads.map(t => ({
+      ...t,
+      stock: 0
+    }));
+
+    set(ref(rtdb, 'inventory'), {
+      bikinis: clearedBikinis,
+      threads: clearedThreads,
+      sales: []
+    });
+
+    localStorage.removeItem('acqualog_bikinis_v4');
+    localStorage.removeItem('acqualog_threads_v3');
+    localStorage.removeItem('acqualog_sales');
+
+    setBikinis(clearedBikinis);
+    setThreads(clearedThreads);
+    setSales([]);
+  };
+
   const lowStockItemsCount = bikinis.filter(b => b.stock <= b.minStockAlert).length +
                              threads.filter(t => t.stock <= t.minStockAlert).length;
 
@@ -206,7 +233,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       bikinis, threads, sales,
       addBikini, updateBikiniStock, setBikiniStock, updateBikiniDividedStock, removeBikini,
       addThread, updateThreadStock, setThreadStock, removeThread,
-      registerSale, lowStockItemsCount
+      registerSale, resetAllStockToZero, lowStockItemsCount
     }}>
       {children}
     </InventoryContext.Provider>
