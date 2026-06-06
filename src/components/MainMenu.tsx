@@ -137,8 +137,34 @@ export function MainMenu({ onSelect }: MainMenuProps) {
           <div className="w-12 h-12 flex items-center justify-center relative">
              <div className="absolute inset-0 bg-pink-500/20 blur-md rounded-full pointer-events-none"></div>
              <svg className="relative z-10" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <style>{`
+                  @keyframes rotate-sun {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                  }
+                  @keyframes wave-sway-one {
+                    0%, 100% { transform: translateX(0px) translateY(0px); }
+                    50% { transform: translateX(1.2px) translateY(-0.4px); }
+                  }
+                  @keyframes wave-sway-two {
+                    0%, 100% { transform: translateX(0px) translateY(0px); }
+                    50% { transform: translateX(-1.2px) translateY(0.4px); }
+                  }
+                  .anim-sun-group {
+                    transform-origin: 10px 10px;
+                    animation: rotate-sun 28s linear infinite;
+                  }
+                  .anim-wave-one {
+                    transform-origin: center;
+                    animation: wave-sway-one 4.5s ease-in-out infinite;
+                  }
+                  .anim-wave-two {
+                    transform-origin: center;
+                    animation: wave-sway-two 5.5s ease-in-out infinite;
+                  }
+                `}</style>
                 {/* Sun and Rays - Glowing Pink */}
-                <g className="text-pink-400">
+                <g className="text-pink-400 anim-sun-group">
                   <circle cx="10" cy="10" r="3.5" fill="currentColor" fillOpacity="0.15" />
                   <path d="M10 2v1.5" />
                   <path d="M10 16.5v1.5" />
@@ -151,9 +177,9 @@ export function MainMenu({ onSelect }: MainMenuProps) {
                 </g>
                 {/* Sea Waves - Light Sky Blue */}
                 <g className="text-sky-400">
-                  <path d="M12 14.5c0.8-0.6 1.7-0.6 2.5 0s1.7 0.6 2.5 0" />
-                  <path d="M9 17.5c0.8-0.6 1.7-0.6 2.5 0s1.7 0.6 2.5 0s1.7-0.6 2.5 0" />
-                  <path d="M12 20.5c0.8-0.6 1.7-0.6 2.5 0s1.7 0.6 2.5 0" />
+                  <path className="anim-wave-one" d="M12 14.5c0.8-0.6 1.7-0.6 2.5 0s1.7 0.6 2.5 0" />
+                  <path className="anim-wave-two" d="M9 17.5c0.8-0.6 1.7-0.6 2.5 0s1.7 0.6 2.5 0s1.7-0.6 2.5 0" />
+                  <path className="anim-wave-one" d="M12 20.5c0.8-0.6 1.7-0.6 2.5 0s1.7 0.6 2.5 0" />
                 </g>
              </svg>
           </div>
