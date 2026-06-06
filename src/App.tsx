@@ -9,11 +9,30 @@ import { Configuracoes } from './pages/Configuracoes';
 import { Login } from './components/Login';
 import { MainMenu } from './components/MainMenu';
 import { TopNav } from './components/TopNav';
+import { LayoutDashboard, Tag, Package, Scissors, ShoppingCart, Settings, LogOut, Sparkles } from 'lucide-react';
 
 function AppContent() {
   const { lowStockItemsCount, currentUser, logout } = useInventory(); 
-  const [currentTab, setCurrentTab] = useState('menu');
   
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+
+  const [currentTab, setCurrentTab] = useState(() => {
+    return typeof window !== 'undefined' && window.innerWidth < 768 ? 'dashboard' : 'menu';
+  });
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   if (!currentUser) {
     return <Login />;
   }
@@ -41,6 +60,12 @@ function AppContent() {
   }, [currentTab, isAdmOrMestre]);
 
   React.useEffect(() => {
+    if (isMobile && currentTab === 'menu') {
+      setCurrentTab('dashboard');
+    }
+  }, [isMobile, currentTab]);
+
+  React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const active = document.activeElement;
       const isInputActive = active && (
@@ -50,7 +75,7 @@ function AppContent() {
       );
       if (isInputActive) return;
 
-      if (currentTab !== 'menu') {
+      if (!isMobile && currentTab !== 'menu') {
         if (e.key === 'Backspace') {
           e.preventDefault();
           setCurrentTab('menu');
@@ -88,9 +113,138 @@ function AppContent() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentTab, navTabs]);
+  }, [currentTab, navTabs, isMobile]);
 
   const today = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' }).format(new Date());
+
+  // Mobile rendering layout (100% compact and designed for fingers, screen estate, and fluid speeds)
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-[#070708] flex flex-col text-slate-200 font-sans selection:bg-pink-500/20 selection:text-white pb-24 relative overflow-hidden">
+        {/* Subtle glowing beach background accents */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-pink-500/5 blur-[80px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-12 left-0 w-64 h-64 bg-sky-500/5 blur-[80px] rounded-full pointer-events-none" />
+
+        {/* Compact Mobile Header */}
+        <header className="h-[56px] bg-[#09090b]/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-4 shrink-0 z-50 sticky top-0">
+          <div className="flex items-center gap-1.5">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-pink-500/20 to-sky-500/20 flex items-center justify-center border border-pink-500/20 shadow-sm shrink-0">
+              <Sparkles className="w-3.5 h-3.5 text-pink-400 animate-pulse" />
+            </div>
+            <div className="leading-tight">
+              <span className="text-[10px] font-black tracking-widest text-white block uppercase">SOL & MAR</span>
+              <p className="text-[7px] text-pink-400 font-bold tracking-wider m-0 uppercase leading-none">LU CONFECÇÕES</p>
+            </div>
+          </div>
+
+          {/* Page Badge */}
+          <div className="bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full flex items-center gap-1 bg-gradient-to-r from-white/[0.02] to-white/[0.04]">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest truncate max-w-[100px]">
+              {tabTitles[currentTab] ? tabTitles[currentTab].split(' ')[0] : 'Painel'}
+            </span>
+          </div>
+
+          {/* User & Options */}
+          <div className="flex items-center gap-1.5">
+            {currentUser && (
+              <div className="flex items-center gap-1 bg-white/[0.03] border border-white/5 pl-2 pr-0.5 py-0.5 rounded-full shrink-0">
+                <span className="text-[9px] font-bold text-slate-300 max-w-[40px] truncate leading-none">
+                  {currentUser.name.split(' ')[0]}
+                </span>
+                <div className="w-5 h-5 rounded-full overflow-hidden border border-white/20">
+                  <img 
+                    src={currentUser.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"} 
+                    alt={currentUser.name} 
+                    className="w-full h-full object-cover" 
+                    referrerPolicy="no-referrer" 
+                  />
+                </div>
+              </div>
+            )}
+            <button
+              onClick={() => logout()}
+              className="p-1 px-1.5 text-slate-400 hover:text-rose-400 active:scale-95 transition-all cursor-pointer bg-white/5 rounded-lg border border-white/5"
+              title="Sair"
+              id="mobile-logout-btn"
+            >
+              <LogOut size={13} />
+            </button>
+          </div>
+        </header>
+
+        {/* Compact Mobile Pages container */}
+        <div id="main-scroll-container" className="flex-1 overflow-y-auto px-3.5 pt-3.5 relative">
+          <div className="max-w-md mx-auto relative z-10">
+            {currentTab === 'dashboard' && <Dashboard />}
+            {currentTab === 'bikinis' && <Bikinis />}
+            {currentTab === 'threads' && <Threads />}
+            {currentTab === 'sales' && <Sales />}
+            {currentTab === 'estoque_encomenda' && <EstoqueEncomenda />}
+            {currentTab === 'configuracoes' && <Configuracoes />}
+          </div>
+        </div>
+
+        {/* Floating Glass Bottom Nav Dock */}
+        <nav className="fixed bottom-3 inset-x-3 z-50 bg-[#09090b]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 flex items-center justify-between shadow-[0_15px_30px_rgb(0,0,0,0.8)] max-w-md mx-auto">
+          {navTabs.map((tabId) => {
+            const isActive = currentTab === tabId;
+            let TabIcon = LayoutDashboard;
+            let label = 'Painel';
+
+            if (tabId === 'dashboard') {
+              TabIcon = LayoutDashboard;
+              label = 'Início';
+            } else if (tabId === 'bikinis') {
+              TabIcon = Tag;
+              label = 'Biquíni';
+            } else if (tabId === 'estoque_encomenda') {
+              TabIcon = Package;
+              label = 'Pedido';
+            } else if (tabId === 'threads') {
+              TabIcon = Scissors;
+              label = 'Insumos';
+            } else if (tabId === 'sales') {
+              TabIcon = ShoppingCart;
+              label = 'Vendas';
+            } else if (tabId === 'configuracoes') {
+              TabIcon = Settings;
+              label = 'Ajustes';
+            }
+
+            return (
+              <button
+                key={tabId}
+                onClick={() => setCurrentTab(tabId)}
+                className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-xl transition-all duration-300 relative cursor-pointer ${
+                  isActive 
+                    ? 'text-pink-400 bg-white/[0.04] border border-white/5 shadow-inner' 
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <TabIcon size={16} className={`mb-1 transition-transform duration-200 ${isActive ? 'scale-110 text-pink-400 stroke-[2.2px]' : 'stroke-[1.6px]'}`} />
+                <span className={`text-[8px] font-black tracking-wide uppercase leading-none scale-90 ${isActive ? 'text-pink-300' : 'text-slate-500'}`}>
+                  {label}
+                </span>
+                
+                {/* Micro notification dot on mobile */}
+                {tabId === 'dashboard' && lowStockItemsCount > 0 && (
+                  <span className="absolute top-1.5 right-4 w-2 h-2 rounded-full bg-rose-500 border border-[#09090b] text-[7px] font-black flex items-center justify-center text-white p-0.5">
+                    
+                  </span>
+                )}
+                
+                {/* Active indicator dot */}
+                {isActive && (
+                  <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-pink-400" />
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+    );
+  }
 
   if (currentTab === 'menu') {
     return <MainMenu onSelect={setCurrentTab} />;
