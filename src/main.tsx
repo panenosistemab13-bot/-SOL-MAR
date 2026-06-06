@@ -17,6 +17,34 @@ if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
   });
 }
 
+// Forçamento Global Bruto: Garante que o título permaneça "Sol & Mar"
+// contra qualquer sobrescrita dinâmica de roteadores, bibliotecas ou caches.
+if (typeof document !== 'undefined') {
+  document.title = "Sol & Mar";
+  const targetTitle = "Sol & Mar";
+  
+  // Utiliza MutationObserver para monitorar mudanças na tag <title> do <head>
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'childList' && document.title !== targetTitle) {
+        document.title = targetTitle;
+      }
+    });
+  });
+
+  const titleNode = document.querySelector('title');
+  if (titleNode) {
+    observer.observe(titleNode, { childList: true });
+  }
+
+  // Backup periódico preventivo
+  setInterval(() => {
+    if (document.title !== targetTitle) {
+      document.title = targetTitle;
+    }
+  }, 1000);
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
