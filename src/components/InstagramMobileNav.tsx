@@ -5,7 +5,10 @@ import {
   Scissors, 
   ShoppingCart, 
   MessageSquare, 
+  MessageCircle,
   Settings, 
+  ArrowLeft,
+  Bookmark,
   AlertCircle,
   Send,
   Heart,
@@ -15,7 +18,9 @@ import {
   X,
   Camera,
   Type,
-  Trash2
+  Trash2,
+  Mic,
+  Square
 } from 'lucide-react';
 import { useInventory } from '../context/InventoryContext';
 import { cn } from '../lib/utils';
@@ -26,62 +31,427 @@ interface InstagramMobileNavProps {
   onSelect: (tab: string) => void;
 }
 
-export function InstagramMobileHeader({ currentTab, onSelect }: InstagramMobileNavProps) {
-  const { lowStockItemsCount, unreadMessagesCount, currentUser, galleryPosts } = useInventory();
+export function UserProfileGalleryModal({ userId, onClose }: { userId: string; onClose: () => void }) {
+  const { users, galleryPosts, currentUser } = useInventory();
+  const user = users.find(u => u.id === userId);
+  const userPosts = galleryPosts.filter(p => p.userId === userId);
 
-  const recentPostsCount = galleryPosts?.filter(p => p.userId !== currentUser?.id && new Date(p.createdAt).getTime() > Date.now() - 24 * 60 * 60 * 1000).length || 0;
-  
+  if (!user) return null;
+
   return (
-    <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#120c08]/95 border-b border-white/10 px-4 py-2.5 flex items-center justify-between backdrop-blur-xl shadow-lg">
-      {/* Brand Logo in Instagram-style Serif */}
-      <button 
-        onClick={() => onSelect('menu')} 
-        className="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform"
-      >
-        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] p-[1.5px] flex items-center justify-center">
-          <div className="w-full h-full bg-[#120c08] rounded-full flex items-center justify-center">
-            <Sparkles size={13} className="text-[#ebdcb9]" />
-          </div>
-        </div>
-        <div className="flex flex-col text-left">
-          <span className="font-serif italic font-extrabold text-lg text-white tracking-wider leading-none">
-            Sol & Mar
-          </span>
-          <span className="text-[8px] text-[#c5a880] uppercase tracking-widest font-mono leading-none mt-0.5">
-            Lu Confecções
-          </span>
-        </div>
-      </button>
-
-      {/* Top Right Action Icons (Notifications & Chat) */}
-      <div className="flex items-center gap-3">
-        {/* Critical Alerts Heart/Notification Icon */}
-        <button
-          onClick={() => onSelect('menu')}
-          className="relative text-slate-300 hover:text-white p-1.5 rounded-full active:scale-90 transition-transform cursor-pointer"
-          title="Notificações"
-        >
-          <Heart size={22} className={recentPostsCount > 0 ? "text-rose-400 fill-rose-500/20 animate-pulse" : ""} />
-          {recentPostsCount > 0 && (
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-[#120c08]" />
-          )}
-        </button>
-
-        {/* Direct Messages Icon */}
-        <button
-          onClick={() => onSelect('chat')}
-          className="relative text-slate-300 hover:text-white p-1.5 rounded-full active:scale-90 transition-transform cursor-pointer"
-          title="Mural de Mensagens"
-        >
-          <Send size={21} className="rotate-[-20deg]" />
-          {unreadMessagesCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 bg-gradient-to-tr from-[#ec4899] to-[#dc2743] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-lg border border-[#120c08]">
-              {unreadMessagesCount}
-            </span>
-          )}
+    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col overflow-y-auto">
+      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#120c08]">
+        <h3 className="font-serif font-bold text-white text-lg">Perfil de {user.name || user.username}</h3>
+        <button onClick={onClose} className="p-2 text-white/70 hover:text-white">
+          <X size={22} />
         </button>
       </div>
-    </header>
+
+      <div className="p-4 flex flex-col items-center gap-4">
+        <img src={user.avatarUrl} alt={user.name} className="w-24 h-24 rounded-full object-cover border-2 border-[#ebdcb9] bg-black shadow-lg" />
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-white">{user.name}</h2>
+          <p className="text-xs text-[#ebdcb9] uppercase font-mono mt-0.5">@{user.username}</p>
+          <p className="text-xs text-white/60 mt-2">{userPosts.length} publicações</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-8 p-0 mt-4 pb-20">
+        {userPosts.length === 0 ? (
+          <div className="text-center py-12 text-white/50 text-sm">Nenhuma publicação ainda.</div>
+        ) : (
+          userPosts.map(post => {
+            const postLikes = post.likes || [];
+            const postComments = post.comments || [];
+            
+            return (
+              <div key={post.id} className="w-full bg-black/20 flex flex-col">
+                {/* Header */}
+                <div className="flex items-center gap-3 p-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] p-[1.5px]">
+                    <img src={user.avatarUrl} alt="" className="w-full h-full rounded-full object-cover border border-black bg-black" />
+                  </div>
+                  <span className="font-bold text-sm text-white">{user.username}</span>
+                </div>
+
+                {/* Post Image */}
+                {post.imageUrl && (
+                  <div className="w-full aspect-square bg-white/5 relative">
+                    <img src={post.imageUrl} alt="" className="w-full h-full object-cover" />
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="p-4 pt-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-4">
+                      <Heart size={26} className={postLikes.includes(currentUser?.id || '') ? "text-red-500 fill-red-500" : "text-white"} />
+                      <MessageCircle size={26} className="text-white" />
+                      <Send size={24} className="text-white -rotate-12" />
+                    </div>
+                    <Bookmark size={26} className="text-white" />
+                  </div>
+
+                  {/* Likes Count */}
+                  <div className="mb-2">
+                    <p className="text-sm font-bold text-white">
+                      {postLikes.length} {postLikes.length === 1 ? 'curtida' : 'curtidas'}
+                    </p>
+                  </div>
+
+                  {/* Caption */}
+                  {post.caption && (
+                    <p className="text-sm text-white leading-relaxed mb-2">
+                      <span className="font-bold mr-2">{user.username}</span>
+                      {post.caption}
+                    </p>
+                  )}
+
+                  {/* Date */}
+                  <p className="text-[10px] text-white/40 uppercase font-bold mb-4">
+                    {new Date(post.createdAt).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+
+                  {/* Comments Section (matching attachment style) */}
+                  {postComments.length > 0 && (
+                    <div className="space-y-3 mb-4">
+                      {postComments.map((comment, idx) => (
+                        <div key={idx} className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                          <div className="flex items-start gap-3">
+                            <p className="text-sm text-white leading-relaxed">
+                              <span className="font-black mr-2 text-[#ebdcb9]">{comment.userName}</span>
+                              <span className="font-medium text-white/90">{comment.text}</span>
+                            </p>
+                          </div>
+                          <p className="text-[10px] text-white/30 font-bold mt-2">
+                            {new Date(comment.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add Comment Input */}
+                  <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+                    <img src={currentUser?.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover border border-white/10" />
+                    <input 
+                      type="text" 
+                      placeholder="Adicione um comentário..." 
+                      className="bg-transparent text-sm text-white/80 w-full outline-none placeholder:text-white/30"
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function MobileNotificationsModal({ onClose, onSelectUser }: { onClose: () => void; onSelectUser: (userId: string) => void }) {
+  const { galleryPosts, users, currentUser, clearNotifications } = useInventory();
+
+  const activities: Array<{
+    id: string;
+    userId: string;
+    type: 'publish' | 'like' | 'comment';
+    text: string;
+    time: string;
+    postId?: string;
+  }> = [];
+
+  const lastCleared = currentUser?.lastNotificationsClear ? new Date(currentUser.lastNotificationsClear).getTime() : 0;
+
+  galleryPosts.forEach(post => {
+    const author = users.find(u => u.id === post.userId);
+    if (author?.username === 'jeff') return; // Hide jeff's activity
+
+    const authorName = author?.name || author?.username || 'Usuário';
+
+    // Activity: Publish
+    if (new Date(post.createdAt).getTime() > lastCleared) {
+      activities.push({
+        id: `pub-${post.id}`,
+        userId: post.userId,
+        type: 'publish',
+        text: `${authorName} publicou um novo post: "${post.caption ? post.caption.slice(0, 30) + '...' : 'Foto'}"`,
+        time: post.createdAt,
+        postId: post.id
+      });
+    }
+
+    if (post.likes && post.likes.length > 0) {
+      post.likes.forEach(likerUsername => {
+        const liker = users.find(u => u.username === likerUsername || u.id === likerUsername);
+        if (liker?.username === 'jeff') return; // Hide jeff's likes
+        const likerName = liker?.name || liker?.username || likerUsername;
+        
+        // Show like if it happened after clear AND (it's my post OR I am the one who liked)
+        // Note: For simplicity, we assume like time is post time if not tracked specifically, 
+        // but here we only have post.createdAt. If we want better accuracy we need like timestamp.
+        // For now, let's stick to post time filtering.
+        if (new Date(post.createdAt).getTime() > lastCleared) {
+          if (post.userId === currentUser?.id || liker?.id === currentUser?.id) {
+            activities.push({
+              id: `like-${post.id}-${likerUsername}`,
+              userId: liker?.id || post.userId,
+              type: 'like',
+              text: `${likerName} curtiu ${post.userId === currentUser?.id ? 'sua publicação' : `a publicação de ${authorName}`}`,
+              time: post.createdAt
+            });
+          }
+        }
+      });
+    }
+
+    if (post.comments && post.comments.length > 0) {
+      post.comments.forEach(comment => {
+        const commenter = users.find(u => u.id === comment.userId);
+        if (commenter?.username === 'jeff') return; // Skip jeff
+
+        const commenterName = commenter?.name || commenter?.username || 'Usuário';
+        
+        if (new Date(comment.createdAt).getTime() > lastCleared) {
+          activities.push({
+            id: `comm-${comment.id}`,
+            userId: comment.userId,
+            type: 'comment',
+            text: `${commenterName} comentou: "${comment.text.slice(0, 30)}..."`,
+            time: comment.createdAt
+          });
+        }
+      });
+    }
+  });
+
+  activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col overflow-y-auto">
+      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#120c08]">
+        <h3 className="font-serif font-bold text-white text-lg">Notificações</h3>
+        <div className="flex items-center gap-2">
+          {activities.length > 0 && (
+            <button 
+              onClick={() => {
+                if (window.confirm('Limpar todas as notificações?')) {
+                  clearNotifications();
+                }
+              }}
+              className="text-xs font-bold text-rose-400 bg-rose-400/10 px-3 py-1.5 rounded-full"
+            >
+              Limpar
+            </button>
+          )}
+          <button onClick={onClose} className="p-2 text-white/70 hover:text-white">
+            <X size={22} />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col divide-y divide-white/5">
+        {activities.map(act => {
+          const actUser = users.find(u => u.id === act.userId);
+          return (
+            <div 
+              key={act.id} 
+              onClick={() => {
+                if (act.userId) {
+                  onSelectUser(act.userId);
+                }
+              }}
+              className="flex items-center gap-3 p-4 hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              <img src={actUser?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"} alt="" className="w-11 h-11 rounded-full object-cover border border-white/20 bg-black shrink-0" />
+              <div className="flex-1 flex flex-col">
+                <p className="text-sm text-white/90 leading-snug">{act.text}</p>
+                <span className="text-[10px] text-white/40 mt-1">{new Date(act.time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+              </div>
+            </div>
+          );
+        })}
+        {activities.length === 0 && (
+          <div className="text-center py-16 text-white/50 text-sm">Nenhuma notificação recente.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function InstagramMobileHeader({ currentTab, onSelect }: InstagramMobileNavProps) {
+  const { lowStockItemsCount, unreadMessagesCount, currentUser, galleryPosts, users } = useInventory();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
+
+  const lastCleared = currentUser?.lastNotificationsClear ? new Date(currentUser.lastNotificationsClear).getTime() : 0;
+  const recentPostsCount = galleryPosts?.filter(p => 
+    p.userId !== currentUser?.id && 
+    users.find(u => u.id === p.userId)?.username !== 'jeff' &&
+    new Date(p.createdAt).getTime() > lastCleared
+  ).length || 0;
+  
+  return (
+    <>
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#120c08]/95 border-b border-white/10 px-4 py-2.5 flex items-center justify-between backdrop-blur-xl shadow-lg">
+        {/* Brand Logo in Instagram-style Serif */}
+        <button 
+          onClick={() => onSelect('menu')} 
+          className="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform"
+        >
+          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] p-[1.5px] flex items-center justify-center">
+            <div className="w-full h-full bg-[#120c08] rounded-full flex items-center justify-center">
+              <Sparkles size={13} className="text-[#ebdcb9]" />
+            </div>
+          </div>
+          <div className="flex flex-col text-left">
+            <span className="font-serif italic font-extrabold text-lg text-white tracking-wider leading-none">
+              Sol & Mar
+            </span>
+            <span className="text-[8px] text-[#c5a880] uppercase tracking-widest font-mono leading-none mt-0.5">
+              Lu Confecções
+            </span>
+          </div>
+        </button>
+
+        {/* Top Right Action Icons (Notifications & Chat) */}
+        <div className="flex items-center gap-3">
+          {/* Critical Alerts Heart/Notification Icon */}
+          <button
+            onClick={() => setShowNotifications(true)}
+            className="relative text-slate-300 hover:text-white p-1.5 rounded-full active:scale-90 transition-transform cursor-pointer"
+            title="Notificações"
+          >
+            <Heart size={22} className={recentPostsCount > 0 ? "text-rose-400 fill-rose-500/20 animate-pulse" : ""} />
+            {recentPostsCount > 0 && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-[#120c08]" />
+            )}
+          </button>
+
+          {/* Direct Messages Icon */}
+          <button
+            onClick={() => onSelect('chat')}
+            className="relative text-slate-300 hover:text-white p-1.5 rounded-full active:scale-90 transition-transform cursor-pointer"
+            title="Mural de Mensagens"
+          >
+            <Send size={21} className="rotate-[-20deg]" />
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 bg-gradient-to-tr from-[#ec4899] to-[#dc2743] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-lg border border-[#120c08]">
+                {unreadMessagesCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </header>
+
+      {showNotifications && (
+        <MobileNotificationsModal 
+          onClose={() => setShowNotifications(false)} 
+          onSelectUser={(userId) => {
+            setShowNotifications(false);
+            setViewingProfileUserId(userId);
+          }}
+        />
+      )}
+
+      {viewingProfileUserId && (
+        <UserProfileGalleryModal 
+          userId={viewingProfileUserId} 
+          onClose={() => setViewingProfileUserId(null)} 
+        />
+      )}
+    </>
+  );
+}
+
+export function AudioRecorder({ onRecordingComplete }: { onRecordingComplete: (base64: string) => void }) {
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<number | null>(null);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          onRecordingComplete(reader.result as string);
+        };
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      timerRef.current = window.setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error('Error accessing microphone:', err);
+      alert('Erro ao acessar o microfone. Verifique as permissões.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative">
+        {isRecording && (
+          <motion.div 
+            initial={{ scale: 1 }}
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ repeat: Infinity, duration: 1.5 }}
+            className="absolute -inset-4 bg-rose-500/20 rounded-full z-0"
+          />
+        )}
+        <button
+          onClick={isRecording ? stopRecording : startRecording}
+          className={cn(
+            "w-20 h-20 rounded-full flex items-center justify-center transition-all z-10 relative shadow-2xl",
+            isRecording ? "bg-rose-500 text-white" : "bg-white text-black hover:scale-105 active:scale-95"
+          )}
+        >
+          {isRecording ? <Square size={32} fill="currentColor" /> : <Mic size={32} />}
+        </button>
+      </div>
+      
+      {isRecording && (
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+          <span className="text-white font-mono text-xl">{formatTime(recordingTime)}</span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -93,15 +463,16 @@ export function InstagramStoriesRow() {
   const [newStoryType, setNewStoryType] = useState<'image' | 'text' | 'audio'>('text');
   const [newStoryContent, setNewStoryContent] = useState('');
   
+  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
   const [activeStoryIndex, setActiveStoryIndex] = useState(0);
 
   // Group stories by user
-  const storiesByUser = users.map(user => {
+  const storiesByUser = users.filter(u => u.username !== 'jeff' && u.name.toLowerCase() !== 'jefferson').map(user => {
     return {
       user,
       userStories: stories.filter(s => s.userId === user.id).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     };
-  }).filter(group => group.user.id === currentUser?.id || group.userStories.length > 0);
+  });
 
   // Move current user to the front
   storiesByUser.sort((a, b) => {
@@ -188,11 +559,28 @@ export function InstagramStoriesRow() {
               <button
                 key={user.id}
                 onClick={() => {
-                  if (hasStories) {
-                    setViewingUserId(user.id);
-                    setActiveStoryIndex(0);
-                  } else if (isCurrentUser) {
-                    setIsAddingStory(true);
+                  const isJeff = user.username === 'jeff' || user.name.toLowerCase() === 'jefferson';
+                  if (isJeff && !isCurrentUser) return null;
+
+                  if (isCurrentUser) {
+                    if (hasStories) {
+                      if (window.confirm('Ver stories ou adicionar novo? \nClique OK para Ver, Cancelar para Adicionar.')) {
+                        setViewingUserId(user.id);
+                        setActiveStoryIndex(0);
+                      } else {
+                        setIsAddingStory(true);
+                      }
+                    } else {
+                      setIsAddingStory(true);
+                    }
+                  } else {
+                    // Logic: Stories first, then Profile
+                    if (hasStories) {
+                      setViewingUserId(user.id);
+                      setActiveStoryIndex(0);
+                    } else {
+                      setViewingProfileUserId(user.id);
+                    }
                   }
                 }}
                 className="flex flex-col items-center gap-1.5 cursor-pointer group active:scale-95 transition-transform relative"
@@ -216,14 +604,20 @@ export function InstagramStoriesRow() {
                   </div>
                 </div>
 
-                {isCurrentUser && !hasStories && (
-                  <div className="absolute bottom-4 right-0 bg-blue-500 rounded-full w-5 h-5 flex items-center justify-center border-2 border-[#120c08]">
+                {isCurrentUser && (
+                  <div 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsAddingStory(true);
+                    }}
+                    className="absolute bottom-4 right-0 bg-blue-500 rounded-full w-5 h-5 flex items-center justify-center border-2 border-[#120c08] z-10 hover:scale-110 transition-transform"
+                  >
                     <Plus size={12} className="text-white" />
                   </div>
                 )}
 
                 <span className="text-[10px] tracking-tight font-medium max-w-[62px] truncate text-stone-300">
-                  {isCurrentUser ? 'Seu story' : user.username}
+                  {isCurrentUser ? 'Seu story' : (user.name || user.username)}
                 </span>
               </button>
             );
@@ -314,23 +708,30 @@ export function InstagramStoriesRow() {
                   )}
                 </div>
               ) : (
-                <div className="w-full max-w-sm space-y-4 flex flex-col items-center">
-                  <input
-                    type="url"
-                    value={newStoryContent}
-                    onChange={e => setNewStoryContent(e.target.value)}
-                    placeholder="Cole a URL do áudio (mp3/ogg)"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 outline-none"
-                  />
-                  {newStoryContent && (
-                    <div className="w-full p-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl border border-white/10 flex flex-col items-center gap-4">
+                <div className="w-full max-w-sm space-y-6 flex flex-col items-center">
+                  <AudioRecorder onRecordingComplete={(base64) => setNewStoryContent(base64)} />
+                  
+                  {newStoryContent && newStoryContent.startsWith('data:audio') && (
+                    <div className="w-full p-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl border border-white/10 flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
                       <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
                         <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                         </svg>
                       </div>
                       <audio controls src={newStoryContent} className="w-full h-10" />
+                      <button 
+                        onClick={() => setNewStoryContent('')}
+                        className="text-xs text-white/60 hover:text-white underline"
+                      >
+                        Remover e gravar novo
+                      </button>
                     </div>
+                  )}
+
+                  {!newStoryContent && (
+                    <p className="text-white/40 text-center text-xs px-8 leading-relaxed">
+                      Toque no microfone para começar a gravar sua mensagem de voz.
+                    </p>
                   )}
                 </div>
               )}
@@ -363,7 +764,7 @@ export function InstagramStoriesRow() {
             <div className="absolute top-6 inset-x-0 p-4 flex items-center justify-between z-20">
               <div className="flex items-center gap-3">
                 <img src={currentViewingGroup.user.avatarUrl} alt="" className="w-8 h-8 rounded-full border border-white/20" />
-                <span className="text-white font-bold text-sm shadow-sm">{currentViewingGroup.user.username}</span>
+                <span className="text-white font-bold text-sm shadow-sm">{currentViewingGroup.user.name || currentViewingGroup.user.username}</span>
                 <span className="text-white/60 text-xs">{new Date(currentViewingGroup.userStories[activeStoryIndex]?.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -430,6 +831,13 @@ export function InstagramStoriesRow() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {viewingProfileUserId && (
+        <UserProfileGalleryModal 
+          userId={viewingProfileUserId} 
+          onClose={() => setViewingProfileUserId(null)} 
+        />
+      )}
     </>
   );
 }

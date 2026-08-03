@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Camera, X, LogOut, MoreVertical, CalendarCheck, ShoppingCart } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Camera, X, LogOut, MoreVertical, CalendarCheck, ShoppingCart, Edit3, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useInventory } from '../context/InventoryContext';
-import { InstagramStoriesRow } from './InstagramMobileNav';
+import { InstagramStoriesRow, UserProfileGalleryModal } from './InstagramMobileNav';
 
 // @ts-ignore
 import backgroundImage from '../assets/images/sol_mar_bg_1781047598977.png';
@@ -20,7 +20,7 @@ export function MainMenu({
   autoOpenGallery?: boolean;
   hideCameraMobile?: boolean;
 }) {
-  const { galleryPosts, addGalleryPost, likeGalleryPost, deleteGalleryPost, currentUser, users, addPostComment, editGalleryPost, pinGalleryPost, logout } = useInventory();
+  const { galleryPosts, addGalleryPost, likeGalleryPost, deleteGalleryPost, currentUser, users, addPostComment, deletePostComment, editPostComment, editGalleryPost, pinGalleryPost, logout } = useInventory();
   
   const [newPostImageUrl, setNewPostImageUrl] = useState('');
   const [newPostCaption, setNewPostCaption] = useState('');
@@ -30,6 +30,10 @@ export function MainMenu({
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editCaption, setEditCaption] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
+  const [showLikesModalForPostId, setShowLikesModalForPostId] = useState<string | null>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -166,7 +170,7 @@ export function MainMenu({
                 <div className="flex items-center gap-4">
                   <img src={currentUser?.avatarUrl} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-[#ebdcb9] bg-black" />
                   <div>
-                    <h2 className="text-base font-bold text-white">@{currentUser?.username || currentUser?.name}</h2>
+                    <h2 className="text-base font-bold text-white">{currentUser?.name || currentUser?.username}</h2>
                     <p className="text-xs text-white/60">Suas publicações ({displayedPosts.length})</p>
                   </div>
                 </div>
@@ -238,6 +242,9 @@ export function MainMenu({
               if (a.isPinned && !b.isPinned) return -1;
               if (!a.isPinned && b.isPinned) return 1;
               return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            }).filter(p => {
+              const pUser = users.find(u => u.id === p.userId);
+              return pUser?.username !== 'jeff';
             }).map(post => {
               const hasLiked = currentUser ? (post.likes || []).includes(currentUser.id) : false;
               const postUser = users.find(u => u.id === post.userId);
@@ -246,7 +253,12 @@ export function MainMenu({
                 <div key={post.id} className="w-full bg-black/40 border-y border-white/10 md:border md:rounded-2xl flex flex-col">
                   {/* Post Header */}
                   <div className="flex items-center justify-between p-3 relative">
-                    <div className="flex items-center gap-3">
+                    <div 
+                      onClick={() => {
+                        setViewingProfileUserId(post.userId);
+                      }}
+                      className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-opacity"
+                    >
                       <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] p-[1.5px]">
                         <img 
                           src={postUser?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"}
@@ -255,8 +267,8 @@ export function MainMenu({
                         />
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-semibold text-sm text-white flex items-center gap-2">
-                          {postUser?.username || 'Usuário'}
+                        <span className="font-bold md:font-semibold text-sm text-white flex items-center gap-2">
+                          {postUser?.name || postUser?.username || 'Usuário'}
                           {post.isPinned && <span className="text-[10px] text-[#c5a880] bg-[#c5a880]/10 px-1.5 py-0.5 rounded">Fixado</span>}
                         </span>
                       </div>
@@ -342,7 +354,12 @@ export function MainMenu({
 
                   {/* Post Details */}
                   <div className="px-3 pb-4 space-y-1">
-                    <p className="text-sm font-semibold">{(post.likes || []).length} curtidas</p>
+                    <p 
+                      className="text-sm font-semibold cursor-pointer hover:underline text-white/95"
+                      onClick={() => setShowLikesModalForPostId(post.id)}
+                    >
+                      {(post.likes || []).length} curtidas
+                    </p>
                     <div className="text-sm">
                       {editingPostId === post.id ? (
                         <div className="flex flex-col gap-2 mt-2">
@@ -373,7 +390,7 @@ export function MainMenu({
                       ) : (
                         post.imageUrl ? (
                           <>
-                            <span className="font-semibold mr-2">{postUser?.username || 'Usuário'}</span>
+                            <span className="font-bold md:font-semibold mr-2">{postUser?.name || postUser?.username || 'Usuário'}</span>
                             <span className="text-white/90 whitespace-pre-wrap break-words">{post.caption}</span>
                           </>
                         ) : (
@@ -390,12 +407,87 @@ export function MainMenu({
                     {/* Comments List */}
                     {post.comments && post.comments.length > 0 && (
                       <div className="space-y-1.5 mt-2">
-                        {post.comments.map(comment => {
+                        {post.comments
+                          .filter(c => {
+                            const cUser = users.find(u => u.id === c.userId);
+                            return cUser?.username !== 'jeff';
+                          })
+                          .map(comment => {
                           const commentUser = users.find(u => u.id === comment.userId);
+                          const isMyComment = currentUser?.id === comment.userId;
+                          
+                          // Rule: Edit only after 5 minutes
+                          const commentTime = new Date(comment.createdAt).getTime();
+                          const fiveMinutesInMs = 5 * 60 * 1000;
+                          const canEdit = isMyComment && (Date.now() - commentTime >= fiveMinutesInMs);
+                          
                           return (
-                            <div key={comment.id} className="text-sm">
-                              <span className="font-semibold mr-2">{commentUser?.username || 'Usuário'}</span>
-                              <span className="text-white/90 whitespace-pre-wrap break-words">{comment.text}</span>
+                            <div key={comment.id} className="group relative flex flex-col gap-1 bg-white/[0.06] md:bg-transparent p-2.5 md:p-0 rounded-xl md:rounded-none border border-white/10 md:border-none mb-1.5 md:mb-0">
+                              <div className="flex items-start justify-between">
+                                <div className="text-sm">
+                                  <span className="font-bold md:font-semibold mr-2">{commentUser?.name || commentUser?.username || 'Usuário'}</span>
+                                  {editingCommentId === comment.id ? (
+                                    <div className="flex flex-col gap-2 mt-1">
+                                      <textarea
+                                        value={editCommentText}
+                                        onChange={(e) => setEditCommentText(e.target.value)}
+                                        className="w-full bg-black/40 border border-[#ebdcb9]/30 rounded-lg p-2 text-white text-sm outline-none focus:border-[#ebdcb9]"
+                                        rows={2}
+                                      />
+                                      <div className="flex items-center gap-2">
+                                        <button 
+                                          onClick={() => {
+                                            if (editCommentText.trim()) {
+                                              editPostComment(post.id, comment.id, editCommentText);
+                                              setEditingCommentId(null);
+                                            }
+                                          }}
+                                          className="text-[10px] bg-[#ebdcb9] text-black px-2 py-1 rounded font-bold"
+                                        >
+                                          Salvar
+                                        </button>
+                                        <button 
+                                          onClick={() => setEditingCommentId(null)}
+                                          className="text-[10px] bg-white/10 text-white px-2 py-1 rounded font-bold"
+                                        >
+                                          Cancelar
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-white/90 whitespace-pre-wrap break-words">{comment.text}</span>
+                                  )}
+                                </div>
+
+                                {isMyComment && !editingCommentId && (
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {canEdit && (
+                                      <button 
+                                        onClick={() => {
+                                          setEditingCommentId(comment.id);
+                                          setEditCommentText(comment.text);
+                                        }}
+                                        className="p-1 text-white/40 hover:text-[#ebdcb9]"
+                                        title="Editar (Disponível após 5 min)"
+                                      >
+                                        <Edit3 size={14} />
+                                      </button>
+                                    )}
+                                    <button 
+                                      onClick={() => {
+                                        if (window.confirm('Apagar comentário?')) {
+                                          deletePostComment(post.id, comment.id);
+                                        }
+                                      }}
+                                      className="p-1 text-white/40 hover:text-rose-500"
+                                      title="Apagar"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-[9px] text-white/40">{new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                           );
                         })}
@@ -439,6 +531,47 @@ export function MainMenu({
           )}
         </div>
       </div>
+
+      {viewingProfileUserId && (
+        <UserProfileGalleryModal 
+          userId={viewingProfileUserId} 
+          onClose={() => setViewingProfileUserId(null)} 
+        />
+      )}
+
+      {showLikesModalForPostId && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#1a120e] border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-fade-in">
+            <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/40">
+              <h3 className="font-serif font-bold text-white text-base">Curtidas</h3>
+              <button onClick={() => setShowLikesModalForPostId(null)} className="p-1 text-white/70 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="max-h-80 overflow-y-auto divide-y divide-white/5 p-2">
+              {galleryPosts.find(p => p.id === showLikesModalForPostId)?.likes?.map(userId => {
+                const likedUser = users.find(u => u.id === userId);
+                if (!likedUser || likedUser.username === 'jeff') return null;
+                return (
+                  <div key={userId} className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors cursor-pointer" onClick={() => { 
+                      setShowLikesModalForPostId(null); 
+                      setViewingProfileUserId(userId); 
+                  }}>
+                    <img src={likedUser.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover border border-white/20 bg-black" />
+                    <div className="flex flex-col">
+                      <span className="font-bold text-sm text-white">{likedUser.name || likedUser.username}</span>
+                      <span className="text-xs text-white/50">@{likedUser.username}</span>
+                    </div>
+                  </div>
+                );
+              })}
+              {(!galleryPosts.find(p => p.id === showLikesModalForPostId)?.likes || galleryPosts.find(p => p.id === showLikesModalForPostId)?.likes?.length === 0) && (
+                <div className="text-center py-8 text-white/50 text-sm">Nenhuma curtida ainda.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

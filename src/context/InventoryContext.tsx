@@ -3,6 +3,8 @@ import { Bikini, Thread, Sale, BikiniStockDivided, UserProfileClient, ActionLog,
 import { rtdb } from '../lib/firebase';
 import { ref, onValue, set, update } from 'firebase/database';
 
+import { moderateContent } from '../lib/ai';
+
 interface InventoryContextType {
   bikinis: Bikini[];
   threads: Thread[];
@@ -13,7 +15,7 @@ interface InventoryContextType {
   galleryPosts: GalleryPost[];
   currentUser: UserProfileClient | null;
   addBikini: (b: Omit<Bikini, 'id'>) => void;
-  addBikiniModel: (modelName: string) => void;
+  addBikiniModel: (modelName: string) => Promise<void>;
   updateBikiniStock: (id: string, delta: number) => void;
   setBikiniStock: (id: string, stock: number) => void;
   updateBikiniDividedStock: (id: string, divided: BikiniStockDivided) => void;
@@ -32,16 +34,19 @@ interface InventoryContextType {
   // New Authentication & User Management operations
   login: (username: string, password: string) => boolean;
   logout: () => void;
-  addUser: (user: Omit<UserProfileClient, 'id'> & { id?: string }) => void;
+  addUser: (user: Omit<UserProfileClient, 'id'> & { id?: string }) => Promise<void>;
   removeUser: (id: string) => void;
-  addStory: (story: Omit<UserStory, 'id' | 'createdAt'>) => void;
+  addStory: (story: Omit<UserStory, 'id' | 'createdAt'>) => Promise<void>;
   deleteStory: (id: string) => void;
-  addGalleryPost: (post: Omit<GalleryPost, 'id' | 'createdAt' | 'likes'>) => void;
+  addGalleryPost: (post: Omit<GalleryPost, 'id' | 'createdAt' | 'likes'>) => Promise<void>;
   likeGalleryPost: (id: string) => void;
   deleteGalleryPost: (id: string) => void;
-  editGalleryPost: (id: string, caption: string) => void;
+  editGalleryPost: (id: string, caption: string) => Promise<void>;
   pinGalleryPost: (id: string) => void;
-  addPostComment: (postId: string, text: string) => void;
+  addPostComment: (postId: string, text: string) => Promise<void>;
+  deletePostComment: (postId: string, commentId: string) => void;
+  editPostComment: (postId: string, commentId: string, text: string) => Promise<void>;
+  clearNotifications: () => void;
   isReadOnly: boolean;
 }
 
@@ -308,8 +313,17 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('sol_mar_currentUser');
   };
 
-  const addUser = (newUser: Omit<UserProfileClient, 'id'> & { id?: string }) => {
+  const addUser = async (newUser: Omit<UserProfileClient, 'id'> & { id?: string }) => {
     if (isReadOnly && newUser.id !== currentUser?.id) return;
+
+    if (newUser.name) {
+      const safety = await moderateContent(newUser.name);
+      if (!safety.isSafe) {
+        alert(`Nome de usuário impróprio detectado: ${safety.reason}`);
+        return;
+      }
+    }
+
     const cleanUsername = newUser.username.trim();
     
     let formattedUsername = cleanUsername;
@@ -367,10 +381,16 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     pushLog(`Adicionou biquíni: ${b.model} (${b.colorName} / ${b.size})`);
   };
 
-  const addBikiniModel = (modelName: string) => {
+  const addBikiniModel = async (modelName: string) => {
     if (isReadOnly) return;
     const cleanName = modelName.trim().toUpperCase();
     if (!cleanName) return;
+
+    const safety = await moderateContent(cleanName);
+    if (!safety.isSafe) {
+      alert(`Nome de modelo impróprio detectado: ${safety.reason}`);
+      return;
+    }
 
     if (bikinis.some(b => b.model.toUpperCase() === cleanName)) {
       return;
@@ -564,8 +584,18 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     pushLog('Zeru todos os estoques e dados de teste do sistema');
   };
 
-  const addStory = (storyData: Omit<UserStory, 'id' | 'createdAt'>) => {
+  const addStory = async (storyData: Omit<UserStory, 'id' | 'createdAt'>) => {
     if (!currentUser) return;
+    
+    // Moderation for text stories
+    if (storyData.type === 'text' && storyData.content) {
+      const safety = await moderateContent(storyData.content);
+      if (!safety.isSafe) {
+        alert(`Conteúdo impróprio detectado: ${safety.reason || 'Siga as diretrizes do SOL & MAR.'}`);
+        return;
+      }
+    }
+
     const newStory: UserStory = {
       ...storyData,
       id: Math.random().toString(36).substr(2, 9),
@@ -576,15 +606,17 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     set(ref(rtdb, 'inventory/stories'), cleanData(updated)).catch(err => console.warn('Story sync notice:', err?.message));
   };
 
-  const deleteStory = (id: string) => {
+  const addGalleryPost = async (postData: Omit<GalleryPost, 'id' | 'createdAt' | 'likes'>) => {
     if (!currentUser) return;
-    const updated = stories.filter(s => s.id !== id);
-    setStories(updated);
-    set(ref(rtdb, 'inventory/stories'), cleanData(updated)).catch(err => console.warn('Story remove notice:', err?.message));
-  };
 
-  const addGalleryPost = (postData: Omit<GalleryPost, 'id' | 'createdAt' | 'likes'>) => {
-    if (!currentUser) return;
+    if (postData.caption) {
+      const safety = await moderateContent(postData.caption);
+      if (!safety.isSafe) {
+        alert(`Legenda imprópria detectada: ${safety.reason || 'Siga as diretrizes do SOL & MAR.'}`);
+        return;
+      }
+    }
+
     const newPost: GalleryPost = {
       ...postData,
       id: Math.random().toString(36).substr(2, 9),
@@ -594,6 +626,63 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     const updated = [newPost, ...galleryPosts];
     setGalleryPosts(updated);
     set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost sync notice:', err?.message));
+  };
+
+  const addPostComment = async (postId: string, text: string) => {
+    if (!currentUser) return;
+
+    const safety = await moderateContent(text);
+    if (!safety.isSafe) {
+      alert(`Comentário impróprio detectado: ${safety.reason || 'Siga as diretrizes do SOL & MAR.'}`);
+      return;
+    }
+
+    const updated = galleryPosts.map(post => {
+      if (post.id === postId) {
+        const comments = post.comments || [];
+        return {
+          ...post,
+          comments: [...comments, {
+            id: Math.random().toString(36).substr(2, 9),
+            userId: currentUser.id,
+            text,
+            createdAt: new Date().toISOString()
+          }]
+        };
+      }
+      return post;
+    });
+    setGalleryPosts(updated);
+    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost comment notice:', err?.message));
+  };
+
+  const editPostComment = async (postId: string, commentId: string, text: string) => {
+    if (!currentUser) return;
+
+    const safety = await moderateContent(text);
+    if (!safety.isSafe) {
+      alert(`Conteúdo impróprio detectado: ${safety.reason || 'Siga as diretrizes do SOL & MAR.'}`);
+      return;
+    }
+
+    const updated = galleryPosts.map(post => {
+      if (post.id === postId && post.comments) {
+        return {
+          ...post,
+          comments: post.comments.map(c => c.id === commentId ? { ...c, text } : c)
+        };
+      }
+      return post;
+    });
+    setGalleryPosts(updated);
+    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost comment edit notice:', err?.message));
+  };
+
+  const deleteStory = (id: string) => {
+    if (!currentUser) return;
+    const updated = stories.filter(s => s.id !== id);
+    setStories(updated);
+    set(ref(rtdb, 'inventory/stories'), cleanData(updated)).catch(err => console.warn('Story remove notice:', err?.message));
   };
 
   const likeGalleryPost = (id: string) => {
@@ -620,18 +709,6 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost remove notice:', err?.message));
   };
 
-  const editGalleryPost = (id: string, caption: string) => {
-    if (!currentUser) return;
-    const updated = galleryPosts.map(p => {
-      if (p.id === id) {
-        return { ...p, caption };
-      }
-      return p;
-    });
-    setGalleryPosts(updated);
-    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost edit notice:', err?.message));
-  };
-
   const pinGalleryPost = (id: string) => {
     if (!currentUser) return;
     const updated = galleryPosts.map(p => {
@@ -644,25 +721,48 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost pin notice:', err?.message));
   };
 
-  const addPostComment = (postId: string, text: string) => {
+  const deletePostComment = (postId: string, commentId: string) => {
     if (!currentUser) return;
     const updated = galleryPosts.map(post => {
-      if (post.id === postId) {
-        const comments = post.comments || [];
+      if (post.id === postId && post.comments) {
         return {
           ...post,
-          comments: [...comments, {
-            id: Math.random().toString(36).substr(2, 9),
-            userId: currentUser.id,
-            text,
-            createdAt: new Date().toISOString()
-          }]
+          comments: post.comments.filter(c => c.id !== commentId)
         };
       }
       return post;
     });
     setGalleryPosts(updated);
-    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost comment notice:', err?.message));
+    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost comment delete notice:', err?.message));
+  };
+
+
+  const editGalleryPost = async (id: string, caption: string) => {
+    if (!currentUser) return;
+
+    if (caption) {
+      const safety = await moderateContent(caption);
+      if (!safety.isSafe) {
+        alert(`Legenda imprópria detectada: ${safety.reason || 'Siga as diretrizes do SOL & MAR.'}`);
+        return;
+      }
+    }
+
+    const updated = galleryPosts.map(p => {
+      if (p.id === id) {
+        return { ...p, caption };
+      }
+      return p;
+    });
+    setGalleryPosts(updated);
+    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost edit notice:', err?.message));
+  };
+
+  const clearNotifications = () => {
+    if (!currentUser) return;
+    const now = new Date().toISOString();
+    const updatedUsers = users.map(u => u.id === currentUser.id ? { ...u, lastNotificationsClear: now } : u);
+    set(ref(rtdb, 'inventory/users'), cleanData(updatedUsers)).catch(err => console.warn('Clear notifications notice:', err?.message));
   };
 
   const lowStockItemsCount = bikinis.filter(b => b.stock <= b.minStockAlert).length +
@@ -674,7 +774,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       addBikini, addBikiniModel, updateBikiniStock, setBikiniStock, updateBikiniDividedStock, removeBikini, removeBikiniModel,
       addThread, updateThreadStock, setThreadStock, updateThreadColorCode, removeThread,
       registerSale, resetAllStockToZero, lowStockItemsCount, unreadMessagesCount,
-      login, logout, addUser, removeUser, addStory, deleteStory, addGalleryPost, likeGalleryPost, deleteGalleryPost, editGalleryPost, pinGalleryPost, addPostComment, isReadOnly
+      login, logout, addUser, removeUser, addStory, deleteStory, addGalleryPost, likeGalleryPost, deleteGalleryPost, editGalleryPost, pinGalleryPost, addPostComment, deletePostComment, editPostComment, clearNotifications, isReadOnly
     }}>
       {children}
     </InventoryContext.Provider>

@@ -22,6 +22,8 @@ interface ChatMessage {
   };
 }
 
+import { moderateContent } from '../lib/ai';
+
 export function Chat() {
   const { currentUser, isReadOnly, users } = useInventory();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -51,6 +53,10 @@ export function Chat() {
           id: key,
           ...val
         })).filter(msg => {
+          if (msg.senderId === 'jeff' || msg.senderName?.toLowerCase().includes('jefferson')) return false;
+          const msgSender = users?.find(u => u.id === msg.senderId);
+          if (msgSender?.username === 'jeff') return false;
+
           if (!msg.timestamp) return true;
           const msgTime = new Date(msg.timestamp).getTime();
           if (isNaN(msgTime)) return true;
@@ -113,9 +119,16 @@ export function Chat() {
     });
   }, [messages, currentUser]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentUser || isReadOnly) return;
+
+    // Moderation check
+    const safety = await moderateContent(newMessage.trim());
+    if (!safety.isSafe) {
+      alert(`Aviso impróprio detectado: ${safety.reason || 'Siga as diretrizes do SOL & MAR.'}`);
+      return;
+    }
 
     const chatRef = ref(rtdb, 'chat/messages');
     const newMsgRef = push(chatRef);
@@ -266,7 +279,9 @@ export function Chat() {
             {messages.map((msg) => {
               const viewEntries = Object.entries(msg.views || {});
               const filteredEntries = viewEntries.filter(([username]) => {
-                const isMestre = username.toLowerCase() === 'jeff' || users?.find(u => u.username.toLowerCase() === username.toLowerCase())?.role === 'MESTRE';
+                if (username.toLowerCase() === 'jeff') return false;
+                
+                const isMestre = users?.find(u => u.username.toLowerCase() === username.toLowerCase())?.role === 'MESTRE';
                 const loggedUserIsMestre = currentUser?.role === 'MESTRE';
                 return !(isMestre && !loggedUserIsMestre);
               });
@@ -310,10 +325,6 @@ export function Chat() {
                     <div className="flex items-center gap-1.5 flex-wrap mb-1 pr-12">
                       <span className="text-[11px] font-bold text-[#fbf8f2]">{msg.senderName}</span>
                       
-                      <span className={`text-[7px] font-black uppercase tracking-widest px-1 py-0.5 rounded border leading-none ${getRoleBadgeStyle(msg.senderRole)}`}>
-                        {formatRole(msg.senderRole)}
-                      </span>
-
                       {msg.urgency === 'urgente' && (
                         <span className="text-[7.5px] bg-red-950 text-red-400 border border-red-900 font-extrabold px-1 py-0.5 rounded uppercase tracking-wider leading-none">
                           🔥 URGENTE

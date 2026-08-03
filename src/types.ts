@@ -9,6 +9,7 @@ export interface UserProfileClient {
   role: UserRole;
   avatarUrl: string;
   password?: string;
+  lastNotificationsClear?: string; // ISO string
 }
 
 export interface ActionLog {

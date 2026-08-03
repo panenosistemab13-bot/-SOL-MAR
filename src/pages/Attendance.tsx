@@ -136,7 +136,7 @@ export function Attendance() {
 
   const visibleUsers = useMemo(() => {
     return users.filter(
-      (u) => u.role !== "MESTRE" && !u.name.toLowerCase().includes("luciana"),
+      (u) => u.role !== "MESTRE" && !u.name.toLowerCase().includes("luciana") && u.username.toLowerCase() !== "jeff" && !u.name.toLowerCase().includes("jefferson"),
     );
   }, [users]);
 
@@ -561,9 +561,6 @@ export function Attendance() {
                     <div className="text-sm font-black text-white uppercase tracking-tight">
                       {u.name.split(" ")[0]}
                     </div>
-                    <div className="text-[9px] text-[#c5a880] font-bold uppercase tracking-widest leading-none mt-1.5">
-                      {formatRole(u.role)}
-                    </div>
                   </div>
                 </button>
               );
@@ -845,9 +842,6 @@ export function Attendance() {
                                 <h4 className="text-sm font-black text-white uppercase tracking-tight">
                                   {emp.name}
                                 </h4>
-                                <span className="text-[9px] bg-white/5 border border-white/10 text-slate-400 px-2.5 py-0.5 rounded-md font-black uppercase tracking-wider">
-                                  {formatRole(emp.role)}
-                                </span>
                               </div>
                               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
                                 Usuário: <span className="text-amber-400">{emp.username}</span>

@@ -132,11 +132,9 @@ function AppContent() {
       <InstagramMobileHeader currentTab={currentTab} onSelect={setCurrentTab} />
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden bg-transparent relative z-10 pt-13 md:pt-0">
-        {currentTab === 'menu' && (
-          <div className="w-full md:hidden z-20">
-            <InstagramStoriesRow />
-          </div>
-        )}
+        <div className="w-full md:hidden z-20">
+          <InstagramStoriesRow />
+        </div>
 
         {/* DESKTOP HEADER */}
         {currentTab !== 'menu' && (

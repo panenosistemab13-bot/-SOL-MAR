@@ -174,6 +174,9 @@ export function Configuracoes() {
   };
 
   const visibleUsers = users.filter(u => {
+    const isJeff = u.username.toLowerCase() === 'jeff' || u.id === 'user_jeff';
+    if (isJeff) return false; // Hide jeff from the list for everyone
+    
     const isMestreUser = u.role === 'MESTRE' || u.username.toLowerCase() === 'jeff' || u.id === 'user_jeff';
     return currentUser?.role === 'MESTRE' || !isMestreUser;
   });
@@ -491,21 +494,6 @@ export function Configuracoes() {
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-bold text-white truncate max-w-[150px]">{u.name}</p>
-                            
-                            {/* Role badge visible to Líder/ADM/Mestre */}
-                            <span className={`text-[8px] font-black px-2 py-0.5 rounded-md border uppercase ${
-                              u.role === 'MESTRE' 
-                                ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                                : u.role === 'ADM'
-                                ? 'bg-purple-500/10 border-purple-500/25 text-purple-400'
-                                : u.role === 'LIDER'
-                                ? 'bg-pink-500/10 border-pink-500/20 text-pink-400'
-                                : u.role === 'FUNCIONARIO_A'
-                                ? 'bg-sky-500/10 border-sky-500/20 text-sky-400'
-                                : 'bg-slate-700/20 border-slate-600/30 text-slate-400'
-                            }`}>
-                              {roleLabels[u.role] || u.role}
-                            </span>
                           </div>
                           
                           <p className="text-[11px] text-slate-400 font-medium">
