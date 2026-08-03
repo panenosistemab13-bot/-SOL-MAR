@@ -41,7 +41,9 @@ interface InstagramMobileNavProps {
 export function UserProfileGalleryModal({ userId, onClose }: { userId: string; onClose: () => void }) {
   const { users, galleryPosts, currentUser, theme } = useInventory();
   const user = users.find(u => u.id === userId);
-  const userPosts = galleryPosts.filter(p => p.userId === userId);
+  const userPosts = galleryPosts
+    .filter(p => p.userId === userId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   if (!user) return null;
 
@@ -462,19 +464,24 @@ export function InstagramMobileHeader({ currentTab, onSelect, viewingProfileUser
         <div className="flex items-center gap-3">
           {/* Critical Alerts Heart/Notification Icon */}
           <button
-            onClick={() => setShowNotifications(true)}
+            onClick={() => {
+              clearNotifications();
+              setShowNotifications(true);
+            }}
             className={cn(
               "relative p-1.5 rounded-full active:scale-90 transition-all cursor-pointer",
               theme === 'dark' ? "text-white" : "text-black"
             )}
             title="Notificações"
           >
-            <Heart size={22} className={recentPostsCount > 0 ? "text-rose-400 fill-rose-500/20 animate-pulse" : ""} />
+            <Heart size={22} />
             {recentPostsCount > 0 && (
               <span className={cn(
-                "absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border",
+                "absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-lg border",
                 theme === 'dark' ? "border-[#120c08]" : "border-white"
-              )} />
+              )}>
+                {recentPostsCount > 99 ? '99+' : recentPostsCount}
+              </span>
             )}
           </button>
 

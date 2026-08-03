@@ -855,12 +855,6 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost like notice:', err?.message));
   };
 
-  const deleteGalleryPost = (id: string) => {
-    if (!currentUser) return;
-    const updated = galleryPosts.filter(p => p.id !== id);
-    setGalleryPosts(updated);
-    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost remove notice:', err?.message));
-  };
 
   const pinGalleryPost = (id: string) => {
     if (!currentUser) return;
@@ -918,15 +912,44 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     set(ref(rtdb, 'inventory/users'), cleanData(updatedUsers)).catch(err => console.warn('Clear notifications notice:', err?.message));
   };
 
+  const deleteGalleryPost = (id: string) => {
+    if (!currentUser) return;
+    const post = galleryPosts.find(p => p.id === id);
+    if (!post) return;
+    const author = users.find(u => u.id === post.userId);
+    // Restriction: only on mobile, mestre posts cannot be deleted
+    if (isMobile && author?.role === 'MESTRE') return;
+    
+    const updated = galleryPosts.filter(p => p.id !== id);
+    setGalleryPosts(updated);
+    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost remove notice:', err?.message));
+  };
+
   const clearAllGalleryPosts = () => {
     if (currentUser?.role !== 'MESTRE') return;
-    if (galleryPosts.length === 0) return;
+    
+    // Restriction: on mobile, keep mestre posts
+    const postsToKeep = isMobile 
+      ? galleryPosts.filter(p => {
+          const author = users.find(u => u.id === p.userId);
+          return author?.role === 'MESTRE';
+        })
+      : [];
+      
+    const postsToDelete = isMobile
+      ? galleryPosts.filter(p => {
+          const author = users.find(u => u.id === p.userId);
+          return author?.role !== 'MESTRE';
+        })
+      : galleryPosts;
 
-    const backup = [...galleryPosts];
+    if (postsToDelete.length === 0) return;
+
+    const backup = [...postsToDelete];
     setGalleryPostsBackup(backup);
-    setGalleryPosts([]);
+    setGalleryPosts(postsToKeep);
 
-    set(ref(rtdb, 'inventory/galleryPosts'), []).catch(err => console.warn('Clear posts notice:', err?.message));
+    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(postsToKeep)).catch(err => console.warn('Clear posts notice:', err?.message));
     set(ref(rtdb, 'inventory/galleryPostsBackup'), cleanData(backup)).catch(err => console.warn('Backup posts notice:', err?.message));
   };
 

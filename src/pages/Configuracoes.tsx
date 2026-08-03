@@ -107,7 +107,11 @@ export function Configuracoes() {
       return;
     }
 
-    const activeTargetId = (isLiderOrAdmOrMestre || isMobile) ? (editingUserId || undefined) : currentUser?.id;
+    const activeTargetId = (isLiderOrAdmOrMestre || isMobile) ? (editingUserId || currentUser?.id) : currentUser?.id;
+    if (!activeTargetId) {
+      setUserError('Erro ao identificar usuário.');
+      return;
+    }
     const existingTarget = users.find(u => u.id === activeTargetId);
 
     const cleanName = (isLiderOrAdmOrMestre || isMobile)
