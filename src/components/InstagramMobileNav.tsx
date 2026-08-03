@@ -612,7 +612,7 @@ export function InstagramStoriesRow({
   onSelectProfile?: (id: string | null) => void;
   onStoryModeChange?: (active: boolean) => void;
 }) {
-  const { users, stories, currentUser, addStory, deleteStory, theme } = useInventory();
+  const { users, stories, currentUser, addStory, deleteStory, clearAllStories, theme } = useInventory();
   
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [isAddingStory, setIsAddingStory] = useState(false);
@@ -1089,6 +1089,22 @@ export function InstagramStoriesRow({
                   {isPaused ? <Play size={20} className="fill-white" /> : <Pause size={20} />}
                 </button>
 
+                {currentUser?.role === 'mestre' && (
+                  <button 
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm('Tem certeza que deseja limpar TODOS os stories?')) {
+                        clearAllStories();
+                        setViewingUserId(null);
+                      }
+                    }}
+                    className="p-2 text-red-400 hover:bg-white/20 rounded-full transition-all active:scale-90 cursor-pointer"
+                    title="Limpar todos os stories"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                )}
                 {currentViewingGroup.user.id === currentUser?.id && (
                   <button 
                     type="button"

@@ -143,6 +143,7 @@ export function Configuracoes() {
     const finalAvatar = customAvatarUrl.trim() ? customAvatarUrl.trim() : newAvatar;
 
     addUser({
+      ...(existingTarget || {}),
       id: activeTargetId,
       username: cleanUsername,
       name: cleanName,

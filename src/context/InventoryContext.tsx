@@ -49,6 +49,7 @@ interface InventoryContextType {
   editPostComment: (postId: string, commentId: string, text: string) => Promise<void>;
   clearNotifications: () => void;
   clearAllGalleryPosts: () => void;
+  clearAllStories: () => void;
   restoreAllGalleryPosts: () => void;
   galleryPostsBackup: GalleryPost[];
   isReadOnly: boolean;
@@ -831,6 +832,12 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     set(ref(rtdb, 'inventory/stories'), cleanData(updated)).catch(err => console.warn('Story remove notice:', err?.message));
   };
 
+  const clearAllStories = () => {
+    if (!currentUser || currentUser.role !== 'mestre') return;
+    setStories([]);
+    set(ref(rtdb, 'inventory/stories'), []).catch(err => console.warn('Clear stories notice:', err?.message));
+  };
+
   const likeGalleryPost = (id: string) => {
     if (!currentUser) return;
     const updated = galleryPosts.map(post => {
@@ -944,7 +951,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       addBikini, addBikiniModel, updateBikiniStock, setBikiniStock, updateBikiniDividedStock, removeBikini, removeBikiniModel,
       addThread, updateThreadStock, setThreadStock, updateThreadColorCode, removeThread,
       registerSale, resetAllStockToZero, lowStockItemsCount, unreadMessagesCount, groupUnreadCounts,
-      login, logout, addUser, removeUser, addStory, deleteStory, addGalleryPost, likeGalleryPost, deleteGalleryPost, editGalleryPost, pinGalleryPost, addPostComment, deletePostComment, editPostComment, clearNotifications, clearAllGalleryPosts, restoreAllGalleryPosts, isReadOnly,
+      login, logout, addUser, removeUser, addStory, deleteStory, clearAllStories, addGalleryPost, likeGalleryPost, deleteGalleryPost, editGalleryPost, pinGalleryPost, addPostComment, deletePostComment, editPostComment, clearNotifications, clearAllGalleryPosts, restoreAllGalleryPosts, isReadOnly,
       theme, setTheme, isMobile
     }}>
       {children}
