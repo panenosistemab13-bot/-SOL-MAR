@@ -94,12 +94,8 @@ function AppContent() {
   }, []);
 
   const setCurrentTab = React.useCallback((tab: string) => {
-    if (tab === 'menu') {
-      navigateTo('menu', null, null);
-    } else {
-      navigateTo(tab, null, viewingProfileUserId);
-    }
-  }, [navigateTo, viewingProfileUserId]);
+    navigateTo(tab, null, null);
+  }, [navigateTo]);
 
   const setViewingProfileUserId = React.useCallback((userId: string | null) => {
     navigateTo(currentTab, activeChat, userId);

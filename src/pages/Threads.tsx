@@ -10,31 +10,14 @@ import {
   Sparkles, 
   Anchor, 
   Compass, 
-  Wind, 
   LifeBuoy, 
-  Droplet, 
-  Palette, 
-  Flame, 
-  TrendingUp, 
   Trash2,
   PackagePlus,
-  Filter,
   Check,
   X,
   Layers,
-  RefreshCw,
   SlidersHorizontal
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  Cell 
-} from 'recharts';
 import { cn } from '../lib/utils';
 import { Thread } from '../types';
 
@@ -89,8 +72,7 @@ function ColorCodeInput({
   }, [initialCode]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setLocalCode(val);
+    setLocalCode(e.target.value);
   };
 
   const handleFocus = () => {
@@ -111,9 +93,9 @@ function ColorCodeInput({
   };
 
   return (
-    <div className="flex items-center gap-1.5 bg-[#ebdcb9]/15 border border-[#ebdcb9]/40 hover:border-[#ebdcb9] focus-within:border-[#ebdcb9] focus-within:bg-black/80 px-2.5 py-1 rounded-xl shadow-inner transition-all">
-      <span className="text-[10px] font-black text-[#ebdcb9] uppercase tracking-wider whitespace-nowrap select-none">
-        {isElastic ? 'NÚMERO:' : 'CODIGO:'}
+    <div className="flex items-center gap-1.5 bg-[#ebdcb9]/15 border border-[#ebdcb9]/40 hover:border-[#ebdcb9] focus-within:border-[#ebdcb9] focus-within:bg-black/80 px-2 py-0.5 rounded-xl shadow-inner transition-all w-fit mt-1">
+      <span className="text-[9px] font-black text-[#ebdcb9] uppercase tracking-wider whitespace-nowrap select-none">
+        {isElastic ? 'Nº:' : 'CÓD:'}
       </span>
       <input 
         type="text"
@@ -124,8 +106,8 @@ function ColorCodeInput({
         onFocus={handleFocus}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="w-20 bg-transparent text-amber-300 font-mono font-black text-xs focus:outline-none placeholder:text-stone-500 uppercase tracking-wider select-text"
-        title={isElastic ? "Digite o número / tamanho do elástico (Exemplo: 7, 10mm)" : "Digite o código da cor (Exemplo: 163)"}
+        className="w-16 bg-transparent text-amber-300 font-mono font-black text-xs focus:outline-none placeholder:text-stone-500 uppercase tracking-wider select-text"
+        title={isElastic ? "Digite o número / tamanho do elástico" : "Digite o código da cor"}
       />
     </div>
   );
@@ -134,11 +116,11 @@ function ColorCodeInput({
 export function Threads() {
   const { threads, updateThreadStock, setThreadStock, updateThreadColorCode, addThread, removeThread, isReadOnly, theme } = useInventory();
   const isLight = theme === 'light';
+  const [selectedType, setSelectedType] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [selectedType, setSelectedType] = useState<string>('FIO');
   const [filterCriticalOnly, setFilterCriticalOnly] = useState<boolean>(false);
   
-  // Modal states
+  // Modal states for adding new threads
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newType, setNewType] = useState('ELÁSTICO');
   const [customType, setCustomType] = useState('');
@@ -174,40 +156,50 @@ export function Threads() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Get unique types from existing threads
+  // Get unique categories/types from existing threads
   const availableTypes = useMemo(() => {
     const typesSet = new Set<string>();
     threads.forEach(t => typesSet.add(t.name.toUpperCase()));
-    return Array.from(typesSet);
+    return Array.from(typesSet).sort();
   }, [threads]);
 
-  // Ensure selectedType defaults to first available category if current selection is invalid
+  // Auto-select first category if none is selected
   useEffect(() => {
     if (availableTypes.length > 0 && (!selectedType || !availableTypes.includes(selectedType))) {
       setSelectedType(availableTypes[0]);
     }
   }, [availableTypes, selectedType]);
 
-  // Filter threads based on Type, Search, and Critical status
-  const filteredThreads = useMemo(() => {
-    return threads.filter(t => {
-      const matchesType = !selectedType || t.name.toUpperCase() === selectedType;
-      const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase()) || 
-                            t.colorName.toLowerCase().includes(search.toLowerCase()) ||
-                            (t.colorCode && t.colorCode.toLowerCase().includes(search.toLowerCase()));
-      const matchesCritical = !filterCriticalOnly || t.stock <= t.minStockAlert;
-      return matchesType && matchesSearch && matchesCritical;
-    });
-  }, [threads, search, selectedType, filterCriticalOnly]);
+  // Total metrics
+  const totalStock = useMemo(() => {
+    return threads.reduce((sum, item) => sum + item.stock, 0);
+  }, [threads]);
 
-  // Group filtered threads by color and number/code so each number/code has its own card ("aba")
+  // Items for the selected category
+  const activeTypeThreads = useMemo(() => {
+    if (!selectedType) return [];
+    return threads.filter(t => t.name.toUpperCase() === selectedType.toUpperCase());
+  }, [threads, selectedType]);
+
+  // Filter active items by search query & critical status
+  const filteredThreads = useMemo(() => {
+    return activeTypeThreads.filter(t => {
+      const matchesSearch = !search.trim() || 
+        t.colorName.toLowerCase().includes(search.toLowerCase()) ||
+        (t.colorCode && t.colorCode.toLowerCase().includes(search.toLowerCase())) ||
+        t.name.toLowerCase().includes(search.toLowerCase());
+      const matchesCritical = !filterCriticalOnly || t.stock <= t.minStockAlert;
+      return matchesSearch && matchesCritical;
+    });
+  }, [activeTypeThreads, search, filterCriticalOnly]);
+
+  // Group filtered items by color
   const groupedByColor = useMemo(() => {
     const grouped: Record<string, { cardTitle: string; colorName: string; colorCode: string; colorHex: string; items: Thread[] }> = {};
     
     filteredThreads.forEach(item => {
       const isElastic = item.name.toUpperCase().includes('ELÁSTICO') || item.name.toUpperCase().includes('ELASTICO');
       
-      // Key that separates different numbers / items into distinct cards
       let key = `${item.name.toUpperCase()}_${item.colorName.toUpperCase()}`;
       if (item.colorCode && item.colorCode.trim()) {
         key += `_${item.colorCode.trim().toUpperCase()}`;
@@ -235,38 +227,6 @@ export function Threads() {
     return Object.entries(grouped)
       .map(([key, data]) => [key, data] as const)
       .sort((a, b) => a[1].cardTitle.localeCompare(b[1].cardTitle, undefined, { numeric: true }));
-  }, [filteredThreads]);
-
-  // Aggregate stats
-  const totalStock = useMemo(() => {
-    return threads.reduce((sum, item) => sum + item.stock, 0);
-  }, [threads]);
-
-  const criticalItems = useMemo(() => {
-    return threads.filter(t => t.stock <= t.minStockAlert);
-  }, [threads]);
-
-  const normalItems = useMemo(() => {
-    return threads.filter(t => t.stock > t.minStockAlert);
-  }, [threads]);
-
-  // Coastal wave percentage
-  const tidePercentage = useMemo(() => {
-    if (threads.length === 0) return 0;
-    const maxReference = threads.length * 50; // Assuming 50 units is full average capacity
-    const percentage = Math.min(100, Math.round((totalStock / maxReference) * 100));
-    return percentage;
-  }, [threads, totalStock]);
-
-  // Chart data formatting
-  const chartData = useMemo(() => {
-    return filteredThreads.map(t => ({
-      name: `${t.colorName} (${t.name})`,
-      tipo: t.name,
-      Estoque: t.stock,
-      Alerta: t.minStockAlert,
-      color: t.colorHex
-    })).sort((a, b) => b.Estoque - a.Estoque).slice(0, 15);
   }, [filteredThreads]);
 
   const handleCreateThread = (e: React.FormEvent) => {
@@ -298,7 +258,7 @@ export function Threads() {
     }
 
     if (!finalTypeName) {
-      alert('Por favor, selecione ou digite o tipo/categoria do insumo (ex: ELÁSTICO, FIO, RETA, ETIQUETA...).');
+      alert('Por favor, selecione ou digite o tipo/categoria do insumo.');
       return;
     }
 
@@ -306,7 +266,6 @@ export function Threads() {
       finalColorName = 'PADRÃO';
     }
 
-    // Check if duplicate exists with same type, color, and number/code
     const exists = threads.some(
       t => t.name.toUpperCase() === finalTypeName && 
            t.colorName.toLowerCase() === finalColorName.toLowerCase() &&
@@ -315,7 +274,7 @@ export function Threads() {
 
     if (exists) {
       const codeMsg = finalColorCode ? ` (Nº/Cód: ${finalColorCode})` : '';
-      alert(`O insumo "${finalTypeName}" na cor "${finalColorName}"${codeMsg} já está cadastrado no sistema.`);
+      alert(`O insumo "${finalTypeName}" na cor "${finalColorName}"${codeMsg} já está cadastrado.`);
       return;
     }
 
@@ -329,10 +288,11 @@ export function Threads() {
     });
 
     setIsAddModalOpen(false);
+    setSelectedType(finalTypeName);
     setNewColorName(newType === 'ELÁSTICO' ? 'BRANCO' : '');
     setNewColorCode('');
     setCustomType('');
-    showToast(`Insumo ${finalTypeName} (${finalColorName}) cadastrado com sucesso!`);
+    showToast(`Insumo ${finalTypeName} (${finalColorName}) cadastrado!`);
   };
 
   const handleDeleteThread = (id: string) => {
@@ -347,7 +307,7 @@ export function Threads() {
 
   return (
     <div className={cn(
-      "relative md:rounded-[3.2rem] overflow-hidden md:border backdrop-blur-xl shadow-[0_30px_70px_-15px_rgba(0,0,0,0.85)] p-4 md:p-10 space-y-6 md:space-y-10 min-h-full transition-colors duration-300",
+      "relative md:rounded-[2.5rem] overflow-hidden md:border backdrop-blur-xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] p-4 md:p-8 space-y-6 md:space-y-8 min-h-full transition-colors duration-300",
       isLight ? "bg-white border-slate-200 text-black shadow-slate-200/50" : "bg-[#130d08]/75 border-[#ebdcb9]/15 text-white"
     )}>
       
@@ -361,546 +321,438 @@ export function Threads() {
 
       {/* Background Effects */}
       {!isLight && (
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center opacity-[0.05] mix-blend-overlay pointer-events-none" />
+        <div 
+          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center tracking-normal opacity-[0.05] mix-blend-overlay pointer-events-none"
+        />
       )}
+
       <div className={cn(
-        "absolute top-0 right-1/3 w-[600px] h-[350px] blur-[140px] rounded-full pointer-events-none -translate-y-24",
-        isLight ? "bg-blue-100/30" : "bg-[#ebdcb9]/5"
+        "absolute top-0 right-1/4 w-[500px] h-[350px] blur-[130px] rounded-full pointer-events-none -translate-y-20",
+        isLight ? "bg-pink-100/30" : "bg-pink-500/10"
       )} />
       <div className={cn(
-        "absolute bottom-0 left-1/4 w-[500px] h-[300px] blur-[130px] rounded-full pointer-events-none translate-y-20",
-        isLight ? "bg-amber-100/20" : "bg-[#c5a880]/5"
+        "absolute bottom-10 left-1/4 w-[400px] h-[300px] blur-[120px] rounded-full pointer-events-none translate-y-20",
+        isLight ? "bg-blue-100/20" : "bg-sky-500/10"
       )} />
 
-      {/* HEADER SECTION */}
+      {/* Luxury Beach Header Section */}
       <div className={cn(
-        "relative rounded-2xl sm:rounded-[2.8rem] border p-4 sm:p-6 md:p-10 flex flex-col xl:flex-row items-center justify-between gap-6 sm:gap-8 backdrop-blur-3xl overflow-hidden shadow-2xl select-none transition-all",
+        "relative rounded-2xl sm:rounded-[2.2rem] border p-4 sm:p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 backdrop-blur-xl overflow-hidden shadow-inner select-none transition-all",
         isLight 
           ? "bg-gradient-to-r from-amber-50 to-blue-50 border-slate-100" 
-          : "bg-gradient-to-r from-[#ebdcb9]/15 via-black/50 to-[#c5a880]/10 border-white/5"
+          : "bg-gradient-to-r from-[#ebdcb9]/10 via-[#c5a880]/5 to-black/40 border-white/5"
       )}>
-        <div className="flex items-center gap-4 sm:gap-6 relative z-10 w-full xl:w-auto">
-          <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl sm:rounded-[2rem] bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] p-0.5 shadow-xl flex items-center justify-center relative group overflow-hidden shrink-0">
-            <div className="w-full h-full bg-[#3d2723] rounded-xl sm:rounded-[28px] flex items-center justify-center text-[#ebdcb9]">
-              <Compass className="w-7 h-7 sm:w-10 sm:h-10 animate-spin text-[#ebdcb9]" style={{ animationDuration: '25s' }} />
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center opacity-[0.05] pointer-events-none" />
+        
+        {/* Glowing Compass and Waves visual title */}
+        <div className="flex items-center gap-3.5 sm:gap-5 relative z-10 w-full md:w-auto">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] p-0.5 shadow-lg flex items-center justify-center relative group overflow-hidden shrink-0">
+            <div className="w-full h-full bg-[#3d2723] rounded-[14px] flex items-center justify-center text-[#ebdcb9]">
+              <Compass className="w-6 h-6 sm:w-8 sm:h-8 animate-pulse text-[#ebdcb9]" />
             </div>
-            <Waves className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 text-[#ebdcb9] animate-bounce" />
+            <Waves className="absolute bottom-1.5 right-1.5 w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ebdcb9] animate-bounce" />
           </div>
-          <div>
+          <div className="min-w-0">
             <span className={cn(
-              "text-[8px] sm:text-[10px] font-black tracking-[0.3em] uppercase px-2.5 py-1 rounded-full border flex items-center gap-1.5 sm:gap-2 w-fit shadow-lg",
+              "text-[9px] sm:text-[10px] font-black tracking-[0.25em] uppercase px-2.5 py-1 rounded-full border flex items-center gap-1.5 w-fit shadow-sm",
               isLight 
                 ? "text-amber-700 bg-amber-50 border-amber-200" 
-                : "text-[#ebdcb9] bg-[#ebdcb9]/10 border-[#ebdcb9]/25"
+                : "text-[#ebdcb9] bg-[#ebdcb9]/10 border-[#cbdcb9]/20"
             )}>
-              <Sparkles size={11} className={cn("animate-pulse", isLight ? "text-amber-500" : "text-amber-400")} /> SOL & MAR — EMBROIDERY SYSTEM
+              <Sparkles size={11} className={cn("animate-pulse", isLight ? "text-amber-500" : "text-[#ebdcb9]")} /> PORTAL DE INSUMOS
             </span>
             <h2 className={cn(
-              "text-xl sm:text-3xl md:text-4xl font-extrabold tracking-tight mt-1",
-              isLight 
-                ? "text-slate-900" 
-                : "text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-100 to-[#ebdcb9]"
+              "text-xl sm:text-3xl font-serif tracking-wide mt-1",
+              isLight ? "text-slate-900" : "text-[#fbf8f2]"
             )}>
               Insumos & Fios
             </h2>
-            <p className={cn("text-[10px] sm:text-xs mt-0.5 uppercase tracking-widest font-mono", isLight ? "text-slate-600" : "text-slate-400")}>Gestão Completa de Linhas, Retas, Elásticos e Aviamentos</p>
           </div>
         </div>
 
-        {/* Action Button & Tide Mini Display */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto z-10">
-          
-          {/* Tide Indicator */}
-          <div className={cn(
-            "flex-1 border rounded-3xl p-4 flex items-center gap-4 transition-all overflow-hidden relative w-full sm:w-auto",
-            isLight ? "bg-slate-50 border-slate-200" : "bg-slate-950/60 border-white/10 hover:border-[#ebdcb9]/30"
-          )}>
-            <div 
-              className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-amber-500/15 via-amber-500/5 to-transparent transition-all duration-1000 ease-out z-0" 
-              style={{ height: `${tidePercentage}%` }}
-            />
-            <div className={cn(
-              "w-12 h-12 rounded-2xl border flex items-center justify-center relative z-10 shrink-0",
-              isLight ? "bg-amber-100 border-amber-200 text-amber-600" : "bg-[#ebdcb9]/10 border-[#ebdcb9]/20 text-[#ebdcb9]"
-            )}>
-              <Waves className="w-6 h-6 animate-pulse" />
-            </div>
-            <div className="relative z-10">
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Nível da Maré</p>
-              <p className={cn("text-lg font-black font-mono", isLight ? "text-slate-900" : "text-[#ebdcb9]")}>{tidePercentage}% <span className="text-[10px] text-slate-500 font-normal">Capacidade</span></p>
-              <p className="text-[9px] text-slate-400 font-sans mt-0.5 font-bold uppercase tracking-wider">
-                {tidePercentage > 75 
-                  ? '🌊 MARÉ CHEIA (ESTOQUE ALTO)' 
-                  : tidePercentage > 35 
-                    ? '🌤️ MARÉ AMENA (ESTABILIZADO)' 
-                    : '🚨 BAIXA-MAR (REPOSIÇÃO URGENTE)'}
-              </p>
-            </div>
+        {/* Dynamic visual dashboard stats bar in Header */}
+        <div className="flex items-center gap-4 sm:gap-6 bg-white/[0.03] border border-white/10 rounded-2xl px-4 py-3 sm:px-6 sm:py-4 backdrop-blur-md relative z-10 shadow-lg shrink-0 w-full md:w-auto justify-around md:justify-start">
+          <div className="text-center md:text-right border-r border-[#ebdcb9]/10 pr-4 sm:pr-6 mr-1 sm:mr-2">
+            <p className="text-[8px] sm:text-[9px] text-[#c5a880] font-bold uppercase tracking-widest">Categorias</p>
+            <p className="text-lg sm:text-xl font-extrabold text-[#ebdcb9] font-mono mt-0.5">{availableTypes.length}</p>
           </div>
-
-
-
-        </div>
-      </div>
-
-      {/* STATS & CHARTS */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
-        
-        {/* Recharts Bar Chart */}
-        <div className="lg:col-span-8 bg-slate-900/35 border border-white/10 rounded-[2.8rem] p-6 backdrop-blur-xl shadow-2xl relative overflow-hidden flex flex-col justify-between">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 select-none">
+          <div className="text-center md:text-right flex items-center gap-2.5 sm:gap-3">
             <div>
-              <span className="text-[9px] font-black px-2.5 py-1 bg-[#ebdcb9]/10 text-[#ebdcb9] border border-[#ebdcb9]/20 rounded-full tracking-wider uppercase">
-                Análise de Maré de Linhas
-              </span>
-              <h3 className="text-lg font-extrabold text-white tracking-wider mt-1 flex items-center gap-2">
-                <Palette size={16} className="text-[#ebdcb9] animate-pulse" /> Maiores Estoques por Cor & Insumo
-              </h3>
+              <p className="text-[8px] sm:text-[9px] text-[#c5a880] font-bold uppercase tracking-widest">Disponibilidade</p>
+              <p className="text-lg sm:text-xl font-black text-[#ebdcb9] font-mono mt-0.5">{totalStock} <span className="text-[9px] sm:text-[10px] text-[#c5a880]/60 font-bold font-sans">un</span></p>
             </div>
-
-            <div className="flex items-center gap-4 text-xs font-mono font-bold">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#ebdcb9] shadow-[0_0_6px_#ebdcb9]" />
-                <span className="text-slate-400 uppercase text-[10px]">Normal</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_6px_#f43f5e]" />
-                <span className="text-rose-400 uppercase text-[10px]">Crítico</span>
-              </div>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#ebdcb9]/15 flex items-center justify-center text-[#ebdcb9] border border-[#ebdcb9]/20">
+              <Anchor size={14} className="animate-pulse" />
             </div>
-          </div>
-
-          {chartData.length === 0 ? (
-            <div className="h-64 flex items-center justify-center text-slate-500 text-xs font-bold uppercase tracking-wider">
-              Nenhum insumo encontrado para o filtro atual
-            </div>
-          ) : (
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="#ffffff30" 
-                    tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 'bold' }}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    stroke="#ffffff30" 
-                    tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 'bold' }}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{ 
-                      backgroundColor: '#130d08ef', 
-                      borderRadius: '1.5rem', 
-                      borderColor: '#ebdcb930',
-                      color: '#ffffff',
-                      fontSize: '11px'
-                    }}
-                    cursor={{ fill: 'rgba(255,255,255,0.02)' }}
-                  />
-                  <Bar dataKey="Estoque" radius={[12, 12, 0, 0]} maxBarSize={30}>
-                    {chartData.map((entry, index) => {
-                      const isLow = entry.Estoque <= entry.Alerta;
-                      return (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={isLow ? '#f43f5e' : '#ebdcb9'}
-                          fillOpacity={0.85}
-                        />
-                      );
-                    })}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-
-        {/* Resumo Costeiro Badge */}
-        <div className={cn(
-          "lg:col-span-4 border rounded-[2.8rem] p-6 backdrop-blur-xl shadow-2xl flex flex-col justify-between",
-          isLight ? "bg-slate-50 border-slate-200" : "bg-gradient-to-br from-slate-900/60 to-slate-950/80 border-white/10"
-        )}>
-          <div className="space-y-4">
-            <span className={cn(
-              "text-[9px] font-black px-2.5 py-1 border rounded-full tracking-wider uppercase",
-              isLight ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-amber-500/10 text-amber-400 border-amber-500/20"
-            )}>
-              Métricas Rápidas
-            </span>
-            <h3 className={cn("text-lg font-extrabold tracking-wider", isLight ? "text-slate-900" : "text-white")}>Resumo de Insumos</h3>
-
-            <div className="space-y-3 pt-2">
-              <div className={cn(
-                "flex items-center justify-between p-3.5 rounded-2xl border",
-                isLight ? "bg-white border-slate-200" : "bg-white/[0.02] border-white/5"
-              )}>
-                <span className="text-xs text-slate-400 uppercase tracking-wider font-bold">Total em Bobinas/Carretéis</span>
-                <span className={cn("text-lg font-bold font-mono", isLight ? "text-slate-900" : "text-[#ebdcb9]")}>{totalStock} <span className="text-[9px] text-slate-500">unid</span></span>
-              </div>
-
-              <div className={cn(
-                "flex items-center justify-between p-3.5 rounded-2xl border",
-                isLight ? "bg-white border-slate-200" : "bg-white/[0.02] border-white/5"
-              )}>
-                <span className="text-xs text-slate-400 uppercase tracking-wider font-bold">Estoque Normal</span>
-                <span className="text-lg font-bold text-emerald-400 font-mono">{normalItems.length} <span className="text-[9px] text-slate-500">itens</span></span>
-              </div>
-
-              <div className={cn(
-                "flex items-center justify-between p-3.5 rounded-2xl border",
-                isLight ? "bg-white border-slate-200" : "bg-white/[0.02] border-white/5"
-              )}>
-                <span className="text-xs text-slate-400 uppercase tracking-wider font-bold">Abaixo do Mínimo</span>
-                <button
-                  onClick={() => setFilterCriticalOnly(!filterCriticalOnly)}
-                  className={cn(
-                    "text-lg font-bold font-mono px-3 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-2",
-                    criticalItems.length > 0 ? "text-rose-400 bg-rose-500/10 border border-rose-500/30" : "text-slate-400"
-                  )}
-                >
-                  {criticalItems.length} <span className="text-[9px] text-slate-500 font-bold">críticos</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-6 border-t border-white/5 mt-4 text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-2">
-            <TrendingUp size={12} className="text-[#ebdcb9] animate-pulse" /> Sincronizado instantaneamente no banco SOL & MAR
           </div>
         </div>
-
       </div>
 
-      {/* CATEGORY TABS BAR */}
-      <div className={cn(
-        "relative border rounded-2xl sm:rounded-[2rem] p-3 backdrop-blur-xl z-10 shadow-lg flex items-center overflow-x-auto no-scrollbar scrollbar-none",
-        isLight ? "bg-slate-50 border-slate-200" : "bg-slate-900/40 border-white/10"
-      )}>
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none pb-0.5">
+      {/* Mobile Quick Category Selector Carousel (lg:hidden) */}
+      {availableTypes.length > 0 && (
+        <div className="lg:hidden w-full overflow-x-auto no-scrollbar flex items-center gap-2 pb-1 scrollbar-none">
           {availableTypes.map(type => {
-            const isActive = selectedType === type;
+            const isSelected = selectedType === type;
+            const typeItems = threads.filter(t => t.name.toUpperCase() === type);
+            const typeStock = typeItems.reduce((sum, t) => sum + t.stock, 0);
             return (
               <button
                 key={type}
                 onClick={() => setSelectedType(type)}
                 className={cn(
-                  "px-4 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
-                  isActive 
-                    ? "bg-[#ebdcb9] text-[#3d2723] shadow-md font-extrabold" 
-                    : (isLight ? "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50" : "text-slate-400 hover:text-white hover:bg-white/5")
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold shrink-0 transition-all cursor-pointer whitespace-nowrap active:scale-95",
+                  isSelected
+                    ? "border-[#ebdcb9] bg-[#ebdcb9]/20 text-[#ebdcb9] shadow-md ring-1 ring-[#ebdcb9]/40"
+                    : (isLight ? "border-slate-200 bg-slate-100 text-slate-600" : "border-white/10 bg-slate-900/60 text-stone-300 hover:bg-white/5")
                 )}
               >
                 {getTypeIcon(type, 13)}
                 <span>{type}</span>
+                <span className={cn(
+                  "text-[10px] font-mono px-1.5 py-0.5 rounded",
+                  isLight ? "bg-slate-200 text-slate-500" : "bg-black/40 text-stone-400"
+                )}>
+                  {typeStock}u
+                </span>
               </button>
             );
           })}
         </div>
-      </div>
+      )}
 
-      {/* ACTIONS & SEARCH BAR */}
-      <div className={cn(
-        "relative border rounded-[2rem] p-3 flex flex-col sm:flex-row items-center justify-between gap-3 backdrop-blur-xl z-10 shadow-lg",
-        isLight ? "bg-slate-50 border-slate-200" : "bg-slate-900/40 border-white/10"
-      )}>
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          {/* Quick Add Insumo Button */}
-          {!isReadOnly && (
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-tr from-[#ebdcb9] via-[#ad9e7a] to-[#c5a880] text-[#3d2723] rounded-xl text-xs font-black uppercase tracking-wider hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0 shadow-lg"
-            >
-              <PackagePlus size={15} /> Adicionar Novos Insumos
-            </button>
-          )}
-
-          {/* Critical Only Toggle Button */}
-          <button
-            onClick={() => setFilterCriticalOnly(!filterCriticalOnly)}
-            className={cn(
-              "w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0",
-              filterCriticalOnly 
-                ? "bg-rose-500/20 text-rose-300 border-rose-500/40" 
-                : (isLight ? "bg-white text-slate-600 border-slate-200 hover:bg-slate-100" : "bg-white/5 text-slate-400 border-white/10 hover:text-white")
+      {/* Immersive Column Split Layout: Left vertical grouped "CATEGORIAS DISPONÍVEIS", Right showing "Insumos Ativos" */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 relative z-10">
+        
+        {/* Left Column: CATEGORIAS DISPONÍVEIS (Hidden on mobile when pill bar is shown) */}
+        <div className="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-white/5">
+            <span className="text-[11px] font-black tracking-widest text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-3 py-1 rounded-full border border-[#ebdcb9]/25 flex items-center gap-1.5 shadow-sm">
+              <Layers size={12} className="text-[#ebdcb9] animate-pulse" /> CATEGORIAS DISPONÍVEIS
+            </span>
+            {!isReadOnly && (
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="text-[10px] font-bold text-sky-400 hover:text-white bg-sky-500/10 hover:bg-sky-500 border border-sky-500/25 px-2.5 py-1 rounded-lg transition-all cursor-pointer hover:scale-[1.03] active:scale-[0.97]"
+                title="Adicionar Novo Insumo"
+              >
+                + Novo
+              </button>
             )}
-          >
-            <AlertCircle size={15} />
-            {filterCriticalOnly ? "Mostrando Somente Críticos" : "Filtrar Críticos"}
-          </button>
-        </div>
-
-        {/* Search Box */}
-        <div className="relative w-full sm:w-72 group">
-          <Search className={cn(
-            "absolute left-4 top-1/2 -translate-y-1/2 transition-colors",
-            isLight ? "text-slate-400 group-focus-within:text-amber-500" : "text-slate-500 group-focus-within:text-[#ebdcb9]"
-          )} size={15} />
-          <input 
-            type="text" 
-            placeholder="Buscar por cor ou insumo..." 
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className={cn(
-              "w-full pl-11 pr-4 py-2.5 border transition-all rounded-xl text-xs font-bold focus:outline-none",
-              isLight 
-                ? "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-amber-400" 
-                : "bg-white/5 border-white/10 text-white placeholder:text-stone-500 focus:border-[#ebdcb9]"
-            )}
-          />
-          {search && (
-            <button 
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* CARDS GRID - GROUPED BY COLOR */}
-      <div className="relative z-10 space-y-6">
-        <div className="flex items-center justify-between select-none">
-          <span className="text-xs font-bold tracking-widest text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-3.5 py-1.5 rounded-full border border-[#ebdcb9]/20 flex items-center gap-2 shadow-sm">
-            <Palette size={14} className="text-[#ebdcb9] animate-bounce" /> CORES DE INSUMO ({groupedByColor.length} CORES)
-          </span>
-          <span className="text-[10px] text-slate-400 tracking-tight uppercase font-bold">
-            Utilize os botões + e - para ajustar o estoque de cada item
-          </span>
-        </div>
-
-        {groupedByColor.length === 0 ? (
-          <div className="bg-black/30 rounded-[3rem] border border-white/5 py-20 text-center shadow-xl backdrop-blur-xl flex flex-col items-center justify-center gap-4">
-            <Waves size={40} className="text-slate-600 animate-bounce" />
-            <p className="text-slate-400 tracking-widest font-bold text-xs uppercase">Nenhum insumo encontrado nesta categoria ou busca.</p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              {!isReadOnly && (
-                <button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="bg-gradient-to-tr from-[#ebdcb9] via-[#ad9e7a] to-[#c5a880] text-[#3d2723] px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2 shadow-lg"
-                >
-                  <PackagePlus size={16} /> Adicionar Novos Insumos
-                </button>
-              )}
-              {(search || (availableTypes.length > 0 && selectedType !== availableTypes[0]) || filterCriticalOnly) && (
-                <button
-                  onClick={() => {
-                    setSearch('');
-                    if (availableTypes.length > 0) setSelectedType(availableTypes[0]);
-                    setFilterCriticalOnly(false);
-                  }}
-                  className="text-xs font-black text-[#ebdcb9] underline uppercase tracking-widest cursor-pointer px-3 py-2"
-                >
-                  Limpar todos os filtros
-                </button>
-              )}
-            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {groupedByColor.map(([cardKey, group]) => {
-              const colorGroupTotalStock = group.items.reduce((sum, item) => sum + item.stock, 0);
-              const isElasticGroup = group.items.some(i => i.name.toUpperCase().includes('ELÁSTICO') || i.name.toUpperCase().includes('ELASTICO'));
-              const mainItemId = group.items[0]?.id;
-              const stableCardKey = mainItemId ? `card_${mainItemId}` : cardKey;
-              
+
+          <div className="flex flex-col gap-3 max-h-[80vh] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+            {availableTypes.map(type => {
+              const isSelected = selectedType === type;
+              const typeItems = threads.filter(t => t.name.toUpperCase() === type);
+              const typeStock = typeItems.reduce((sum, t) => sum + t.stock, 0);
+              const isLowStock = typeItems.some(v => v.stock <= v.minStockAlert);
+
               return (
-                <div 
-                  key={stableCardKey}
-                  className="border border-[#ebdcb9]/15 bg-black/50 rounded-[2.5rem] p-5 sm:p-6 space-y-4 shadow-xl relative overflow-hidden group/color-card"
+                <button
+                  key={type}
+                  onClick={() => setSelectedType(type)}
+                  className={cn(
+                    "relative group rounded-[2rem] border text-left p-4 transition-all duration-300 select-none overflow-hidden flex items-center justify-between backdrop-blur-md shadow-lg w-full cursor-pointer",
+                    isSelected 
+                      ? (isLight ? "border-amber-400 bg-amber-50 text-amber-900 shadow-amber-100 ring-2 ring-amber-200" : "border-pink-500/60 bg-gradient-to-r from-pink-500/[0.15] via-slate-900/40 to-slate-950/80 shadow-pink-500/10 ring-2 ring-pink-500/20")
+                      : (isLight ? "border-slate-100 bg-slate-50 hover:bg-slate-100 text-slate-600" : "border-white/5 bg-slate-900/35 hover:border-sky-500/30 hover:bg-slate-900/40")
+                  )}
                 >
-                  {/* Subtle color glow in background */}
-                  <div 
-                    className="absolute -top-10 -right-10 w-28 h-28 blur-3xl rounded-full opacity-10 pointer-events-none" 
-                    style={{ backgroundColor: group.colorHex }}
-                  />
-                  
-                  {/* Color Info Header */}
-                  <div className="flex items-center justify-between pb-3.5 border-b border-white/5 relative z-10 gap-2">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-7 h-7 rounded-full border border-white/30 shadow-lg relative shrink-0" 
-                        style={{ 
-                          backgroundColor: group.colorHex,
-                          boxShadow: `0 0 12px ${group.colorHex}65, inset 0 1px 1px rgba(255,255,255,0.4)`
-                        }} 
-                      />
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="text-sm font-black tracking-wider uppercase text-white">
-                            {isElasticGroup ? (group.colorCode ? `ELÁSTICO Nº ${group.colorCode}` : 'ELÁSTICO') : group.colorName}
-                          </h4>
-                          
-                          {/* ESPAÇO PARA O CÓDIGO DA COR / NÚMERO DO ELÁSTICO */}
-                          <ColorCodeInput 
-                            colorName={mainItemId || group.colorName}
-                            initialCode={group.colorCode}
-                            updateThreadColorCode={updateThreadColorCode}
-                            isReadOnly={isReadOnly}
-                            isElastic={isElasticGroup}
-                          />
-                        </div>
-                        <p className="text-[9px] text-slate-400 uppercase tracking-widest font-bold mt-0.5">
-                          {isElasticGroup ? `COR: ${group.colorName}` : `${group.items.length} variaçõ${group.items.length === 1 ? 'ão' : 'ões'}`}
-                        </p>
-                      </div>
+                  <div className="flex items-center gap-3.5 relative z-10 min-w-0 flex-1">
+                    <div className={cn(
+                      "w-10 h-10 rounded-2xl font-bold flex items-center justify-center text-sm tracking-wider border shrink-0 transition-all duration-300",
+                      isSelected 
+                        ? "bg-gradient-to-tr from-pink-500 to-sky-400 border-pink-400/20 text-white shadow-md shadow-pink-500/15" 
+                        : "bg-white/5 border-white/10 group-hover:border-sky-400/40"
+                    )}>
+                      {getTypeIcon(type, 16)}
                     </div>
-                    
-                    <div className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl text-right shrink-0">
-                      <span className="text-[10px] text-slate-400 font-mono tracking-wider uppercase">Total: </span>
-                      <span className="text-xs font-black text-[#ebdcb9] font-mono">{colorGroupTotalStock} u</span>
+
+                    <div className="min-w-0">
+                      <h3 className={cn(
+                        "text-[11px] font-black tracking-widest uppercase truncate transition-colors",
+                        isSelected ? "text-[#ebdcb9]" : "text-[#d7cab5] group-hover:text-white"
+                      )}>
+                        {type}
+                      </h3>
+                      <span className="text-[8px] text-[#c5a880]/80 uppercase tracking-widest font-extrabold mt-0.5 block">
+                        {typeItems.length} itens
+                      </span>
                     </div>
                   </div>
 
-                  {/* Vertical Stack inside Color Group */}
-                  <div className="space-y-3 relative z-10">
-                    {group.items.map((v) => {
-                      const isCritical = v.stock <= v.minStockAlert;
-                      const activeCode = v.colorCode || threads.find(t => t.colorName.toLowerCase() === v.colorName.toLowerCase() && t.colorCode)?.colorCode;
-                      const isElasticItem = v.name.toUpperCase().includes('ELÁSTICO') || v.name.toUpperCase().includes('ELASTICO');
-                      return (
-                        <div 
-                          key={v.id} 
-                          className={cn(
-                            "p-3.5 rounded-2xl border flex flex-col gap-3 transition-all relative overflow-hidden",
-                            isCritical 
-                              ? "bg-rose-500/10 border-rose-500/30" 
-                              : "bg-white/[0.02] border-white/10 hover:border-[#ebdcb9]/30"
-                          )}
-                        >
-                          {/* Item Name & Stock Status Badge */}
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2.5">
-                              <div className={cn(
-                                "w-8 h-8 rounded-xl flex items-center justify-center border shrink-0",
-                                v.name.toUpperCase().includes('RETA')
-                                  ? 'bg-sky-500/10 border-sky-400/20 text-sky-400' 
-                                  : isElasticItem
-                                    ? 'bg-emerald-500/10 border-emerald-400/20 text-emerald-400'
-                                    : 'bg-amber-500/10 border-amber-400/20 text-amber-400'
-                              )}>
-                                {getTypeIcon(v.name, 14)}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-extrabold text-xs uppercase tracking-wider text-white">
-                                    {v.name}
-                                  </span>
-                                  {activeCode && (
-                                    <span className="bg-amber-400/15 text-amber-300 border border-amber-400/30 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded">
-                                      {isElasticItem ? `Nº: ${activeCode}` : `CÓD: ${activeCode}`}
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-[9px] text-slate-400 font-bold block">
-                                  Mínimo alerta: {v.minStockAlert}u
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Stock Badge & Delete Button */}
-                            <div className="flex items-center gap-2">
-                              {isCritical ? (
-                                <span className="bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 animate-pulse">
-                                  <AlertCircle size={11} /> Baixo
-                                </span>
-                              ) : (
-                                <span className="bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider">
-                                  OK
-                                </span>
-                              )}
-
-                              {!isReadOnly && (
-                                <button
-                                  onClick={() => setDeletingId(v.id)}
-                                  title="Excluir Insumo"
-                                  className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* CONTROLS ROW: Minus, Direct Input, Plus, Quick Adjustments */}
-                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5">
-                            
-                            {/* Stock - / + Controls */}
-                            <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10">
-                              <button
-                                disabled={isReadOnly || v.stock <= 0}
-                                onClick={() => updateThreadStock(v.id, -1)}
-                                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 active:scale-90 disabled:opacity-30 text-white font-bold flex items-center justify-center transition-all cursor-pointer"
-                                title="Diminuir 1"
-                              >
-                                <Minus size={14} />
-                              </button>
-
-                              <input
-                                type="number"
-                                disabled={isReadOnly}
-                                value={v.stock === 0 ? '' : v.stock}
-                                onChange={(e) => {
-                                  const parsed = parseInt(e.target.value, 10);
-                                  setThreadStock(v.id, isNaN(parsed) ? 0 : Math.max(0, parsed));
-                                }}
-                                onWheel={(e) => (e.target as HTMLElement).blur()}
-                                placeholder="0"
-                                className={cn(
-                                  "w-16 text-center bg-white/5 border border-white/20 rounded-lg py-1 font-mono text-sm font-black select-text focus:outline-none focus:border-amber-400 transition-all",
-                                  isCritical ? "text-rose-400" : "text-amber-300"
-                                )}
-                              />
-
-                              <button
-                                disabled={isReadOnly}
-                                onClick={() => updateThreadStock(v.id, 1)}
-                                className="w-8 h-8 rounded-lg bg-[#ebdcb9] hover:brightness-110 active:scale-90 text-[#3d2723] font-bold flex items-center justify-center transition-all cursor-pointer shadow-md"
-                                title="Aumentar 1"
-                              >
-                                <Plus size={14} />
-                              </button>
-                            </div>
-
-                            {/* Quick Adjustment Chips */}
-                            {!isReadOnly && (
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => updateThreadStock(v.id, 5)}
-                                  className="px-2 py-1 bg-white/5 hover:bg-white/15 text-slate-300 border border-white/10 rounded-lg text-[10px] font-black cursor-pointer transition-all"
-                                  title="Adicionar +5"
-                                >
-                                  +5
-                                </button>
-                                <button
-                                  onClick={() => updateThreadStock(v.id, 10)}
-                                  className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 rounded-lg text-[10px] font-black cursor-pointer transition-all"
-                                  title="Adicionar +10"
-                                >
-                                  +10
-                                </button>
-                              </div>
-                            )}
-
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div className="flex items-center gap-2 relative z-10 shrink-0">
+                    {isLowStock && (
+                      <div className="w-2 h-2 rounded-full bg-orange-600 animate-ping shadow-[0_0_8px_#ea580c]" title="Estoque Baixo" />
+                    )}
+                    <span className={cn(
+                      "text-[10px] font-mono px-2.5 py-1 rounded-xl border font-bold shrink-0",
+                      isSelected 
+                        ? "bg-[#ebdcb9]/20 text-[#ebdcb9] border-[#ebdcb9]/40" 
+                        : "bg-black/40 text-stone-400 border-white/5"
+                    )}>
+                      {typeStock} u
+                    </span>
                   </div>
-                </div>
+
+                  <div className={cn(
+                    "absolute left-0 inset-y-0 w-1 transition-all duration-300",
+                    isSelected ? "bg-gradient-to-b from-[#ebdcb9] to-[#c5a880]" : "bg-transparent"
+                  )} />
+                </button>
               );
             })}
           </div>
-        )}
+        </div>
+
+        {/* Right Column: Active category variations details / workbench */}
+        <div className="col-span-1 lg:col-span-8 xl:col-span-9">
+          {selectedType ? (
+            <div className={cn(
+              "relative z-10 border rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-6 md:p-8 space-y-6 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500",
+              isLight ? "bg-slate-50/50 border-slate-100" : "border-[#ebdcb9]/15 bg-black/20"
+            )}>
+              
+              {/* Detailed Workstation Header */}
+              <div className={cn(
+                "flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b",
+                isLight ? "border-slate-200" : "border-[#ebdcb9]/10"
+              )}>
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0",
+                    isLight ? "bg-amber-100 border-amber-200 text-amber-600" : "bg-gradient-to-tr from-[#ebdcb9]/20 to-[#c5a880]/10 border-[#ebdcb9]/15 text-[#ebdcb9]"
+                  )}>
+                    {getTypeIcon(selectedType, 20)}
+                  </div>
+                  <div>
+                    <span className={cn(
+                      "text-[9px] font-black border px-2 py-0.5 rounded-full uppercase tracking-wider",
+                      isLight ? "bg-amber-100 border-amber-200 text-amber-700" : "text-[#ebdcb9] bg-[#ebdcb9]/10 border border-[#ebdcb9]/25"
+                    )}>
+                      Insumos Ativos
+                    </span>
+                    <div className="flex items-center gap-3.5 mt-1.5 flex-wrap">
+                      <h3 className={cn("text-xl font-extrabold tracking-widest uppercase leading-none", isLight ? "text-slate-900" : "text-white")}>{selectedType}</h3>
+                      {!isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={() => setIsAddModalOpen(true)}
+                          className="text-[9px] font-bold text-sky-400 hover:text-white bg-sky-500/10 hover:bg-sky-500 border border-sky-500/25 px-2.5 py-1 rounded-xl transition duration-150 cursor-pointer shadow-sm"
+                        >
+                          + Adicionar Insumo
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Interactive Search Tool & Filters */}
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <button
+                    onClick={() => setFilterCriticalOnly(!filterCriticalOnly)}
+                    className={cn(
+                      "px-3 py-2 rounded-full border text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5",
+                      filterCriticalOnly 
+                        ? "bg-rose-500/20 text-rose-300 border-rose-500/40" 
+                        : (isLight ? "bg-white border-slate-200 text-slate-600" : "bg-black/40 border-white/10 text-stone-400 hover:text-white")
+                    )}
+                  >
+                    <AlertCircle size={12} />
+                    {filterCriticalOnly ? "Críticos" : "Filtrar Críticos"}
+                  </button>
+
+                  <div className="relative flex-1 sm:flex-initial">
+                    <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2", isLight ? "text-slate-400" : "text-[#c5a880]")} size={13} />
+                    <input 
+                      type="text" 
+                      placeholder="Buscar cor ou código..." 
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      className={cn(
+                        "w-full sm:w-56 pl-8 pr-4 py-2 border transition-all rounded-full text-[11px] focus:outline-none",
+                        isLight 
+                          ? "bg-white border-slate-200 text-black placeholder:text-slate-400 focus:border-amber-400" 
+                          : "bg-black/40 border border-[#ebdcb9]/15 text-white hover:border-[#ebdcb9]/45 placeholder:text-stone-600"
+                      )}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Visual Capsules Grid (Grouped by Color) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {groupedByColor.length === 0 ? (
+                  <div className="col-span-full py-16 text-center text-slate-500 text-xs uppercase tracking-wider font-bold">
+                    Nenhum insumo atende aos filtros selecionados
+                  </div>
+                ) : (
+                  groupedByColor.map(([cardKey, group]) => {
+                    const colorGroupTotalStock = group.items.reduce((sum, item) => sum + item.stock, 0);
+                    const isElasticGroup = group.items.some(i => i.name.toUpperCase().includes('ELÁSTICO') || i.name.toUpperCase().includes('ELASTICO'));
+                    const mainItemId = group.items[0]?.id;
+                    const stableCardKey = mainItemId ? `card_${mainItemId}` : cardKey;
+
+                    return (
+                      <div 
+                        key={stableCardKey}
+                        className={cn(
+                          "border rounded-[2.5rem] p-5 space-y-4 shadow-xl relative overflow-hidden group/color-card",
+                          isLight ? "bg-white border-slate-100 shadow-slate-200/50" : "border-[#ebdcb9]/10 bg-black/30"
+                        )}
+                      >
+                        {/* Background color glow on hover */}
+                        <div 
+                          className="absolute -top-10 -right-10 w-28 h-28 blur-3xl rounded-full opacity-0 group-hover/color-card:opacity-10 transition-opacity duration-500 pointer-events-none" 
+                          style={{ backgroundColor: group.colorHex }}
+                        />
+                        
+                        {/* Color Info Header */}
+                        <div className={cn(
+                          "flex items-center justify-between pb-3 border-b relative z-10 select-none",
+                          isLight ? "border-slate-50" : "border-white/5"
+                        )}>
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div 
+                              className="w-6 h-6 rounded-full border border-white/20 shadow-lg relative shrink-0" 
+                              style={{ 
+                                backgroundColor: group.colorHex,
+                                boxShadow: `0 0 12px ${group.colorHex}65, inset 0 1px 1px rgba(255,255,255,0.4)`
+                              }} 
+                            />
+                            <div className="min-w-0 flex-1">
+                              <h4 className={cn("text-sm font-black tracking-wider uppercase truncate", isLight ? "text-slate-800" : "text-slate-100")}>
+                                {isElasticGroup ? (group.colorCode ? `ELÁSTICO Nº ${group.colorCode}` : 'ELÁSTICO') : group.colorName}
+                              </h4>
+                              <ColorCodeInput 
+                                colorName={mainItemId || group.colorName}
+                                initialCode={group.colorCode}
+                                updateThreadColorCode={updateThreadColorCode}
+                                isReadOnly={isReadOnly}
+                                isElastic={isElasticGroup}
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className={cn(
+                            "border px-2.5 py-1 rounded-xl text-right shrink-0 ml-2",
+                            isLight ? "bg-slate-50 border-slate-100" : "bg-white/5 border-white/5"
+                          )}>
+                            <span className="text-[10px] text-stone-400 font-mono tracking-wider uppercase">Total: </span>
+                            <span className={cn("text-xs font-black font-mono", isLight ? "text-slate-900" : "text-[#ebdcb9]")}>{colorGroupTotalStock} u</span>
+                          </div>
+                        </div>
+
+                        {/* Items Grid inside Color Card */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 relative z-10">
+                          {group.items.map(v => {
+                            const isCritical = v.stock <= v.minStockAlert;
+                            return (
+                              <div 
+                                key={v.id} 
+                                className={cn(
+                                  "p-3 rounded-2xl border flex flex-col justify-between gap-2.5 hover:bg-opacity-80 transition-all relative overflow-hidden",
+                                  isCritical 
+                                    ? (isLight ? "border-rose-200 bg-rose-50" : "border-rose-500/20 bg-rose-500/[0.02]")
+                                    : (isLight ? "bg-slate-50 border-slate-100 hover:border-amber-200" : "bg-white/[0.015] border-white/5 hover:border-sky-500/20 hover:bg-white/[0.03]")
+                                )}
+                              >
+                                {isCritical && (
+                                  <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_6px_#f43f5e] animate-ping" />
+                                )}
+
+                                <div className="flex items-center justify-between pointer-events-none">
+                                  <span className={cn(
+                                    "font-black text-[10px] border px-1.5 py-0.5 rounded-lg truncate max-w-[80px]",
+                                    isLight ? "text-amber-700 bg-amber-50 border-amber-100" : "text-sky-400 bg-sky-500/10 border-sky-500/10"
+                                  )}>
+                                    {v.colorCode ? `#${v.colorCode}` : v.name}
+                                  </span>
+                                  {!isReadOnly && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeletingId(v.id)}
+                                      className="pointer-events-auto text-slate-500 hover:text-rose-400 p-0.5"
+                                      title="Excluir"
+                                    >
+                                      <Trash2 size={11} />
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Stock Input & Controls */}
+                                <div className="text-center py-0.5 relative z-10 w-full">
+                                  <div className="flex items-center justify-center gap-1 my-1">
+                                    {!isReadOnly && (
+                                      <button
+                                        type="button"
+                                        onClick={() => updateThreadStock(v.id, -1)}
+                                        className={cn(
+                                          "w-6 h-6 rounded-lg border flex items-center justify-center transition-all cursor-pointer active:scale-90 shrink-0",
+                                          isLight ? "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700" : "bg-white/10 hover:bg-white/20 border-white/10 text-white"
+                                        )}
+                                      >
+                                        <Minus size={11} />
+                                      </button>
+                                    )}
+                                    <input
+                                      type="number"
+                                      value={v.stock === 0 ? '' : v.stock}
+                                      onChange={(e) => {
+                                        const parsed = parseInt(e.target.value, 10);
+                                        setThreadStock(v.id, isNaN(parsed) ? 0 : Math.max(0, parsed));
+                                      }}
+                                      onWheel={(e) => (e.target as HTMLElement).blur()}
+                                      placeholder="0"
+                                      disabled={isReadOnly}
+                                      className={cn(
+                                        "w-14 text-center py-1 border rounded-xl font-mono text-base font-black select-text focus:outline-none focus:ring-0 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                                        isLight 
+                                          ? "bg-white border-slate-200 text-slate-900 focus:border-amber-400" 
+                                          : "bg-white/5 hover:bg-white/10 focus:bg-slate-950/90 border-white/5 focus:border-pink-500/40 text-white focus:text-pink-300"
+                                      )}
+                                    />
+                                    {!isReadOnly && (
+                                      <button
+                                        type="button"
+                                        onClick={() => updateThreadStock(v.id, 1)}
+                                        className={cn(
+                                          "w-6 h-6 rounded-lg border flex items-center justify-center transition-all cursor-pointer active:scale-90 shrink-0",
+                                          isLight ? "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700" : "bg-white/10 hover:bg-white/20 border-white/10 text-white"
+                                        )}
+                                      >
+                                        <Plus size={11} />
+                                      </button>
+                                    )}
+                                  </div>
+                                  <span className="text-[8px] text-slate-500 font-mono block uppercase mt-0.5 tracking-widest">Estoque</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className={cn(
+              "rounded-[3rem] border py-24 text-center shadow-xl backdrop-blur-xl flex flex-col items-center justify-center gap-4",
+              isLight ? "bg-slate-50 border-slate-100" : "bg-slate-900/40 border-white/5"
+            )}>
+              <Waves size={40} className="text-pink-500 opacity-20 animate-bounce" />
+              <p className="font-sans tracking-widest font-bold text-xs uppercase text-slate-400">Selecione uma categoria de insumo.</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* CREATE NEW INSUMO / THREAD MODAL */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
-          <div className="bg-[#2a1c13] border border-[#ebdcb9]/30 rounded-2xl p-3 sm:p-4 max-w-sm w-full space-y-3 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-[#2a1c13] border border-[#ebdcb9]/30 rounded-3xl p-5 sm:p-6 max-w-lg w-full space-y-4 shadow-2xl relative my-8">
             <button
               onClick={() => setIsAddModalOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer p-2 rounded-xl bg-white/5"
@@ -918,7 +770,7 @@ export function Threads() {
               </div>
             </div>
 
-            <form onSubmit={handleCreateThread} className="space-y-5">
+            <form onSubmit={handleCreateThread} className="space-y-4">
               {/* Tipo de Insumo */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
@@ -931,7 +783,7 @@ export function Threads() {
                       type="button"
                       onClick={() => setNewType(t)}
                       className={cn(
-                        "py-2.5 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                        "py-2 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-1",
                         newType === t 
                           ? "bg-[#ebdcb9] text-[#3d2723] border-[#ebdcb9] shadow-md font-extrabold" 
                           : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
@@ -951,7 +803,7 @@ export function Threads() {
                     placeholder="Digite a nova categoria (Ex: FORRO, FITA, AVIAMENTOS)..."
                     value={customType}
                     onChange={(e) => setCustomType(e.target.value)}
-                    className="w-full mt-2 bg-white/5 border border-[#ebdcb9]/40 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-[#ebdcb9]"
+                    className="w-full mt-2 bg-white/5 border border-[#ebdcb9]/40 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-[#ebdcb9]"
                   />
                 )}
               </div>
@@ -994,16 +846,16 @@ export function Threads() {
                                 setNewColorHex('#EAB308');
                               }}
                               className={cn(
-                                "flex items-center gap-2 p-3 rounded-xl border transition-all text-left cursor-pointer",
+                                "flex items-center gap-2 p-2.5 rounded-xl border transition-all text-left cursor-pointer",
                                 newColorName.toUpperCase().includes('AMARELADO') || !newColorName.toUpperCase().includes('ROSADO')
                                   ? "bg-amber-400/15 border-amber-400 text-amber-200 shadow-md ring-1 ring-amber-400/30 font-black"
                                   : "bg-white/5 border-white/10 text-slate-400 hover:border-white/20"
                               )}
                             >
-                              <div className="w-5 h-5 rounded-full bg-[#EAB308] border border-amber-300 shrink-0 shadow-sm" />
+                              <div className="w-4 h-4 rounded-full bg-[#EAB308] border border-amber-300 shrink-0 shadow-sm" />
                               <div className="flex flex-col">
-                                <span className="text-[11px] uppercase font-bold tracking-tight text-amber-100">DOURADO</span>
-                                <span className="text-[9px] font-black tracking-wider text-amber-300">AMARELADO</span>
+                                <span className="text-[10px] uppercase font-bold tracking-tight text-amber-100">DOURADO</span>
+                                <span className="text-[8px] font-black tracking-wider text-amber-300">AMARELADO</span>
                               </div>
                             </button>
 
@@ -1014,16 +866,16 @@ export function Threads() {
                                 setNewColorHex('#FB7185');
                               }}
                               className={cn(
-                                "flex items-center gap-2 p-3 rounded-xl border transition-all text-left cursor-pointer",
+                                "flex items-center gap-2 p-2.5 rounded-xl border transition-all text-left cursor-pointer",
                                 newColorName.toUpperCase().includes('ROSADO')
                                   ? "bg-rose-500/15 border-rose-400 text-rose-200 shadow-md ring-1 ring-rose-400/30 font-black"
                                   : "bg-white/5 border-white/10 text-slate-400 hover:border-white/20"
                               )}
                             >
-                              <div className="w-5 h-5 rounded-full bg-[#FB7185] border border-rose-300 shrink-0 shadow-sm" />
+                              <div className="w-4 h-4 rounded-full bg-[#FB7185] border border-rose-300 shrink-0 shadow-sm" />
                               <div className="flex flex-col">
-                                <span className="text-[11px] uppercase font-bold tracking-tight text-rose-100">DOURADO</span>
-                                <span className="text-[9px] font-black tracking-wider text-rose-300">ROSADO</span>
+                                <span className="text-[10px] uppercase font-bold tracking-tight text-rose-100">DOURADO</span>
+                                <span className="text-[8px] font-black tracking-wider text-rose-300">ROSADO</span>
                               </div>
                             </button>
                           </div>
@@ -1036,7 +888,7 @@ export function Threads() {
                             value={isElasticForm ? 'BRANCO' : newColorName}
                             onChange={(e) => !isElasticForm && setNewColorName(e.target.value)}
                             className={cn(
-                              "w-full bg-white/5 border rounded-xl px-4 py-3 text-xs font-bold outline-none",
+                              "w-full bg-white/5 border rounded-xl px-3.5 py-2.5 text-xs font-bold outline-none",
                               isElasticForm 
                                 ? "border-amber-400/40 text-amber-200 cursor-not-allowed bg-amber-400/5 font-extrabold" 
                                 : "border-[#ebdcb9]/20 text-white focus:border-[#ebdcb9]"
@@ -1050,7 +902,7 @@ export function Threads() {
                           {isElasticForm 
                             ? 'Número = Tamanho' 
                             : isArgolasForm 
-                              ? 'Variação / Tam (Vazio = PADRÃO)' 
+                              ? 'Variação / Tam' 
                               : 'Código (Ex: 163)'}
                         </label>
                         <input
@@ -1058,28 +910,28 @@ export function Threads() {
                           readOnly={isArgolasForm}
                           placeholder={
                             isElasticForm 
-                              ? "Ex: 7, 10mm, Nº 12" 
+                              ? "Ex: 7, 10mm" 
                               : isArgolasForm 
                                 ? "PADRÃO" 
                                 : "Ex: 163"
                           }
                           value={isArgolasForm ? 'PADRÃO' : newColorCode}
                           onChange={(e) => setNewColorCode(e.target.value)}
-                          className="w-full bg-white/5 border border-[#ebdcb9]/20 rounded-xl px-4 py-3 text-xs font-bold font-mono text-amber-300 outline-none focus:border-[#ebdcb9]"
+                          className="w-full bg-white/5 border border-[#ebdcb9]/20 rounded-xl px-3.5 py-2.5 text-xs font-bold font-mono text-amber-300 outline-none focus:border-[#ebdcb9]"
                         />
                         {isElasticForm && (
                           <div className="space-y-1 pt-1">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1">
-                              Atalhos de Numeração:
+                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest pl-1">
+                              Atalhos:
                             </span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {['5', '6', '7', '8', '10', '12', '14', '16'].map(num => (
+                            <div className="flex flex-wrap gap-1">
+                              {['5', '6', '7', '8', '10', '12', '14'].map(num => (
                                 <button
                                   key={num}
                                   type="button"
                                   onClick={() => setNewColorCode(num)}
                                   className={cn(
-                                    "px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer border",
+                                    "px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold transition-all cursor-pointer border",
                                     newColorCode === num 
                                       ? "bg-amber-400 text-black border-amber-300 font-extrabold shadow-sm scale-105" 
                                       : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-amber-300"
@@ -1091,69 +943,18 @@ export function Threads() {
                             </div>
                           </div>
                         )}
-                        {isArgolasForm && (
-                          <div className="space-y-1 pt-1">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1">
-                              Atalhos de Variação:
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {['PADRÃO'].map(varOpt => (
-                                <button
-                                  key={varOpt}
-                                  type="button"
-                                  onClick={() => setNewColorCode(varOpt)}
-                                  className={cn(
-                                    "px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer border",
-                                    (newColorCode || 'PADRÃO') === varOpt 
-                                      ? "bg-amber-400 text-black border-amber-300 font-extrabold shadow-sm scale-105" 
-                                      : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-amber-300"
-                                  )}
-                                >
-                                  {varOpt}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
 
-                    {/* Palette Color Presets & Custom Picker */}
-                    {isElasticForm ? (
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                          Cor Visual do Elástico
-                        </label>
-                        <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
-                          <div className="w-7 h-7 rounded-full border-2 border-amber-400 bg-white shadow-lg shrink-0" />
-                          <span className="text-xs font-extrabold text-white uppercase tracking-wider">
-                            BRANCO (#FFFFFF) — COR FIXA PARA ELÁSTICOS
-                          </span>
-                        </div>
-                      </div>
-                    ) : isArgolasForm ? (
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                          Cor Visual Selecionada (Argolas Oasis)
-                        </label>
-                        <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
-                          <div 
-                            className="w-7 h-7 rounded-full border-2 border-amber-400 shadow-lg shrink-0" 
-                            style={{ backgroundColor: newColorName.toUpperCase().includes('ROSADO') ? '#FB7185' : '#EAB308' }}
-                          />
-                          <span className="text-xs font-extrabold text-white uppercase tracking-wider">
-                            {newColorName.toUpperCase().includes('ROSADO') ? 'DOURADO ROSADO (#FB7185)' : 'DOURADO AMARELADO (#EAB308)'} — COR FIXA
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
+                    {/* Palette Color Presets */}
+                    {!isElasticForm && !isArgolasForm && (
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 flex items-center justify-between">
                           <span>Selecione a Cor Visual</span>
                           <span className="font-mono text-[#ebdcb9]">{newColorHex}</span>
                         </label>
                         
-                        <div className="flex flex-wrap gap-2 p-3 bg-white/5 rounded-xl border border-white/10 max-h-32 overflow-y-auto">
+                        <div className="flex flex-wrap gap-2 p-2.5 bg-white/5 rounded-xl border border-white/10 max-h-28 overflow-y-auto">
                           {PRESET_COLORS.map(c => (
                             <button
                               key={c.name}
@@ -1164,7 +965,7 @@ export function Threads() {
                               }}
                               title={c.name}
                               className={cn(
-                                "w-7 h-7 rounded-full border-2 transition-all cursor-pointer relative shrink-0",
+                                "w-6 h-6 rounded-full border-2 transition-all cursor-pointer relative shrink-0",
                                 newColorHex.toLowerCase() === c.hex.toLowerCase()
                                   ? "border-amber-400 scale-110 shadow-lg"
                                   : "border-white/20 hover:scale-105"
@@ -1176,7 +977,7 @@ export function Threads() {
                             type="color"
                             value={newColorHex}
                             onChange={(e) => setNewColorHex(e.target.value)}
-                            className="w-7 h-7 rounded-full bg-transparent border-0 cursor-pointer p-0"
+                            className="w-6 h-6 rounded-full bg-transparent border-0 cursor-pointer p-0"
                             title="Seletor Personalizado"
                           />
                         </div>
@@ -1187,8 +988,8 @@ export function Threads() {
               })()}
 
               {/* Quantidade Inicial & Alerta Mínimo */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
                     Estoque Inicial
                   </label>
@@ -1197,11 +998,11 @@ export function Threads() {
                     min="0"
                     value={newInitialStock}
                     onChange={(e) => setNewInitialStock(parseInt(e.target.value) || 0)}
-                    className="w-full bg-white/5 border border-[#ebdcb9]/20 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-[#ebdcb9]"
+                    className="w-full bg-white/5 border border-[#ebdcb9]/20 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white outline-none focus:border-[#ebdcb9]"
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
                     Alerta Mínimo
                   </label>
@@ -1210,25 +1011,25 @@ export function Threads() {
                     min="0"
                     value={newMinStock}
                     onChange={(e) => setNewMinStock(parseInt(e.target.value) || 0)}
-                    className="w-full bg-white/5 border border-[#ebdcb9]/20 rounded-xl px-4 py-3 text-xs font-bold text-white outline-none focus:border-[#ebdcb9]"
+                    className="w-full bg-white/5 border border-[#ebdcb9]/20 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white outline-none focus:border-[#ebdcb9]"
                   />
                 </div>
               </div>
 
               {/* Modal Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-5 py-3 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="bg-gradient-to-tr from-[#ebdcb9] via-[#ad9e7a] to-[#c5a880] text-[#3d2723] px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer shadow-lg hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
+                  className="bg-gradient-to-tr from-[#ebdcb9] via-[#ad9e7a] to-[#c5a880] text-[#3d2723] px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer shadow-lg hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
                 >
-                  <PackagePlus size={16} /> Confirmar Cadastro
+                  <PackagePlus size={15} /> Confirmar
                 </button>
               </div>
             </form>

@@ -431,7 +431,6 @@ export function InstagramMobileHeader({ currentTab, onSelect, viewingProfileUser
         <button 
           onClick={() => {
             onSelect('menu');
-            if (onSelectProfile) onSelectProfile(null);
           }} 
           className="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform"
         >
@@ -1011,7 +1010,6 @@ export function InstagramMobileBottomNav({ currentTab, onSelect, viewingProfileU
         <button
           onClick={() => {
             onSelect('menu');
-            if (onSelectProfile) onSelectProfile(null);
           }}
           className={cn(
             "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer active:scale-90",
