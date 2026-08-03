@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Camera, X } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Camera, X, LogOut } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useInventory } from '../context/InventoryContext';
 import { InstagramStoriesRow } from './InstagramMobileNav';
@@ -8,7 +8,7 @@ import { InstagramStoriesRow } from './InstagramMobileNav';
 import backgroundImage from '../assets/images/sol_mar_bg_1781047598977.png';
 
 export function MainMenu({ onSelect, onlyMyPosts = false }: { onSelect: (tab: string) => void; onlyMyPosts?: boolean }) {
-  const { galleryPosts, addGalleryPost, likeGalleryPost, deleteGalleryPost, currentUser, users, addPostComment, editGalleryPost, pinGalleryPost } = useInventory();
+  const { galleryPosts, addGalleryPost, likeGalleryPost, deleteGalleryPost, currentUser, users, addPostComment, editGalleryPost, pinGalleryPost, logout } = useInventory();
   
   const [newPostImageUrl, setNewPostImageUrl] = useState('');
   const [newPostCaption, setNewPostCaption] = useState('');
@@ -134,12 +134,22 @@ export function MainMenu({ onSelect, onlyMyPosts = false }: { onSelect: (tab: st
         <div className="flex flex-col gap-6 pb-6">
           {onlyMyPosts && (
             <div className="px-4 pt-2">
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 shadow-lg">
-                <img src={currentUser?.avatarUrl} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-[#ebdcb9] bg-black" />
-                <div>
-                  <h2 className="text-base font-bold text-white">@{currentUser?.username || currentUser?.name}</h2>
-                  <p className="text-xs text-white/60">Suas publicações ({displayedPosts.length})</p>
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-lg">
+                <div className="flex items-center gap-4">
+                  <img src={currentUser?.avatarUrl} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-[#ebdcb9] bg-black" />
+                  <div>
+                    <h2 className="text-base font-bold text-white">@{currentUser?.username || currentUser?.name}</h2>
+                    <p className="text-xs text-white/60">Suas publicações ({displayedPosts.length})</p>
+                  </div>
                 </div>
+                <button
+                  onClick={() => logout()}
+                  className="flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-95"
+                  title="Sair da conta"
+                >
+                  <LogOut size={16} />
+                  <span className="hidden sm:inline">Sair</span>
+                </button>
               </div>
             </div>
           )}
