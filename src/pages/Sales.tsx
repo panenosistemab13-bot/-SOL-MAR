@@ -232,33 +232,33 @@ export function Sales() {
       <div className="absolute bottom-10 left-1/4 w-[500px] h-[500px] bg-[#c5a880]/5 blur-[170px] rounded-full pointer-events-none" />
 
       {/* Top action header */}
-      <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5 bg-[#130d08]/75 p-6 rounded-[2.5rem] border border-[#ebdcb9]/15 backdrop-blur-xl z-20 overflow-hidden shadow-2xl">
+      <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5 bg-[#130d08]/75 p-4 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-[#ebdcb9]/15 backdrop-blur-xl z-20 overflow-hidden shadow-2xl">
         <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-[#ebdcb9]/5 to-transparent pointer-events-none" />
         
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] p-0.5 shadow-lg flex items-center justify-center relative">
-            <Compass className="w-7 h-7 text-[#ebdcb9] animate-spin" style={{ animationDuration: '60s' }} />
+        <div className="flex items-center gap-3.5 sm:gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] p-0.5 shadow-lg flex items-center justify-center relative shrink-0">
+            <Compass className="w-6 h-6 sm:w-7 sm:h-7 text-[#ebdcb9] animate-spin" style={{ animationDuration: '60s' }} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black tracking-widest text-[#ebdcb9] bg-[#ebdcb9]/10 px-2.5 py-1 rounded-full border border-[#ebdcb9]/25 uppercase">
+              <span className="text-[8px] sm:text-[9px] font-black tracking-widest text-[#ebdcb9] bg-[#ebdcb9]/10 px-2.5 py-1 rounded-full border border-[#ebdcb9]/25 uppercase">
                 Auditoria de Bordo
               </span>
-              <span className="text-[9px] font-black tracking-widest text-[#c5a880] bg-[#c5a880]/10 px-2.5 py-1 rounded-full border border-[#c5a880]/25 uppercase">
+              <span className="text-[8px] sm:text-[9px] font-black tracking-widest text-[#c5a880] bg-[#c5a880]/10 px-2.5 py-1 rounded-full border border-[#c5a880]/25 uppercase">
                 Praia & Sol
               </span>
             </div>
-            <h1 className="text-xl font-serif tracking-wide text-white mt-1.5">
+            <h1 className="text-lg sm:text-xl font-serif tracking-wide text-white mt-1">
               Faturamento e Relatório de Vendas
             </h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0 relative z-20">
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 relative z-20 w-full sm:w-auto justify-between sm:justify-start">
           <button 
             type="button"
             onClick={() => setIsNewSaleOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] hover:brightness-105 hover:scale-105 active:scale-95 text-[#3d2723] px-5 py-3 rounded-full transition-all text-xs font-black uppercase tracking-wider shadow-md"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] hover:brightness-105 active:scale-95 text-[#3d2723] px-4 sm:px-5 py-2.5 sm:py-3 rounded-full transition-all text-xs font-black uppercase tracking-wider shadow-md"
           >
             <ShoppingBag size={15} />
             Lançar Venda
@@ -268,7 +268,7 @@ export function Sales() {
             type="button"
             onClick={handleExportPDF}
             disabled={sales.length === 0}
-            className="flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-100 px-5 py-3 rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold uppercase tracking-wider"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-100 px-4 sm:px-5 py-2.5 sm:py-3 rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold uppercase tracking-wider"
           >
             <Download size={15} className="text-sky-400" />
             Certificar PDF
@@ -277,7 +277,7 @@ export function Sales() {
       </div>
 
       {/* SOPHISTICATED INSTRUMENT DIALS (Luxury Beach Stats widgets) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10 animate-fade-in">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 relative z-10 animate-fade-in">
         
         {/* STATS 1: Collected tides */}
         <div className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-slate-900/30 backdrop-blur-xl p-6 group transition-all duration-300 hover:border-pink-500/30 shadow-lg">

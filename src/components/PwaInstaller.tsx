@@ -43,6 +43,12 @@ export function PwaInstaller() {
       return;
     }
 
+    // Verificar se já foi exibido uma vez ao entrar no link
+    const hasShownOnce = localStorage.getItem('pwa_installer_shown_once');
+    if (hasShownOnce) {
+      return;
+    }
+
     // 2. Detectar sistema operacional para dar instruções corretas
     const userAgent = window.navigator.userAgent.toLowerCase();
     if (/iphone|ipad|ipod/.test(userAgent)) {
@@ -51,63 +57,35 @@ export function PwaInstaller() {
       setDeviceOS('android');
     }
 
-    // 3. Capturar o prompt oficial de instalação do navegador (Chrome/Samsung Internet etc.)
+    // 3. Mostrar exatamente uma vez após 3 segundos do carregamento ao entrar no link
+    const timer = setTimeout(() => {
+      localStorage.setItem('pwa_installer_shown_once', 'true');
+      setShowInstaller(true);
+    }, 3000);
+
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      // Salva o evento para disparar depois
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsReadyToInstall(true);
-      
-      // Se não tiver sido descartado recentemente, mostra o convite
-      const dismissedTime = localStorage.getItem('pwa_installer_dismissed_at');
-      const now = Date.now();
-      
-      // Mostrar após 3 segundos do carregamento do app
-      const timer = setTimeout(() => {
-        if (!dismissedTime || now - parseInt(dismissedTime, 10) > 1000 * 60 * 60 * 24 * 3) { // 3 dias de cooldown se fechar
-          setShowInstaller(true);
-        }
-      }, 3500);
-
-      return () => clearTimeout(timer);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // No iOS ou Browsers sem suporte a standalone prompt, podemos exibir um aviso para que usem o menu nativo
-    // Se for iOS ou Android e passados 5 segundos, se não foi fechado recentemente, sugerimos a instalação
-    const iosTimer = setTimeout(() => {
-      const dismissedTime = localStorage.getItem('pwa_installer_dismissed_at');
-      const now = Date.now();
-      const isDismissed = dismissedTime && (now - parseInt(dismissedTime, 10)) < 1000 * 60 * 60 * 24 * 3;
-
-      if (!isStandalone && !isDismissed && (deviceOS === 'ios' || deferredPrompt === null)) {
-        // Habilita exibição voluntária/manual
-        setShowInstaller(true);
-      }
-    }, 5000);
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      clearTimeout(iosTimer);
+      clearTimeout(timer);
     };
-  }, [deferredPrompt, deviceOS]);
+  }, [isMobileOrTablet]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      // Se não temos o prompt automático, mas está no Android e o navegador não disparou
-      // Mostramos as instruções de adição manual
       return;
     }
 
-    // Dispara o prompt de instalação
     await deferredPrompt.prompt();
-    
-    // Aguarda a escolha do usuário
     const { outcome } = await deferredPrompt.userChoice;
     console.log(`Escolha do usuário sobre instalação: ${outcome}`);
     
-    // Limpar o prompt
     setDeferredPrompt(null);
     setIsReadyToInstall(false);
     setShowInstaller(false);
@@ -115,27 +93,10 @@ export function PwaInstaller() {
 
   const handleClose = () => {
     setShowInstaller(false);
-    // Salva o timestamp de descarte no localStorage
-    localStorage.setItem('pwa_installer_dismissed_at', Date.now().toString());
   };
 
-  // Se não for dispositivo móvel/tablet, ou se já foi instalado, não renderiza nada
-  if (!isMobileOrTablet || isAlreadyInstalled) return null;
-
-  if (!showInstaller) {
-    // Renderiza um pequeno botão discreto no canto/ajustes para caso o usuário queira instalar manualmente depois
-    return (
-      <div className="fixed top-3 left-3 z-[9999]">
-        <button 
-          onClick={() => setShowInstaller(true)}
-          className="flex items-center gap-1.5 bg-gradient-to-r from-pink-500 to-amber-500 text-white font-black text-[9px] uppercase tracking-widest px-2.5 py-1.5 rounded-full border border-pink-400/30 shadow-lg shadow-pink-500/20 active:scale-95 transition-all cursor-pointer h-8"
-        >
-          <Download size={11} className="animate-bounce" />
-          Instalar App
-        </button>
-      </div>
-    );
-  }
+  // Se não for dispositivo móvel/tablet, ou se já foi instalado, ou se já foi exibido uma vez, não renderiza nada (nem o botão flutuante)
+  if (!isMobileOrTablet || isAlreadyInstalled || localStorage.getItem('pwa_installer_shown_once') === 'true' && !showInstaller) return null;
 
   return (
     <div className="fixed inset-0 bg-[#000000]/70 backdrop-blur-md z-[10000] flex items-end sm:items-center justify-center p-3 transition-opacity">

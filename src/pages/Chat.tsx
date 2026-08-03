@@ -204,7 +204,7 @@ export function Chat() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto w-full flex flex-col bg-[#130d08]/75 backdrop-blur-2xl border border-[#ebdcb9]/15 rounded-[2rem] overflow-hidden relative shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)]" style={{ minHeight: 'calc(100vh - 200px)' }}>
+    <div className="max-w-4xl mx-auto w-full flex flex-col bg-[#130d08]/75 md:backdrop-blur-2xl md:border md:border-[#ebdcb9]/15 md:rounded-[2rem] overflow-hidden relative shadow-lg md:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] h-full md:h-[calc(100vh-200px)]">
       {/* Radiant Background Blur elements to simulate high production beach look */}
       <div className="absolute top-0 right-1/4 w-80 h-80 bg-[#c5a880]/5 blur-[100px] rounded-full pointer-events-none" />
       <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-[#ebdcb9]/5 blur-[100px] rounded-full pointer-events-none" />
@@ -245,7 +245,7 @@ export function Chat() {
       </div>
 
       {/* 2. Message History Area */}
-      <div className="flex-grow overflow-y-auto p-5 space-y-4 relative min-h-[350px]">
+      <div className="flex-grow overflow-y-auto no-scrollbar p-5 space-y-4 relative min-h-[350px]">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-full py-24">
             <div className="w-8 h-8 rounded-full border-2 border-[#ebdcb9] border-t-transparent animate-spin mb-3" />

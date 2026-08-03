@@ -13,6 +13,7 @@ import { PwaInstaller } from './components/PwaInstaller';
 import { GlobalPinnedAlerts } from './components/GlobalPinnedAlerts';
 import { LayoutDashboard, Tag, Package, Scissors, ShoppingCart, Settings, LogOut, Sparkles, MessageSquare, CalendarCheck } from 'lucide-react';
 import { Attendance } from './pages/Attendance';
+import { InstagramMobileHeader, InstagramStoriesRow, InstagramMobileBottomNav } from './components/InstagramMobileNav';
 
 // @ts-ignore
 import backgroundImage from './assets/images/sol_mar_bg_1781047598977.png';
@@ -49,9 +50,7 @@ function AppContent() {
   if (isAdmOrMestre) {
     navTabs.push('attendance');
   }
-  if (!isFuncionarioB) {
-    navTabs.push('configuracoes');
-  }
+  navTabs.push('configuracoes');
 
   React.useEffect(() => {
     if (currentTab === 'dashboard') {
@@ -60,10 +59,7 @@ function AppContent() {
     if (!isAdmOrMestre && currentTab === 'attendance') {
       setCurrentTab('menu');
     }
-    if (isFuncionarioB && currentTab === 'configuracoes') {
-      setCurrentTab('menu');
-    }
-  }, [isAdmOrMestre, isFuncionarioB, currentTab]);
+  }, [isAdmOrMestre, currentTab]);
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -121,18 +117,27 @@ function AppContent() {
 
   const today = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' }).format(new Date());
 
-  if (currentTab === 'menu') {
-    return <MainMenu onSelect={setCurrentTab} />;
-  }
+  // Early return logic removed
 
   return (
     <div 
-      className="min-h-screen flex text-[#fbf8f2] font-sans selection:bg-[#ebdcb9]/35 selection:text-[#3d2723] bg-[#1a130c] bg-cover bg-center bg-no-repeat relative overflow-hidden"
+      className="min-h-screen flex text-[#fbf8f2] font-sans selection:bg-[#ebdcb9]/35 selection:text-[#3d2723] bg-[#1a130c] bg-cover bg-center bg-no-repeat relative overflow-hidden pb-16 md:pb-0"
       style={{ backgroundImage: `url(${backgroundImage})` }}
     >
       <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/45 to-black/90 z-0 pointer-events-none" />
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-transparent relative z-10">
-        <header className="min-h-[70px] md:h-[100px] bg-black/35 backdrop-blur-xl border-b border-white/5 flex flex-col md:flex-row items-center justify-between px-4 md:px-10 py-3 md:py-0 shrink-0 z-50 sticky top-0 gap-3">
+      
+      {/* INSTAGRAM MOBILE TOP HEADER & STORIES ROW */}
+      <InstagramMobileHeader currentTab={currentTab} onSelect={setCurrentTab} />
+
+      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-transparent relative z-10 pt-13 md:pt-0">
+        {currentTab === 'menu' && (
+          <div className="w-full md:hidden z-20">
+            <InstagramStoriesRow />
+          </div>
+        )}
+
+        {/* DESKTOP HEADER */}
+        <header className="hidden md:flex h-[100px] bg-black/35 backdrop-blur-xl border-b border-white/5 items-center justify-between px-10 shrink-0 z-50 sticky top-0 gap-3">
           {/* Left section */}
           <div className="flex-1 flex flex-col justify-center items-center md:items-start text-center md:text-left leading-tight w-full md:w-auto">
             <h1 className="text-xl md:text-2xl font-serif font-bold text-white m-0 tracking-tight">{tabTitles[currentTab]}</h1>
@@ -187,17 +192,22 @@ function AppContent() {
           </div>
         </header>
         
-        <div id="main-scroll-container" className="flex-1 overflow-y-auto p-4 md:p-12 relative">
+        <div id="main-scroll-container" className="flex-1 overflow-y-auto no-scrollbar p-0 md:p-12 pb-24 md:pb-12 relative touch-pan-y">
           <div className="max-w-7xl mx-auto h-full relative z-10">
+            {currentTab === 'menu' && <MainMenu onSelect={setCurrentTab} />}
+            {currentTab === 'profile' && <MainMenu onlyMyPosts={true} onSelect={setCurrentTab} />}
             {currentTab === 'bikinis' && <Bikinis />}
             {currentTab === 'threads' && <Threads />}
             {currentTab === 'sales' && <Sales />}
             {currentTab === 'chat' && <Chat />}
             {currentTab === 'attendance' && isAdmOrMestre && <Attendance />}
-            {currentTab === 'configuracoes' && !isFuncionarioB && <Configuracoes />}
+            {currentTab === 'configuracoes' && <Configuracoes />}
           </div>
         </div>
       </main>
+
+      {/* INSTAGRAM MOBILE BOTTOM NAVIGATION BAR */}
+      <InstagramMobileBottomNav currentTab={currentTab} onSelect={setCurrentTab} />
     </div>
   );
 }

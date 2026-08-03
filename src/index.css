@@ -11,6 +11,27 @@
   --color-coffee-accent: #8d6e63;
 }
 
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+
+/* Hide scrollbars globally as requested for mobile */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+  display: none;
+}
+* {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
 /* Remove default spin arrows on number inputs globally */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {

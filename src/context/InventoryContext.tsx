@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Bikini, Thread, Sale, BikiniStockDivided, UserProfileClient, ActionLog } from '../types';
+import { Bikini, Thread, Sale, BikiniStockDivided, UserProfileClient, ActionLog, UserStory, GalleryPost } from '../types';
 import { rtdb } from '../lib/firebase';
 import { ref, onValue, set, update } from 'firebase/database';
 
@@ -9,6 +9,8 @@ interface InventoryContextType {
   sales: Sale[];
   users: UserProfileClient[];
   logs: ActionLog[];
+  stories: UserStory[];
+  galleryPosts: GalleryPost[];
   currentUser: UserProfileClient | null;
   addBikini: (b: Omit<Bikini, 'id'>) => void;
   addBikiniModel: (modelName: string) => void;
@@ -32,6 +34,14 @@ interface InventoryContextType {
   logout: () => void;
   addUser: (user: Omit<UserProfileClient, 'id'> & { id?: string }) => void;
   removeUser: (id: string) => void;
+  addStory: (story: Omit<UserStory, 'id' | 'createdAt'>) => void;
+  deleteStory: (id: string) => void;
+  addGalleryPost: (post: Omit<GalleryPost, 'id' | 'createdAt' | 'likes'>) => void;
+  likeGalleryPost: (id: string) => void;
+  deleteGalleryPost: (id: string) => void;
+  editGalleryPost: (id: string, caption: string) => void;
+  pinGalleryPost: (id: string) => void;
+  addPostComment: (postId: string, text: string) => void;
   isReadOnly: boolean;
 }
 
@@ -123,6 +133,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
 
   const [users, setUsers] = useState<UserProfileClient[]>(DEFAULT_USERS);
   const [logs, setLogs] = useState<ActionLog[]>([]);
+  const [stories, setStories] = useState<UserStory[]>([]);
+  const [galleryPosts, setGalleryPosts] = useState<GalleryPost[]>([]);
 
   const [currentUser, setCurrentUser] = useState<UserProfileClient | null>(() => {
     const saved = localStorage.getItem('sol_mar_currentUser');
@@ -210,6 +222,20 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
           set(ref(rtdb, 'inventory/users'), DEFAULT_USERS).catch(err => console.warn('Default users sync notice:', err?.message));
         }
         setLogs(data.logs || []);
+        
+        // Cleanup expired stories (older than 24h)
+        const loadedStories = (data.stories || []) as UserStory[];
+        const now = Date.now();
+        const activeStories = loadedStories.filter(s => {
+          const storyTime = new Date(s.createdAt).getTime();
+          return now - storyTime < 24 * 60 * 60 * 1000;
+        });
+        
+        if (loadedStories.length !== activeStories.length) {
+          set(ref(rtdb, 'inventory/stories'), activeStories).catch(err => console.warn('Stories cleanup notice:', err?.message));
+        }
+        setStories(activeStories);
+        setGalleryPosts(data.galleryPosts || []);
       } else {
         // Uninitialized cloud database
         const initialData = {
@@ -217,7 +243,9 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
           threads: threads.length > 0 ? threads : INITIAL_THREADS,
           sales: sales,
           users: DEFAULT_USERS,
-          logs: []
+          logs: [],
+          stories: [],
+          galleryPosts: []
         };
         set(inventoryRef, cleanData(initialData)).catch(err => console.warn('Initial data sync notice:', err?.message));
       }
@@ -281,7 +309,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addUser = (newUser: Omit<UserProfileClient, 'id'> & { id?: string }) => {
-    if (isReadOnly) return;
+    if (isReadOnly && newUser.id !== currentUser?.id) return;
     const cleanUsername = newUser.username.trim();
     
     let formattedUsername = cleanUsername;
@@ -536,16 +564,117 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     pushLog('Zeru todos os estoques e dados de teste do sistema');
   };
 
+  const addStory = (storyData: Omit<UserStory, 'id' | 'createdAt'>) => {
+    if (!currentUser) return;
+    const newStory: UserStory = {
+      ...storyData,
+      id: Math.random().toString(36).substr(2, 9),
+      createdAt: new Date().toISOString()
+    };
+    const updated = [...stories, newStory];
+    setStories(updated);
+    set(ref(rtdb, 'inventory/stories'), cleanData(updated)).catch(err => console.warn('Story sync notice:', err?.message));
+  };
+
+  const deleteStory = (id: string) => {
+    if (!currentUser) return;
+    const updated = stories.filter(s => s.id !== id);
+    setStories(updated);
+    set(ref(rtdb, 'inventory/stories'), cleanData(updated)).catch(err => console.warn('Story remove notice:', err?.message));
+  };
+
+  const addGalleryPost = (postData: Omit<GalleryPost, 'id' | 'createdAt' | 'likes'>) => {
+    if (!currentUser) return;
+    const newPost: GalleryPost = {
+      ...postData,
+      id: Math.random().toString(36).substr(2, 9),
+      createdAt: new Date().toISOString(),
+      likes: []
+    };
+    const updated = [newPost, ...galleryPosts];
+    setGalleryPosts(updated);
+    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost sync notice:', err?.message));
+  };
+
+  const likeGalleryPost = (id: string) => {
+    if (!currentUser) return;
+    const updated = galleryPosts.map(post => {
+      if (post.id === id) {
+        const likes = post.likes || [];
+        const hasLiked = likes.includes(currentUser.id);
+        return {
+          ...post,
+          likes: hasLiked ? likes.filter(userId => userId !== currentUser.id) : [...likes, currentUser.id]
+        };
+      }
+      return post;
+    });
+    setGalleryPosts(updated);
+    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost like notice:', err?.message));
+  };
+
+  const deleteGalleryPost = (id: string) => {
+    if (!currentUser) return;
+    const updated = galleryPosts.filter(p => p.id !== id);
+    setGalleryPosts(updated);
+    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost remove notice:', err?.message));
+  };
+
+  const editGalleryPost = (id: string, caption: string) => {
+    if (!currentUser) return;
+    const updated = galleryPosts.map(p => {
+      if (p.id === id) {
+        return { ...p, caption };
+      }
+      return p;
+    });
+    setGalleryPosts(updated);
+    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost edit notice:', err?.message));
+  };
+
+  const pinGalleryPost = (id: string) => {
+    if (!currentUser) return;
+    const updated = galleryPosts.map(p => {
+      if (p.id === id) {
+        return { ...p, isPinned: !p.isPinned };
+      }
+      return p;
+    });
+    setGalleryPosts(updated);
+    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost pin notice:', err?.message));
+  };
+
+  const addPostComment = (postId: string, text: string) => {
+    if (!currentUser) return;
+    const updated = galleryPosts.map(post => {
+      if (post.id === postId) {
+        const comments = post.comments || [];
+        return {
+          ...post,
+          comments: [...comments, {
+            id: Math.random().toString(36).substr(2, 9),
+            userId: currentUser.id,
+            text,
+            createdAt: new Date().toISOString()
+          }]
+        };
+      }
+      return post;
+    });
+    setGalleryPosts(updated);
+    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost comment notice:', err?.message));
+  };
+
   const lowStockItemsCount = bikinis.filter(b => b.stock <= b.minStockAlert).length +
                              threads.filter(t => t.stock <= t.minStockAlert).length;
 
   return (
     <InventoryContext.Provider value={{
-      bikinis, threads, sales, users, logs, currentUser,
+      bikinis, threads, sales, users, logs, stories, galleryPosts, currentUser,
       addBikini, addBikiniModel, updateBikiniStock, setBikiniStock, updateBikiniDividedStock, removeBikini, removeBikiniModel,
       addThread, updateThreadStock, setThreadStock, updateThreadColorCode, removeThread,
       registerSale, resetAllStockToZero, lowStockItemsCount, unreadMessagesCount,
-      login, logout, addUser, removeUser, isReadOnly
+      login, logout, addUser, removeUser, addStory, deleteStory, addGalleryPost, likeGalleryPost, deleteGalleryPost, editGalleryPost, pinGalleryPost, addPostComment, isReadOnly
     }}>
       {children}
     </InventoryContext.Provider>

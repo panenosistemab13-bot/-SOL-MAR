@@ -26,9 +26,7 @@ export function TopNav({ currentTab, onSelect }: TopNavProps) {
     return true;
   });
 
-  const allowedItems = !isFuncionarioB
-    ? [...visibleNavItems, { id: 'configuracoes', icon: Settings }]
-    : visibleNavItems;
+  const allowedItems = [...visibleNavItems, { id: 'configuracoes', icon: Settings }];
 
   return (
     <div className="flex items-center bg-[#18181b]/90 border border-white/5 rounded-2xl md:rounded-[1.5rem] p-1 md:p-1.5 shadow-2xl backdrop-blur-md max-w-full overflow-x-auto no-scrollbar scrollbar-none">

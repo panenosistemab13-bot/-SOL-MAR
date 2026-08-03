@@ -70,7 +70,7 @@ export function Bikinis() {
   }, [filteredItems]);
 
   return (
-    <div className="relative rounded-[2.5rem] overflow-hidden border border-[#ebdcb9]/15 bg-[#130d08]/75 backdrop-blur-xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] text-white p-6 md:p-8 space-y-8">
+    <div className="relative md:rounded-[2.5rem] overflow-hidden md:border md:border-[#ebdcb9]/15 bg-[#130d08]/75 backdrop-blur-xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] text-white p-4 md:p-8 space-y-6 md:space-y-8 min-h-full">
       {/* Immersive Ocean Background Layer */}
       <div 
         className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center tracking-normal opacity-[0.05] mix-blend-overlay pointer-events-none"
@@ -81,50 +81,77 @@ export function Bikinis() {
       <div className="absolute bottom-10 left-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[120px] rounded-full pointer-events-none translate-y-20" />
 
       {/* Luxury Beach Header Section */}
-      <div className="relative bg-gradient-to-r from-[#ebdcb9]/10 via-[#c5a880]/5 to-black/40 rounded-[2.2rem] border border-white/5 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl overflow-hidden shadow-inner select-none">
+      <div className="relative bg-gradient-to-r from-[#ebdcb9]/10 via-[#c5a880]/5 to-black/40 rounded-2xl sm:rounded-[2.2rem] border border-white/5 p-4 sm:p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 backdrop-blur-xl overflow-hidden shadow-inner select-none">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center opacity-[0.05] pointer-events-none" />
         
         {/* Glowing Sun and Waves visual title */}
-        <div className="flex items-center gap-5 relative z-10 w-full md:w-auto">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] p-0.5 shadow-lg flex items-center justify-center relative group overflow-hidden shrink-0">
+        <div className="flex items-center gap-3.5 sm:gap-5 relative z-10 w-full md:w-auto">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] p-0.5 shadow-lg flex items-center justify-center relative group overflow-hidden shrink-0">
             <div className="w-full h-full bg-[#3d2723] rounded-[14px] flex items-center justify-center text-[#ebdcb9]">
-              <Sun className="w-8 h-8 animate-pulse text-[#ebdcb9]" />
+              <Sun className="w-6 h-6 sm:w-8 sm:h-8 animate-pulse text-[#ebdcb9]" />
             </div>
-            <Waves className="absolute bottom-1.5 right-1.5 w-4 h-4 text-[#ebdcb9] animate-bounce" />
+            <Waves className="absolute bottom-1.5 right-1.5 w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ebdcb9] animate-bounce" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] font-black tracking-[0.25em] text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-2.5 py-1 rounded-full border border-[#cbdcb9]/20 flex items-center gap-1.5 w-fit shadow-sm">
+            <span className="text-[9px] sm:text-[10px] font-black tracking-[0.25em] text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-2.5 py-1 rounded-full border border-[#cbdcb9]/20 flex items-center gap-1.5 w-fit shadow-sm">
               <Sparkles size={11} className="animate-pulse text-[#ebdcb9]" /> PORTAL DE BIQUÍNIS
             </span>
-            <h2 className="text-3xl font-serif text-[#fbf8f2] tracking-wide mt-1.5">
+            <h2 className="text-xl sm:text-3xl font-serif text-[#fbf8f2] tracking-wide mt-1">
               Grade de Estampa & Estoques
             </h2>
           </div>
         </div>
 
         {/* Dynamic visual dashboard stats bar in Header */}
-        <div className="flex items-center gap-6 bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 backdrop-blur-md relative z-10 shadow-lg shrink-0 w-full md:w-auto justify-around md:justify-start">
-          <div className="text-center md:text-right border-r border-[#ebdcb9]/10 pr-6 mr-2">
-            <p className="text-[9px] text-[#c5a880] font-bold uppercase tracking-widest">Modelagens</p>
-            <p className="text-xl font-extrabold text-[#ebdcb9] font-mono mt-0.5">{totalModelsCount}</p>
+        <div className="flex items-center gap-4 sm:gap-6 bg-white/[0.03] border border-white/10 rounded-2xl px-4 py-3 sm:px-6 sm:py-4 backdrop-blur-md relative z-10 shadow-lg shrink-0 w-full md:w-auto justify-around md:justify-start">
+          <div className="text-center md:text-right border-r border-[#ebdcb9]/10 pr-4 sm:pr-6 mr-1 sm:mr-2">
+            <p className="text-[8px] sm:text-[9px] text-[#c5a880] font-bold uppercase tracking-widest">Modelagens</p>
+            <p className="text-lg sm:text-xl font-extrabold text-[#ebdcb9] font-mono mt-0.5">{totalModelsCount}</p>
           </div>
-          <div className="text-center md:text-right flex items-center gap-3">
+          <div className="text-center md:text-right flex items-center gap-2.5 sm:gap-3">
             <div>
-              <p className="text-[9px] text-[#c5a880] font-bold uppercase tracking-widest">Disponibilidade</p>
-              <p className="text-xl font-black text-[#ebdcb9] font-mono mt-0.5">{totalOverallStock} <span className="text-[10px] text-[#c5a880]/60 font-bold font-sans">un</span></p>
+              <p className="text-[8px] sm:text-[9px] text-[#c5a880] font-bold uppercase tracking-widest">Disponibilidade</p>
+              <p className="text-lg sm:text-xl font-black text-[#ebdcb9] font-mono mt-0.5">{totalOverallStock} <span className="text-[9px] sm:text-[10px] text-[#c5a880]/60 font-bold font-sans">un</span></p>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-[#ebdcb9]/15 flex items-center justify-center text-[#ebdcb9] border border-[#ebdcb9]/20">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#ebdcb9]/15 flex items-center justify-center text-[#ebdcb9] border border-[#ebdcb9]/20">
               <Anchor size={14} className="animate-pulse" />
             </div>
           </div>
         </div>
       </div>
 
+      {/* Mobile Quick Model Selector Carousel (lg:hidden) */}
+      {groupedByModel.length > 0 && (
+        <div className="lg:hidden w-full overflow-x-auto no-scrollbar flex items-center gap-2 pb-1 scrollbar-none">
+          {groupedByModel.map(([model, items]) => {
+            const isSelected = selectedModel === model;
+            const modelStock = items.reduce((sum, b) => sum + b.stock, 0);
+            return (
+              <button
+                key={model}
+                onClick={() => setSelectedModel(model)}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold shrink-0 transition-all cursor-pointer whitespace-nowrap active:scale-95",
+                  isSelected
+                    ? "border-[#ebdcb9] bg-[#ebdcb9]/20 text-[#ebdcb9] shadow-md ring-1 ring-[#ebdcb9]/40"
+                    : "border-white/10 bg-slate-900/60 text-stone-300 hover:bg-white/5"
+                )}
+              >
+                <span>{model}</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 text-stone-400">
+                  {modelStock}u
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Immersive Column Split Layout: Left vertical grouped "MODELOS DISPONÍVEIS", Right showing "Variações Ativas" */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 relative z-10">
         
-        {/* Left Column: MODELOS DISPONÍVEIS grouped vertically */}
-        <div className="lg:col-span-4 xl:col-span-3 space-y-4">
+        {/* Left Column: MODELOS DISPONÍVEIS (Hidden on mobile when pill bar is shown, or stacked) */}
+        <div className="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-white/5">
             <span className="text-[11px] font-black tracking-widest text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-3 py-1 rounded-full border border-[#ebdcb9]/25 flex items-center gap-1.5 shadow-sm">
               <Layers size={12} className="text-[#ebdcb9] animate-pulse" /> MODELOS DISPONÍVEIS
@@ -289,7 +316,7 @@ export function Bikinis() {
         {/* Right Column: Active model variations details / workbench */}
         <div className="col-span-1 lg:col-span-8 xl:col-span-9">
           {selectedModel ? (
-            <div className="relative z-10 border border-[#ebdcb9]/15 bg-black/20 rounded-[3rem] p-6 md:p-8 space-y-6 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="relative z-10 border border-[#ebdcb9]/15 bg-black/20 rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-6 md:p-8 space-y-6 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500">
               
               {/* Detailed Workstation Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#ebdcb9]/10">

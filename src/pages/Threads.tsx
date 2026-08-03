@@ -345,7 +345,7 @@ export function Threads() {
   };
 
   return (
-    <div className="relative rounded-[3.2rem] overflow-hidden border border-[#ebdcb9]/15 bg-[#130d08]/75 backdrop-blur-xl shadow-[0_30px_70px_-15px_rgba(0,0,0,0.85)] text-white p-6 md:p-10 space-y-10">
+    <div className="relative md:rounded-[3.2rem] overflow-hidden md:border md:border-[#ebdcb9]/15 bg-[#130d08]/75 backdrop-blur-xl shadow-[0_30px_70px_-15px_rgba(0,0,0,0.85)] text-white p-4 md:p-10 space-y-6 md:space-y-10 min-h-full">
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -361,22 +361,22 @@ export function Threads() {
       <div className="absolute bottom-0 left-1/4 w-[500px] h-[300px] bg-[#c5a880]/5 blur-[130px] rounded-full pointer-events-none translate-y-20" />
 
       {/* HEADER SECTION */}
-      <div className="relative bg-gradient-to-r from-[#ebdcb9]/15 via-black/50 to-[#c5a880]/10 rounded-[2.8rem] border border-white/5 p-6 md:p-10 flex flex-col xl:flex-row items-center justify-between gap-8 backdrop-blur-3xl overflow-hidden shadow-2xl select-none">
-        <div className="flex items-center gap-6 relative z-10 w-full xl:w-auto">
-          <div className="w-20 h-20 rounded-[2rem] bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] p-0.5 shadow-xl flex items-center justify-center relative group overflow-hidden shrink-0">
-            <div className="w-full h-full bg-[#3d2723] rounded-[28px] flex items-center justify-center text-[#ebdcb9]">
-              <Compass className="w-10 h-10 animate-spin text-[#ebdcb9]" style={{ animationDuration: '25s' }} />
+      <div className="relative bg-gradient-to-r from-[#ebdcb9]/15 via-black/50 to-[#c5a880]/10 rounded-2xl sm:rounded-[2.8rem] border border-white/5 p-4 sm:p-6 md:p-10 flex flex-col xl:flex-row items-center justify-between gap-6 sm:gap-8 backdrop-blur-3xl overflow-hidden shadow-2xl select-none">
+        <div className="flex items-center gap-4 sm:gap-6 relative z-10 w-full xl:w-auto">
+          <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl sm:rounded-[2rem] bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] p-0.5 shadow-xl flex items-center justify-center relative group overflow-hidden shrink-0">
+            <div className="w-full h-full bg-[#3d2723] rounded-xl sm:rounded-[28px] flex items-center justify-center text-[#ebdcb9]">
+              <Compass className="w-7 h-7 sm:w-10 sm:h-10 animate-spin text-[#ebdcb9]" style={{ animationDuration: '25s' }} />
             </div>
-            <Waves className="absolute bottom-2 right-2 w-5 h-5 text-[#ebdcb9] animate-bounce" />
+            <Waves className="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 text-[#ebdcb9] animate-bounce" />
           </div>
           <div>
-            <span className="text-[10px] font-black tracking-[0.3em] text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-3 py-1 rounded-full border border-[#ebdcb9]/25 flex items-center gap-2 w-fit shadow-lg">
-              <Sparkles size={12} className="animate-pulse text-amber-400" /> SOL & MAR — EMBROIDERY SYSTEM
+            <span className="text-[8px] sm:text-[10px] font-black tracking-[0.3em] text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-2.5 py-1 rounded-full border border-[#ebdcb9]/25 flex items-center gap-1.5 sm:gap-2 w-fit shadow-lg">
+              <Sparkles size={11} className="animate-pulse text-amber-400" /> SOL & MAR — EMBROIDERY SYSTEM
             </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-100 to-[#ebdcb9] tracking-tight mt-1.5">
+            <h2 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-100 to-[#ebdcb9] tracking-tight mt-1">
               Insumos & Fios
             </h2>
-            <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-mono">Gestão Completa de Linhas, Retas, Elásticos e Aviamentos</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 uppercase tracking-widest font-mono">Gestão Completa de Linhas, Retas, Elásticos e Aviamentos</p>
           </div>
         </div>
 
@@ -527,8 +527,8 @@ export function Threads() {
       </div>
 
       {/* CATEGORY TABS BAR */}
-      <div className="relative bg-slate-900/40 border border-white/10 rounded-[2rem] p-3 backdrop-blur-xl z-10 shadow-lg flex items-center overflow-x-auto">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="relative bg-slate-900/40 border border-white/10 rounded-2xl sm:rounded-[2rem] p-3 backdrop-blur-xl z-10 shadow-lg flex items-center overflow-x-auto no-scrollbar scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none pb-0.5">
           {availableTypes.map(type => {
             const isActive = selectedType === type;
             return (

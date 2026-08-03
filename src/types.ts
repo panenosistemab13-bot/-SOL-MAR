@@ -64,6 +64,32 @@ export interface Sale {
   total: number;
 }
 
+export interface UserStory {
+  id: string;
+  userId: string;
+  type: 'image' | 'text' | 'audio';
+  content: string;
+  createdAt: string;
+}
+
+export interface PostComment {
+  id: string;
+  userId: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface GalleryPost {
+  id: string;
+  userId: string;
+  imageUrl: string;
+  caption: string;
+  createdAt: string;
+  likes: string[];
+  comments?: PostComment[];
+  isPinned?: boolean;
+}
+
 export interface ZPLLabel {
   transporte: string;
   lote: string;
