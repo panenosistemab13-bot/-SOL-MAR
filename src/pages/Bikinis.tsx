@@ -70,11 +70,10 @@ export function Bikinis() {
   }, [filteredItems]);
 
   return (
-    <div className="relative rounded-[2.5rem] overflow-hidden border border-white/10 bg-slate-950/80 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] text-white p-6 md:p-8 space-y-8">
+    <div className="relative rounded-[2.5rem] overflow-hidden border border-[#ebdcb9]/15 bg-[#130d08]/75 backdrop-blur-xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] text-white p-6 md:p-8 space-y-8">
       {/* Immersive Ocean Background Layer */}
       <div 
-        className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center tracking-normal opacity-15 mix-blend-overlay pointer-events-none"
-        style={{ filter: 'hue-rotate(180deg) saturate(1.7)' }}
+        className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center tracking-normal opacity-[0.05] mix-blend-overlay pointer-events-none"
       />
 
       {/* Decorative Wave Glows */}
@@ -82,39 +81,39 @@ export function Bikinis() {
       <div className="absolute bottom-10 left-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[120px] rounded-full pointer-events-none translate-y-20" />
 
       {/* Luxury Beach Header Section */}
-      <div className="relative bg-gradient-to-r from-pink-500/10 via-sky-500/5 to-slate-950/40 rounded-[2.2rem] border border-white/5 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl overflow-hidden shadow-inner select-none">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center opacity-10 pointer-events-none" />
+      <div className="relative bg-gradient-to-r from-[#ebdcb9]/10 via-[#c5a880]/5 to-black/40 rounded-[2.2rem] border border-white/5 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl overflow-hidden shadow-inner select-none">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center opacity-[0.05] pointer-events-none" />
         
         {/* Glowing Sun and Waves visual title */}
         <div className="flex items-center gap-5 relative z-10 w-full md:w-auto">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-sky-400 to-pink-500 p-0.5 shadow-lg shadow-pink-500/20 flex items-center justify-center relative group overflow-hidden shrink-0">
-            <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-pink-400">
-              <Sun className="w-8 h-8 animate-pulse text-sky-400" />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] p-0.5 shadow-lg flex items-center justify-center relative group overflow-hidden shrink-0">
+            <div className="w-full h-full bg-[#3d2723] rounded-[14px] flex items-center justify-center text-[#ebdcb9]">
+              <Sun className="w-8 h-8 animate-pulse text-[#ebdcb9]" />
             </div>
-            <Waves className="absolute bottom-1.5 right-1.5 w-4 h-4 text-pink-400 animate-bounce" />
+            <Waves className="absolute bottom-1.5 right-1.5 w-4 h-4 text-[#ebdcb9] animate-bounce" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] font-black tracking-[0.25em] text-sky-400 uppercase bg-sky-500/10 px-2.5 py-1 rounded-full border border-sky-500/20 flex items-center gap-1.5 w-fit shadow-sm">
-              <Sparkles size={11} className="animate-spin text-sky-300" style={{ animationDuration: '6s' }} /> REDE DE BIKINIS
+            <span className="text-[10px] font-black tracking-[0.25em] text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-2.5 py-1 rounded-full border border-[#cbdcb9]/20 flex items-center gap-1.5 w-fit shadow-sm">
+              <Sparkles size={11} className="animate-pulse text-[#ebdcb9]" /> PORTAL DE BIQUÍNIS
             </span>
-            <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-pink-100 to-sky-200 tracking-tight mt-1 truncate">
-              Vitrines & Estoques
+            <h2 className="text-3xl font-serif text-[#fbf8f2] tracking-wide mt-1.5">
+              Grade de Estampa & Estoques
             </h2>
           </div>
         </div>
 
         {/* Dynamic visual dashboard stats bar in Header */}
         <div className="flex items-center gap-6 bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 backdrop-blur-md relative z-10 shadow-lg shrink-0 w-full md:w-auto justify-around md:justify-start">
-          <div className="text-center md:text-right border-r border-white/10 pr-6 mr-2">
-            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Modelagens</p>
-            <p className="text-xl font-extrabold text-pink-400 font-mono mt-0.5">{totalModelsCount}</p>
+          <div className="text-center md:text-right border-r border-[#ebdcb9]/10 pr-6 mr-2">
+            <p className="text-[9px] text-[#c5a880] font-bold uppercase tracking-widest">Modelagens</p>
+            <p className="text-xl font-extrabold text-[#ebdcb9] font-mono mt-0.5">{totalModelsCount}</p>
           </div>
           <div className="text-center md:text-right flex items-center gap-3">
             <div>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Disponibilidade</p>
-              <p className="text-xl font-black text-sky-300 font-mono mt-0.5">{totalOverallStock} <span className="text-[10px] text-slate-500 font-bold font-sans">un</span></p>
+              <p className="text-[9px] text-[#c5a880] font-bold uppercase tracking-widest">Disponibilidade</p>
+              <p className="text-xl font-black text-[#ebdcb9] font-mono mt-0.5">{totalOverallStock} <span className="text-[10px] text-[#c5a880]/60 font-bold font-sans">un</span></p>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-sky-500/15 flex items-center justify-center text-sky-400 border border-sky-500/15">
+            <div className="w-8 h-8 rounded-lg bg-[#ebdcb9]/15 flex items-center justify-center text-[#ebdcb9] border border-[#ebdcb9]/20">
               <Anchor size={14} className="animate-pulse" />
             </div>
           </div>
@@ -127,8 +126,8 @@ export function Bikinis() {
         {/* Left Column: MODELOS DISPONÍVEIS grouped vertically */}
         <div className="lg:col-span-4 xl:col-span-3 space-y-4">
           <div className="flex items-center justify-between pb-2 border-b border-white/5">
-            <span className="text-[11px] font-black tracking-widest text-sky-400 uppercase bg-sky-500/10 px-3 py-1 rounded-full border border-sky-500/20 flex items-center gap-1.5 shadow-sm">
-              <Layers size={12} className="text-sky-300 animate-pulse" /> MODELOS DISPONÍVEIS
+            <span className="text-[11px] font-black tracking-widest text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-3 py-1 rounded-full border border-[#ebdcb9]/25 flex items-center gap-1.5 shadow-sm">
+              <Layers size={12} className="text-[#ebdcb9] animate-pulse" /> MODELOS DISPONÍVEIS
             </span>
             {isAdmOrMestre && !isReadOnly && (
               <button
@@ -250,11 +249,11 @@ export function Bikinis() {
                       <div className="min-w-0">
                         <h3 className={cn(
                           "text-[11px] font-black tracking-widest uppercase truncate transition-colors",
-                          isSelected ? "text-pink-300" : "text-white group-hover:text-sky-300"
+                          isSelected ? "text-[#ebdcb9]" : "text-[#d7cab5] group-hover:text-white"
                         )}>
                           {model}
                         </h3>
-                        <span className="text-[8px] text-slate-500 uppercase tracking-widest font-extrabold mt-0.5 block">
+                        <span className="text-[8px] text-[#c5a880]/80 uppercase tracking-widest font-extrabold mt-0.5 block">
                           {items.length} variações
                         </span>
                       </div>
@@ -263,13 +262,13 @@ export function Bikinis() {
                     {/* Right: Low warning & stock badge */}
                     <div className="flex items-center gap-2 relative z-10 shrink-0">
                       {isLowStock && (
-                        <div className="w-2 h-2 rounded-full bg-rose-500 animate-ping shadow-[0_0_8px_#f43f5e]" title="Maré Baixa" />
+                        <div className="w-2 h-2 rounded-full bg-orange-600 animate-ping shadow-[0_0_8px_#ea580c]" title="Maré Baixa" />
                       )}
                       <span className={cn(
                         "text-[10px] font-mono px-2.5 py-1 rounded-xl border font-bold shrink-0",
                         isSelected 
-                          ? "bg-pink-500/15 text-pink-300 border-pink-500/20" 
-                          : "bg-white/[0.03] text-slate-400 border-white/5"
+                          ? "bg-[#ebdcb9]/20 text-[#ebdcb9] border-[#ebdcb9]/40" 
+                          : "bg-black/40 text-stone-400 border-white/5"
                       )}>
                         {modelStock} u
                       </span>
@@ -278,7 +277,7 @@ export function Bikinis() {
                     {/* Left accent border if selected */}
                     <div className={cn(
                       "absolute left-0 inset-y-0 w-1 transition-all duration-300",
-                      isSelected ? "bg-gradient-to-b from-pink-500 to-sky-400" : "bg-transparent"
+                      isSelected ? "bg-gradient-to-b from-[#ebdcb9] to-[#c5a880]" : "bg-transparent"
                     )} />
                   </button>
                 );
@@ -290,16 +289,16 @@ export function Bikinis() {
         {/* Right Column: Active model variations details / workbench */}
         <div className="col-span-1 lg:col-span-8 xl:col-span-9">
           {selectedModel ? (
-            <div className="relative z-10 border border-white/10 bg-slate-900/25 rounded-[3rem] p-6 md:p-8 space-y-6 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="relative z-10 border border-[#ebdcb9]/15 bg-black/20 rounded-[3rem] p-6 md:p-8 space-y-6 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500">
               
               {/* Detailed Workstation Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#ebdcb9]/10">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-400/20 to-pink-500/20 border border-white/10 flex items-center justify-center shrink-0">
-                    <Waves className="w-6 h-6 text-pink-400 animate-pulse" />
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#ebdcb9]/20 to-[#c5a880]/10 border border-[#ebdcb9]/15 flex items-center justify-center shrink-0">
+                    <Waves className="w-6 h-6 text-[#ebdcb9] animate-pulse" />
                   </div>
                   <div>
-                    <span className="text-[9px] font-black text-pink-300 bg-pink-500/10 border border-pink-500/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    <span className="text-[9px] font-black text-[#ebdcb9] bg-[#ebdcb9]/10 border border-[#ebdcb9]/25 px-2 py-0.5 rounded-full uppercase tracking-wider">
                       Variações Ativas
                     </span>
                     <div className="flex items-center gap-3.5 mt-1.5 flex-wrap">
@@ -324,13 +323,13 @@ export function Bikinis() {
 
                 {/* Interactive Search Tool */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={13} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#c5a880]" size={13} />
                   <input 
                     type="text" 
                     placeholder="Buscar tamanho ou cor..." 
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="w-full sm:w-64 pl-8 pr-4 py-2 bg-white/5 border border-white/10 hover:border-sky-500/20 focus:border-pink-500/40 transition-all rounded-full text-[11px] text-white focus:outline-none placeholder:text-slate-500"
+                    className="w-full sm:w-64 pl-8 pr-4 py-2 bg-black/40 border border-[#ebdcb9]/15 hover:border-[#ebdcb9]/45 transition-all rounded-full text-[11px] text-white focus:outline-none placeholder:text-stone-600"
                   />
                 </div>
               </div>
@@ -348,7 +347,7 @@ export function Bikinis() {
                     return (
                       <div 
                         key={colorName}
-                        className="border border-white/5 bg-slate-950/40 rounded-[2.5rem] p-5 space-y-4 shadow-xl relative overflow-hidden group/color-card"
+                        className="border border-[#ebdcb9]/10 bg-black/30 rounded-[2.5rem] p-5 space-y-4 shadow-xl relative overflow-hidden group/color-card"
                       >
                         {/* Light subtle glow of the color itself at the background on hover */}
                         <div 
@@ -373,8 +372,8 @@ export function Bikinis() {
                           </div>
                           
                           <div className="bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl text-right">
-                            <span className="text-[10px] text-slate-400 font-mono tracking-wider uppercase">Total: </span>
-                            <span className="text-xs font-black text-pink-300 font-mono">{colorGroupTotalStock} u</span>
+                            <span className="text-[10px] text-stone-400 font-mono tracking-wider uppercase">Total: </span>
+                            <span className="text-xs font-black text-[#ebdcb9] font-mono">{colorGroupTotalStock} u</span>
                           </div>
                         </div>
 

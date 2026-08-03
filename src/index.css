@@ -4,6 +4,11 @@
 @theme {
   --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  
+  --color-coffee-bg: #e5dcc5;
+  --color-coffee-card: #f4eee0;
+  --color-coffee-dark: #3e2723;
+  --color-coffee-accent: #8d6e63;
 }
 
 /* Remove default spin arrows on number inputs globally */
@@ -15,4 +20,9 @@ input::-webkit-inner-spin-button {
 
 input[type=number] {
   -moz-appearance: textfield;
+}
+
+body {
+  background-color: var(--color-coffee-bg);
+  color: var(--color-coffee-dark);
 }

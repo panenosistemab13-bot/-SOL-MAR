@@ -20,6 +20,7 @@ interface InventoryContextType {
   addThread: (t: Omit<Thread, 'id'>) => void;
   updateThreadStock: (id: string, delta: number) => void;
   setThreadStock: (id: string, stock: number) => void;
+  updateThreadColorCode: (colorName: string, colorCode: string) => void;
   removeThread: (id: string) => void;
   registerSale: (s: Omit<Sale, 'id'>) => void;
   resetAllStockToZero: () => void;
@@ -186,7 +187,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
               password: '#trescafe28',
               avatarUrl: 'https://i.postimg.cc/dVfY4TLn/Whats-App-Image-2026-06-06-at-02-34-52.jpg'
             };
-            set(ref(rtdb, 'inventory/users'), updatedUsers);
+            set(ref(rtdb, 'inventory/users'), updatedUsers).catch(err => console.warn('Users sync notice:', err?.message));
             setUsers(updatedUsers);
           } else {
             setUsers(loadedUsers);
@@ -206,7 +207,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
             }
           }
         } else {
-          set(ref(rtdb, 'inventory/users'), DEFAULT_USERS);
+          set(ref(rtdb, 'inventory/users'), DEFAULT_USERS).catch(err => console.warn('Default users sync notice:', err?.message));
         }
         setLogs(data.logs || []);
       } else {
@@ -218,10 +219,10 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
           users: DEFAULT_USERS,
           logs: []
         };
-        set(inventoryRef, cleanData(initialData));
+        set(inventoryRef, cleanData(initialData)).catch(err => console.warn('Initial data sync notice:', err?.message));
       }
     }, (error) => {
-      console.error('Realtime Database sync error:', error);
+      console.warn('Realtime Database read notice:', error?.message || error);
     });
 
     return () => unsubscribe();
@@ -248,7 +249,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       timestamp: new Date().toISOString()
     };
     const updated = [newLog, ...logs].slice(0, 100);
-    set(ref(rtdb, 'inventory/logs'), cleanData(updated));
+    setLogs(updated);
+    set(ref(rtdb, 'inventory/logs'), cleanData(updated)).catch(err => console.warn('Log sync notice:', err?.message));
   };
 
   const pushLog = (actionText: string) => {
@@ -307,7 +309,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       ...users.filter(u => u.id !== createdUser.id && u.username.toLowerCase() !== formattedUsername.toLowerCase()),
       createdUser
     ];
-    set(ref(rtdb, 'inventory/users'), cleanData(updated));
+    setUsers(updated);
+    set(ref(rtdb, 'inventory/users'), cleanData(updated)).catch(err => console.warn('User sync notice:', err?.message));
     pushLog(`${newUser.id ? 'Editou' : 'Criou/atualizou'} usuário: ${createdUser.name} (${createdUser.role})`);
   };
 
@@ -322,7 +325,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       return; 
     }
     const updated = users.filter(u => u.id !== id);
-    set(ref(rtdb, 'inventory/users'), cleanData(updated));
+    setUsers(updated);
+    set(ref(rtdb, 'inventory/users'), cleanData(updated)).catch(err => console.warn('User remove notice:', err?.message));
     pushLog(`Excluiu o usuário: ${found.name} (${found.role})`);
   };
 
@@ -330,7 +334,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     if (isReadOnly) return;
     const newBikini = { ...b, id: Math.random().toString(36).substr(2, 9) };
     const updated = [...bikinis, newBikini];
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
+    setBikinis(updated);
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Bikini sync notice:', err?.message));
     pushLog(`Adicionou biquíni: ${b.model} (${b.colorName} / ${b.size})`);
   };
 
@@ -356,7 +361,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     );
 
     const updated = [...bikinis, ...newVariations];
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
+    setBikinis(updated);
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Model sync notice:', err?.message));
     pushLog(`Criou novo modelo de biquíni: ${cleanName}`);
   };
 
@@ -366,7 +372,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     if (!item) return;
     const newStock = Math.max(0, item.stock + delta);
     const updated = bikinis.map(b => b.id === id ? { ...b, stock: newStock } : b);
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
+    setBikinis(updated);
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Stock update notice:', err?.message));
     pushLog(`Alterou estoque de ${item.model} (${item.colorName} / ${item.size}): ${item.stock} para ${newStock} (${delta > 0 ? '+' : ''}${delta})`);
   };
 
@@ -376,7 +383,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     if (!item) return;
     const targetStock = Math.max(0, stock);
     const updated = bikinis.map(b => b.id === id ? { ...b, stock: targetStock } : b);
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
+    setBikinis(updated);
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Set stock notice:', err?.message));
     pushLog(`Definiu o estoque de ${item.model} (${item.colorName} / ${item.size}) de ${item.stock} para ${targetStock}`);
   };
 
@@ -385,7 +393,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     const item = bikinis.find(b => b.id === id);
     if (!item) return;
     const updated = bikinis.map(b => b.id === id ? { ...b, dividedStock } : b);
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
+    setBikinis(updated);
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Divided stock notice:', err?.message));
     pushLog(`Dividiu lote de ${item.model} (${item.colorName} / ${item.size})`);
   };
 
@@ -394,7 +403,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     const item = bikinis.find(b => b.id === id);
     if (!item) return;
     const updated = bikinis.filter(b => b.id !== id);
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
+    setBikinis(updated);
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Remove bikini notice:', err?.message));
     pushLog(`Removeu biquíni: ${item.model} (${item.colorName} / ${item.size})`);
   };
 
@@ -402,16 +412,20 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     if (isReadOnly) return;
     const cleanName = modelName.trim().toUpperCase();
     const updated = bikinis.filter(b => b.model.toUpperCase() !== cleanName);
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
+    setBikinis(updated);
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Remove model notice:', err?.message));
     pushLog(`Removeu o modelo de biquíni: ${cleanName}`);
   };
 
   const addThread = (t: Omit<Thread, 'id'>) => {
     if (isReadOnly) return;
+    
     const newThread = { ...t, id: Math.random().toString(36).substr(2, 9) };
     const updated = [...threads, newThread];
-    set(ref(rtdb, 'inventory/threads'), cleanData(updated));
-    pushLog(`Adicionou insumo: ${t.name} (${t.colorName})`);
+
+    setThreads(updated);
+    set(ref(rtdb, 'inventory/threads'), cleanData(updated)).catch(err => console.warn('Add thread notice:', err?.message));
+    pushLog(`Adicionou insumo: ${t.name} (${t.colorName}${t.colorCode ? ` - Nº/Cód: ${t.colorCode}` : ''})`);
   };
 
   const updateThreadStock = (id: string, delta: number) => {
@@ -420,7 +434,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     if (!item) return;
     const newStock = Math.max(0, item.stock + delta);
     const updated = threads.map(t => t.id === id ? { ...t, stock: newStock } : t);
-    set(ref(rtdb, 'inventory/threads'), cleanData(updated));
+    setThreads(updated);
+    set(ref(rtdb, 'inventory/threads'), cleanData(updated)).catch(err => console.warn('Thread stock notice:', err?.message));
     pushLog(`Alterou estoque de ${item.name} (${item.colorName}): ${item.stock} para ${newStock} (${delta > 0 ? '+' : ''}${delta})`);
   };
 
@@ -430,8 +445,26 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     if (!item) return;
     const targetStock = Math.max(0, stock);
     const updated = threads.map(t => t.id === id ? { ...t, stock: targetStock } : t);
-    set(ref(rtdb, 'inventory/threads'), cleanData(updated));
+    setThreads(updated);
+    set(ref(rtdb, 'inventory/threads'), cleanData(updated)).catch(err => console.warn('Set thread stock notice:', err?.message));
     pushLog(`Definiu o estoque de ${item.name} (${item.colorName}) de ${item.stock} para ${targetStock}`);
+  };
+
+  const updateThreadColorCode = (idOrColorName: string, colorCode: string) => {
+    if (isReadOnly) return;
+    const hasExactId = threads.some(t => t.id === idOrColorName);
+    const updated = threads.map(t => {
+      if (hasExactId) {
+        return t.id === idOrColorName ? { ...t, colorCode: colorCode } : t;
+      }
+      if (t.colorName.toLowerCase() === idOrColorName.toLowerCase()) {
+        return { ...t, colorCode: colorCode };
+      }
+      return t;
+    });
+    setThreads(updated);
+    set(ref(rtdb, 'inventory/threads'), cleanData(updated)).catch(err => console.warn('Thread color code notice:', err?.message));
+    pushLog(`Atualizou código/número: ${colorCode}`);
   };
 
   const removeThread = (id: string) => {
@@ -439,7 +472,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     const item = threads.find(t => t.id === id);
     if (!item) return;
     const updated = threads.filter(b => b.id !== id);
-    set(ref(rtdb, 'inventory/threads'), cleanData(updated));
+    setThreads(updated);
+    set(ref(rtdb, 'inventory/threads'), cleanData(updated)).catch(err => console.warn('Remove thread notice:', err?.message));
     pushLog(`Removeu insumo: ${item.name} (${item.colorName})`);
   };
 
@@ -458,11 +492,15 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       return item ? { ...t, stock: Math.max(0, t.stock - item.quantity) } : t;
     });
 
+    setSales(updatedSales);
+    setBikinis(updatedBikinis);
+    setThreads(updatedThreads);
+
     update(ref(rtdb, 'inventory'), cleanData({
       sales: updatedSales,
       bikinis: updatedBikinis,
       threads: updatedThreads
-    }));
+    })).catch(err => console.warn('Register sale notice:', err?.message));
     pushLog(`Vendeu ${s.items.reduce((acc, current) => acc + current.quantity, 0)} itens - R$ ${s.total.toFixed(2)}`);
   };
 
@@ -505,7 +543,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     <InventoryContext.Provider value={{
       bikinis, threads, sales, users, logs, currentUser,
       addBikini, addBikiniModel, updateBikiniStock, setBikiniStock, updateBikiniDividedStock, removeBikini, removeBikiniModel,
-      addThread, updateThreadStock, setThreadStock, removeThread,
+      addThread, updateThreadStock, setThreadStock, updateThreadColorCode, removeThread,
       registerSale, resetAllStockToZero, lowStockItemsCount, unreadMessagesCount,
       login, logout, addUser, removeUser, isReadOnly
     }}>

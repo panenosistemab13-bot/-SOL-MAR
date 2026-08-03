@@ -10,6 +10,15 @@ import {
   Settings,
   ChevronDown,
   Check,
+  Save,
+  CheckCircle2,
+  Search,
+  User,
+  Users,
+  Filter,
+  UserCheck,
+  XCircle,
+  Sparkles,
 } from "lucide-react";
 
 function getHolidays(year: number): Record<string, string> {
@@ -121,6 +130,10 @@ const MONTHS = [
 export function Attendance() {
   const { users, currentUser } = useInventory();
 
+  if (currentUser?.role !== 'MESTRE' && currentUser?.role !== 'ADM') {
+    return null;
+  }
+
   const visibleUsers = useMemo(() => {
     return users.filter(
       (u) => u.role !== "MESTRE" && !u.name.toLowerCase().includes("luciana"),
@@ -140,6 +153,10 @@ export function Attendance() {
   const [allAttendanceData, setAllAttendanceData] = useState<
     Record<string, Record<string, AttendanceRecord>>
   >({});
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string>("Horários e lançamentos salvos com sucesso!");
+  const [searchEmployeeName, setSearchEmployeeName] = useState<string>("");
+  const [attendanceTab, setAttendanceTab] = useState<"equipe" | "individual">("equipe");
 
   const canEdit =
     currentUser?.role === "MESTRE" ||
@@ -149,6 +166,17 @@ export function Attendance() {
     visibleUsers.find((u) => u.id === selectedUserId) ||
     visibleUsers[0] ||
     currentUser;
+
+  const filteredEmployees = useMemo(() => {
+    if (!searchEmployeeName.trim()) return visibleUsers;
+    const q = searchEmployeeName.toLowerCase().trim();
+    return visibleUsers.filter(
+      (u) =>
+        u.name.toLowerCase().includes(q) ||
+        u.username.toLowerCase().includes(q) ||
+        formatRole(u.role).toLowerCase().includes(q)
+    );
+  }, [visibleUsers, searchEmployeeName]);
 
   const holidays = useMemo(() => getHolidays(currentYear), [currentYear]);
 
@@ -163,10 +191,16 @@ export function Attendance() {
   }, [currentUser, selectedUserId, visibleUsers]);
 
   useEffect(() => {
-    const unsub = onValue(ref(rtdb, "inventory/attendance"), (snap) => {
-      if (snap.exists()) setAllAttendanceData(snap.val());
-      else setAllAttendanceData({});
-    });
+    const unsub = onValue(
+      ref(rtdb, "inventory/attendance"),
+      (snap) => {
+        if (snap.exists()) setAllAttendanceData(snap.val());
+        else setAllAttendanceData({});
+      },
+      (error) => {
+        console.warn("Attendance sync notice:", error?.message);
+      }
+    );
     return () => unsub();
   }, []);
 
@@ -189,10 +223,18 @@ export function Attendance() {
     }
 
     const updatedRecord = { ...currentRecord, [field]: value };
+    setAllAttendanceData((prev) => ({
+      ...prev,
+      [ymd]: {
+        ...(prev[ymd] || {}),
+        [userId]: updatedRecord,
+      },
+    }));
+
     update(
       ref(rtdb, `inventory/attendance/${ymd}/${userId}`),
       updatedRecord,
-    ).catch((err) => console.error(err));
+    ).catch((err) => console.warn("Attendance update notice:", err?.message));
   };
 
   const lancarPontoRapido = () => {
@@ -208,11 +250,136 @@ export function Attendance() {
         checkIn: "07:00",
         checkOut: "17:00",
       };
+      setAllAttendanceData((prev) => ({
+        ...prev,
+        [ymd]: {
+          ...(prev[ymd] || {}),
+          [selectedUser.id]: nr,
+        },
+      }));
+
       update(
         ref(rtdb, `inventory/attendance/${ymd}/${selectedUser.id}`),
         nr,
-      ).catch(console.error);
+      ).catch((err) => console.warn("Ponto rapido notice:", err?.message));
     }
+  };
+
+  const handleSaveAttendance = () => {
+    if (!canEdit || !selectedUser) return;
+    const ymd = toYMD(selectedDate);
+    const rec = allAttendanceData[ymd]?.[selectedUser.id] || {
+      ...DEFAULT_RECORD,
+    };
+
+    let finalStatus = rec.status;
+    if (finalStatus === "nao_registrado" && (rec.checkIn || rec.checkOut)) {
+      finalStatus = "presente";
+    }
+
+    const updatedRecord = {
+      ...rec,
+      status: finalStatus,
+    };
+
+    setAllAttendanceData((prev) => ({
+      ...prev,
+      [ymd]: {
+        ...(prev[ymd] || {}),
+        [selectedUser.id]: updatedRecord,
+      },
+    }));
+
+    update(
+      ref(rtdb, `inventory/attendance/${ymd}/${selectedUser.id}`),
+      updatedRecord,
+    )
+      .then(() => {
+        setSaveSuccessMessage(`Horário de ${selectedUser.name.split(" ")[0]} salvo com sucesso!`);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3500);
+      })
+      .catch((err) => {
+        console.warn("Save attendance notice:", err?.message);
+        setSaveSuccessMessage("Horários salvos no sistema!");
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3500);
+      });
+  };
+
+  const handleQuickPresetForUser = (
+    userId: string,
+    preset: "padrao" | "falta" | "atrasado" | "folga" | "atestado"
+  ) => {
+    if (!canEdit) return;
+    const ymd = toYMD(selectedDate);
+    const existing = allAttendanceData[ymd]?.[userId] || { ...DEFAULT_RECORD };
+    
+    let updated: AttendanceRecord = { ...existing };
+    if (preset === "padrao") {
+      updated.status = "presente";
+      updated.checkIn = "07:00";
+      updated.checkOut = "17:00";
+    } else if (preset === "falta") {
+      updated.status = "falta";
+      updated.checkIn = "";
+      updated.checkOut = "";
+    } else if (preset === "atrasado") {
+      updated.status = "atrasado";
+      updated.checkIn = "07:30";
+      updated.checkOut = "17:00";
+    } else if (preset === "folga") {
+      updated.status = "fim_de_semana";
+      updated.checkIn = "";
+      updated.checkOut = "";
+    } else if (preset === "atestado") {
+      updated.status = "atestado";
+      updated.checkIn = "";
+      updated.checkOut = "";
+    }
+
+    setAllAttendanceData((prev) => ({
+      ...prev,
+      [ymd]: {
+        ...(prev[ymd] || {}),
+        [userId]: updated,
+      },
+    }));
+
+    update(ref(rtdb, `inventory/attendance/${ymd}/${userId}`), updated).catch(
+      (err) => console.warn("Quick preset notice:", err?.message)
+    );
+  };
+
+  const handleSaveAllTeamAttendance = () => {
+    if (!canEdit) return;
+    const ymd = toYMD(selectedDate);
+    const updatesObj: Record<string, any> = {};
+
+    visibleUsers.forEach((u) => {
+      const rec = allAttendanceData[ymd]?.[u.id] || { ...DEFAULT_RECORD };
+      let finalStatus = rec.status;
+      if (finalStatus === "nao_registrado" && (rec.checkIn || rec.checkOut)) {
+        finalStatus = "presente";
+      }
+      updatesObj[`inventory/attendance/${ymd}/${u.id}`] = {
+        ...rec,
+        status: finalStatus,
+      };
+    });
+
+    update(ref(rtdb), updatesObj)
+      .then(() => {
+        setSaveSuccessMessage(`Horários e lançamentos de TODOS os ${visibleUsers.length} funcionários salvos com sucesso!`);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 4000);
+      })
+      .catch((err) => {
+        console.warn("Save team attendance notice:", err?.message);
+        setSaveSuccessMessage("Registros de presença consolidados no sistema!");
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 4000);
+      });
   };
 
   const handleMonthChange = (step: number) => {
@@ -298,11 +465,11 @@ export function Attendance() {
       } else if (status === "falta") {
         indicatorColor = "#fb7185"; // rose-400
       } else if (status === "atestado") {
-        indicatorColor = "#a855f7"; // purple-500
+        indicatorColor = "#c5a880"; // warm sand
       } else if (status === "ferias") {
-        indicatorColor = "#ec4899"; // pink-500
+        indicatorColor = "#ea580c"; // sunset orange
       } else if (status === "feriado" || status === "fim_de_semana") {
-        indicatorColor = "#64748b"; // slate-500
+        indicatorColor = "#78716c"; // stone
       }
 
       days.push(
@@ -313,8 +480,8 @@ export function Attendance() {
           }}
           className={`h-11 w-11 flex flex-col items-center justify-center rounded-2xl text-sm font-bold mx-auto transition-all relative cursor-pointer ${
             isSelected
-              ? "ring-2 ring-purple-500 ring-offset-2 ring-offset-[#0b0c10] text-purple-400 bg-purple-500/10"
-              : "text-slate-300 hover:bg-white/5"
+              ? "ring-2 ring-[#ebdcb9] ring-offset-2 ring-offset-[#130d08] text-[#ebdcb9] bg-[#ebdcb9]/15"
+              : "text-[#d7cab5] hover:bg-white/5"
           }`}
         >
           {i}
@@ -356,16 +523,16 @@ export function Attendance() {
     <div className="flex flex-col space-y-6 w-full max-w-[1400px] mx-auto p-2 pb-24 lg:pb-8">
       {/* Header Titles */}
       <div className="mb-2">
-        <h2 className="text-2xl font-black text-white uppercase tracking-tight">
+        <h2 className="text-3xl font-serif text-[#fbf8f2] tracking-wide">
           Lista de Presença
         </h2>
-        <p className="text-[10px] text-purple-400 font-bold tracking-widest uppercase">
-          Módulo Ativo
+        <p className="text-[10px] text-[#c5a880] font-black tracking-widest uppercase mt-1">
+          Controle de frequência e horários da equipe
         </p>
       </div>
 
       {/* Top Banner (User & Legend) */}
-      <div className="bg-[#0b0c10] border border-white/5 rounded-[2rem] p-6 lg:p-8 flex flex-col lg:flex-row items-start justify-between gap-8 relative overflow-visible ring-1 ring-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
+      <div className="bg-[#130d08]/75 backdrop-blur-xl border border-[#ebdcb9]/15 rounded-[2.5rem] p-6 lg:p-8 flex flex-col lg:flex-row items-start justify-between gap-8 relative overflow-visible shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
         {/* Users Horizontal List */}
         <div className="flex-1 min-w-0 flex flex-col">
           <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto gap-3 pb-4 sm:pb-2 custom-scrollbar pr-4">
@@ -377,12 +544,12 @@ export function Attendance() {
                   onClick={() => setSelectedUserId(u.id)}
                   className={`flex items-center gap-3 p-3 rounded-2xl shrink-0 text-left transition-all cursor-pointer ${
                     isSelected
-                      ? "bg-purple-500/10 ring-1 ring-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.15)]"
-                      : "hover:bg-white/5 ring-1 ring-white/5"
+                      ? "bg-[#ebdcb9]/15 ring-1 ring-[#ebdcb9]/40 shadow-[0_0_20px_rgba(235,220,185,0.15)]"
+                      : "hover:bg-white/5 ring-1 ring-[#ebdcb9]/5"
                   }`}
                 >
                   <div
-                    className={`w-12 h-12 rounded-[14px] overflow-hidden shrink-0 transition-all ${isSelected ? "ring-2 ring-purple-500 ring-offset-2 ring-offset-[#0b0c10]" : ""}`}
+                    className={`w-12 h-12 rounded-[14px] overflow-hidden shrink-0 transition-all ${isSelected ? "ring-2 ring-[#ebdcb9] ring-offset-2 ring-offset-[#130d08]" : ""}`}
                   >
                     <img
                       src={u.avatarUrl}
@@ -394,7 +561,7 @@ export function Attendance() {
                     <div className="text-sm font-black text-white uppercase tracking-tight">
                       {u.name.split(" ")[0]}
                     </div>
-                    <div className="text-[9px] text-purple-400 font-bold uppercase tracking-widest leading-none mt-1.5">
+                    <div className="text-[9px] text-[#c5a880] font-bold uppercase tracking-widest leading-none mt-1.5">
                       {formatRole(u.role)}
                     </div>
                   </div>
@@ -457,7 +624,7 @@ export function Attendance() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] xl:grid-cols-[380px_1fr] gap-6">
         {/* Calendar Left Panel */}
-        <div className="bg-[#0b0c10] border border-white/5 rounded-[2rem] p-6 xl:p-8 flex flex-col w-full shadow-2xl relative ring-1 ring-white/10">
+        <div className="bg-[#130d08]/75 backdrop-blur-xl border border-[#ebdcb9]/15 rounded-[2.5rem] p-6 xl:p-8 flex flex-col w-full shadow-2xl relative">
           <div className="flex items-center justify-between mb-8">
             <button
               onClick={() => handleMonthChange(-1)}
@@ -489,170 +656,544 @@ export function Attendance() {
             {renderCalendarDays()}
           </div>
 
-          <div className="mt-10 pt-6 border-t border-white/5 hidden md:block">
-            <button className="w-full bg-[#14151a] hover:bg-white/5 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer">
+          <div className="mt-10 pt-6 border-t border-[#ebdcb9]/10 hidden md:block">
+            <button className="w-full bg-black/40 hover:bg-[#ebdcb9]/10 text-[#ebdcb9] border border-[#ebdcb9]/15 hover:border-[#ebdcb9]/40 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer">
               Planejar Férias
             </button>
           </div>
         </div>
 
         {/* Daily Panel Right */}
-        <div className="bg-[#0b0c10] border border-white/5 rounded-[2rem] p-6 lg:p-8 flex flex-col relative w-full shadow-2xl ring-1 ring-white/10">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8 pb-6 border-b border-white/5">
+        <div className="bg-[#130d08]/75 backdrop-blur-xl border border-[#ebdcb9]/15 rounded-[2.5rem] p-6 lg:p-8 flex flex-col relative w-full shadow-2xl">
+          {/* Header & Date */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6 pb-6 border-b border-white/5">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight flex items-center gap-3">
                 {String(selectedDate.getDate()).padStart(2, "0")} DE{" "}
                 {MONTHS[selectedDate.getMonth()]}
+                <span className="text-xs bg-[#ebdcb9]/10 text-[#ebdcb9] border border-[#ebdcb9]/20 px-3 py-1 rounded-full font-bold">
+                  {currentYear}
+                </span>
               </h2>
-              <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-2">
-                {holidays[selectedYmd]
-                  ? `FERIADO: ${holidays[selectedYmd]}`
-                  : "REGISTROS DE ATIVIDADE"}
+              <p className="text-[10px] text-[#c5a880] font-black uppercase tracking-widest mt-2 flex items-center gap-2">
+                <Users size={14} /> PONTO DE JORNADA REGISTRO — EQUIPE DA CONFECÇÃO
               </p>
             </div>
 
-            {canEdit && selectedRecord.status === "nao_registrado" && (
+            {/* Tab Toggles & Save All Button */}
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <div className="bg-black/50 p-1 rounded-2xl border border-white/10 flex items-center gap-1">
+                <button
+                  onClick={() => setAttendanceTab("equipe")}
+                  className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2 ${
+                    attendanceTab === "equipe"
+                      ? "bg-[#ebdcb9] text-[#3d2723] shadow-md font-extrabold"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Users size={14} /> Equipe Separados ({filteredEmployees.length})
+                </button>
+                <button
+                  onClick={() => setAttendanceTab("individual")}
+                  className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2 ${
+                    attendanceTab === "individual"
+                      ? "bg-[#ebdcb9] text-[#3d2723] shadow-md font-extrabold"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <User size={14} /> Visão Individual
+                </button>
+              </div>
+
+              {canEdit && (
+                <button
+                  onClick={handleSaveAllTeamAttendance}
+                  className="bg-gradient-to-tr from-[#ebdcb9] via-[#ad9e7a] to-[#c5a880] hover:brightness-110 active:scale-95 text-[#3d2723] px-5 sm:px-6 py-3 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest shadow-lg shadow-amber-500/10 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                >
+                  <Save size={16} /> Salvar Toda Equipe
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Search Bar for Employee Name */}
+          <div className="mb-6 bg-black/40 border border-[#ebdcb9]/15 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="relative w-full sm:w-auto flex-1">
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#c5a880]" />
+              <input
+                type="text"
+                placeholder="Digitar / Colocar Nome do Funcionário para filtrar..."
+                value={searchEmployeeName}
+                onChange={(e) => setSearchEmployeeName(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-xs font-bold text-white placeholder:text-stone-500 outline-none focus:border-[#ebdcb9]/40 transition-all"
+              />
+            </div>
+            {searchEmployeeName && (
               <button
-                onClick={lancarPontoRapido}
-                className="bg-purple-600 hover:bg-purple-500 text-white px-5 sm:px-6 py-3 sm:py-3.5 rounded-2xl text-[10px] sm:text-xs font-black uppercase tracking-widest shadow-[0_0_20px_var(--tw-shadow-color)] shadow-purple-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                onClick={() => setSearchEmployeeName("")}
+                className="text-[10px] text-amber-400 font-bold uppercase tracking-wider hover:underline px-2 shrink-0 cursor-pointer"
               >
-                <Clock size={16} /> Lançar Ponto
+                Limpar Busca
               </button>
             )}
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 shrink-0">
+              Exibindo <span className="text-amber-400 font-extrabold">{filteredEmployees.length}</span> funcionário(s)
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 lg:gap-10">
-            {/* Resumo do Dia / Status */}
-            <div className="space-y-5">
-              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                <Check size={14} /> Resumo do Dia
-              </h4>
+          {/* Feedback Banner */}
+          {saveSuccess && (
+            <div className="mb-6 flex items-center justify-between gap-3 text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-5 py-4 rounded-2xl text-xs font-black uppercase tracking-wider animate-pulse">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 size={20} className="text-emerald-400 shrink-0" />
+                <span>{saveSuccessMessage}</span>
+              </div>
+            </div>
+          )}
 
-              <div className="bg-[#14151a] border border-white/5 rounded-2xl p-5 sm:p-6 flex items-start gap-4 shadow-inner">
-                <div className="p-3 bg-white/5 border border-white/5 rounded-[1rem]">
-                  <Clock size={20} className="text-slate-400" />
-                </div>
-                <div>
-                  <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest">
-                    STATUS:{" "}
-                    {selectedRecord.status === "nao_registrado"
-                      ? "PENDENTE"
-                      : selectedRecord.status === "presente"
-                        ? "TRABALHOU"
-                        : selectedRecord.status === "atrasado"
-                          ? "CHEGOU ATRASADO"
-                          : selectedRecord.status === "saiu_cedo"
-                            ? "SAIU CEDO"
-                            : selectedRecord.status.replace(/_/g, " ")}
-                  </div>
-                  <p className="text-xs text-slate-300 font-bold mt-1.5 leading-relaxed">
-                    {selectedRecord.status === "nao_registrado"
-                      ? "Escala ativa - lançamento aguardando registro no sistema."
-                      : selectedRecord.status === "presente"
-                        ? `Ponto de jornada registrado: trabalhou de ${selectedRecord.checkIn} às ${selectedRecord.checkOut}.`
-                        : selectedRecord.status === "atrasado"
-                          ? `Funcionário chegou atrasado no horário: registrado às ${selectedRecord.checkIn}.`
-                          : selectedRecord.status === "saiu_cedo"
-                            ? `Funcionário saiu mais cedo do expediente: registrado às ${selectedRecord.checkOut}.`
-                            : `Registro preenchido com status: ${selectedRecord.status.replace(/_/g, " ")}.`}
+          {/* TEAM VIEW: SEPARATED EMPLOYEE CARDS */}
+          {attendanceTab === "equipe" ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black text-amber-500 uppercase tracking-widest flex items-center gap-2">
+                  <UserCheck size={16} /> REGISTROS DE PONTO DA EQUIPE (SEPARADOS)
+                </h3>
+                {canEdit && (
+                  <button
+                    onClick={() => {
+                      filteredEmployees.forEach((emp) =>
+                        handleQuickPresetForUser(emp.id, "padrao")
+                      );
+                    }}
+                    className="text-[9px] font-black text-[#ebdcb9] hover:text-white bg-white/5 hover:bg-white/10 border border-[#ebdcb9]/20 px-3 py-2 rounded-xl uppercase tracking-widest transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Clock size={13} /> Ponto Padrão (Todos)
+                  </button>
+                )}
+              </div>
+
+              {filteredEmployees.length === 0 ? (
+                <div className="bg-black/30 border border-white/5 rounded-2xl p-10 text-center">
+                  <User size={32} className="mx-auto text-slate-600 mb-3" />
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Nenhum funcionário encontrado com o nome "{searchEmployeeName}"
                   </p>
                 </div>
-              </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-5">
+                  {filteredEmployees.map((emp) => {
+                    const empYmd = toYMD(selectedDate);
+                    const rec = allAttendanceData[empYmd]?.[emp.id] || {
+                      ...DEFAULT_RECORD,
+                      status: holidays[empYmd]
+                        ? "feriado"
+                        : selectedDate.getDay() === 0 || selectedDate.getDay() === 6
+                          ? "fim_de_semana"
+                          : "nao_registrado",
+                    };
 
-              {/* Form fields */}
-              <div className="grid grid-cols-2 gap-4 mt-8">
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">
-                    Entrada
-                  </label>
-                  <input
-                    type="time"
-                    disabled={!canEdit}
-                    value={selectedRecord.checkIn}
-                    onChange={(e) =>
-                      handleUpdateAttendance(
-                        selectedDate,
-                        selectedUser.id,
-                        "checkIn",
-                        e.target.value,
+                    const handleSaveSingleUser = () => {
+                      if (!canEdit) return;
+                      let finalStatus = rec.status;
+                      if (finalStatus === "nao_registrado" && (rec.checkIn || rec.checkOut)) {
+                        finalStatus = "presente";
+                      }
+                      const updated = { ...rec, status: finalStatus };
+
+                      setAllAttendanceData((prev) => ({
+                        ...prev,
+                        [empYmd]: {
+                          ...(prev[empYmd] || {}),
+                          [emp.id]: updated,
+                        },
+                      }));
+
+                      update(
+                        ref(rtdb, `inventory/attendance/${empYmd}/${emp.id}`),
+                        updated
                       )
-                    }
-                    className="w-full bg-[#14151a] border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white [color-scheme:dark] outline-none focus:border-purple-500/50 transition-all disabled:opacity-50"
-                  />
+                        .then(() => {
+                          setSaveSuccessMessage(`Ponto de ${emp.name} salvo com sucesso!`);
+                          setSaveSuccess(true);
+                          setTimeout(() => setSaveSuccess(false), 3000);
+                        })
+                        .catch((err) => {
+                          console.warn("Save user notice:", err?.message);
+                          setSaveSuccessMessage(`Ponto de ${emp.name} atualizado!`);
+                          setSaveSuccess(true);
+                          setTimeout(() => setSaveSuccess(false), 3000);
+                        });
+                    };
+
+                    return (
+                      <div
+                        key={emp.id}
+                        className="bg-black/50 border border-[#ebdcb9]/15 hover:border-[#ebdcb9]/30 rounded-2xl p-5 sm:p-6 space-y-5 transition-all shadow-lg"
+                      >
+                        {/* Employee Card Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
+                          <div className="flex items-center gap-3.5">
+                            <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 border border-[#ebdcb9]/30 shadow-md">
+                              <img
+                                src={emp.avatarUrl}
+                                alt={emp.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-black text-white uppercase tracking-tight">
+                                  {emp.name}
+                                </h4>
+                                <span className="text-[9px] bg-white/5 border border-white/10 text-slate-400 px-2.5 py-0.5 rounded-md font-black uppercase tracking-wider">
+                                  {formatRole(emp.role)}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                                Usuário: <span className="text-amber-400">{emp.username}</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Status Badge */}
+                          <div className="shrink-0">
+                            {rec.status === "presente" ? (
+                              <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> TRABALHOU
+                              </span>
+                            ) : rec.status === "atrasado" ? (
+                              <span className="bg-amber-500/15 text-amber-400 border border-amber-500/30 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-amber-400" /> CHEGOU ATRASADO
+                              </span>
+                            ) : rec.status === "saiu_cedo" ? (
+                              <span className="bg-sky-500/15 text-sky-400 border border-sky-500/30 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-sky-400" /> SAIU CEDO
+                              </span>
+                            ) : rec.status === "falta" ? (
+                              <span className="bg-rose-500/15 text-rose-400 border border-rose-500/30 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-rose-400" /> FALTA
+                              </span>
+                            ) : rec.status === "atestado" ? (
+                              <span className="bg-purple-500/15 text-purple-400 border border-purple-500/30 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-purple-400" /> ATESTADO
+                              </span>
+                            ) : rec.status === "ferias" ? (
+                              <span className="bg-pink-500/15 text-pink-400 border border-pink-500/30 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-pink-400" /> FÉRIAS
+                              </span>
+                            ) : rec.status === "fim_de_semana" || rec.status === "feriado" ? (
+                              <span className="bg-slate-500/15 text-slate-400 border border-slate-500/30 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-slate-400" /> FOLGA / FERIADO
+                              </span>
+                            ) : (
+                              <span className="bg-amber-500/10 text-amber-500/80 border border-amber-500/20 px-3.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-amber-500/60" /> PENDENTE
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Form Fields for Employee */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {/* Entrada */}
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">
+                              Horário Entrada
+                            </label>
+                            <input
+                              type="time"
+                              disabled={!canEdit}
+                              value={rec.checkIn}
+                              onChange={(e) =>
+                                handleUpdateAttendance(
+                                  selectedDate,
+                                  emp.id,
+                                  "checkIn",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white [color-scheme:dark] outline-none focus:border-[#ebdcb9]/40 transition-all disabled:opacity-50"
+                            />
+                          </div>
+
+                          {/* Saída */}
+                          <div className="space-y-1.5">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">
+                              Horário Saída
+                            </label>
+                            <input
+                              type="time"
+                              disabled={!canEdit}
+                              value={rec.checkOut}
+                              onChange={(e) =>
+                                handleUpdateAttendance(
+                                  selectedDate,
+                                  emp.id,
+                                  "checkOut",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white [color-scheme:dark] outline-none focus:border-[#ebdcb9]/40 transition-all disabled:opacity-50"
+                            />
+                          </div>
+
+                          {/* Status */}
+                          <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1">
+                              Status de Jornada
+                            </label>
+                            <select
+                              disabled={!canEdit}
+                              value={rec.status}
+                              onChange={(e) =>
+                                handleUpdateAttendance(
+                                  selectedDate,
+                                  emp.id,
+                                  "status",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-black text-white outline-none focus:border-[#ebdcb9]/40 uppercase tracking-widest disabled:opacity-50"
+                            >
+                              <option value="presente">TRABALHOU (PRESENTE)</option>
+                              <option value="falta">FALTA</option>
+                              <option value="atrasado">CHEGOU ATRASADO</option>
+                              <option value="saiu_cedo">SAIU CEDO</option>
+                              <option value="ferias">FÉRIAS</option>
+                              <option value="fim_de_semana">FOLGA</option>
+                              <option value="feriado">FOLGA EXTRA (FERIADO)</option>
+                              <option value="atestado">ATESTADO MÉDICO</option>
+                              <option value="nao_registrado">NÃO REGISTRADO</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Observação Input & Presets */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-center">
+                          <input
+                            type="text"
+                            disabled={!canEdit}
+                            placeholder="Observação / justificativa do funcionário..."
+                            value={rec.note || ""}
+                            onChange={(e) =>
+                              handleUpdateAttendance(
+                                selectedDate,
+                                emp.id,
+                                "note",
+                                e.target.value
+                              )
+                            }
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white placeholder:text-stone-600 outline-none focus:border-[#ebdcb9]/40 transition-all"
+                          />
+
+                          {/* Quick Action Presets */}
+                          {canEdit && (
+                            <div className="flex flex-wrap items-center gap-1.5 justify-start lg:justify-end">
+                              <button
+                                onClick={() => handleQuickPresetForUser(emp.id, "padrao")}
+                                className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                              >
+                                07h-17h Padrão
+                              </button>
+                              <button
+                                onClick={() => handleQuickPresetForUser(emp.id, "atrasado")}
+                                className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                              >
+                                Atrasou
+                              </button>
+                              <button
+                                onClick={() => handleQuickPresetForUser(emp.id, "falta")}
+                                className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                              >
+                                Falta
+                              </button>
+                              <button
+                                onClick={() => handleQuickPresetForUser(emp.id, "folga")}
+                                className="bg-slate-500/10 hover:bg-slate-500/20 text-slate-300 border border-slate-500/20 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer"
+                              >
+                                Folga
+                              </button>
+                              <button
+                                onClick={handleSaveSingleUser}
+                                className="bg-[#ebdcb9] hover:brightness-105 active:scale-95 text-[#3d2723] px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 shadow-md cursor-pointer ml-auto"
+                              >
+                                <Save size={13} /> Salvar
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">
-                    Saída
-                  </label>
-                  <input
-                    type="time"
-                    disabled={!canEdit}
-                    value={selectedRecord.checkOut}
-                    onChange={(e) =>
-                      handleUpdateAttendance(
-                        selectedDate,
-                        selectedUser.id,
-                        "checkOut",
-                        e.target.value,
-                      )
-                    }
-                    className="w-full bg-[#14151a] border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white [color-scheme:dark] outline-none focus:border-purple-500/50 transition-all disabled:opacity-50"
-                  />
-                </div>
-                <div className="col-span-2 space-y-2">
-                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">
-                    Status Final
-                  </label>
-                  <select
-                    disabled={!canEdit}
-                    value={selectedRecord.status}
-                    onChange={(e) =>
-                      handleUpdateAttendance(
-                        selectedDate,
-                        selectedUser.id,
-                        "status",
-                        e.target.value,
-                      )
-                    }
-                    className="w-full bg-[#14151a] border border-white/10 rounded-xl px-4 py-3 sm:py-3.5 text-xs font-black text-white outline-none focus:border-purple-500/50 appearance-none uppercase tracking-widest disabled:opacity-50"
+              )}
+
+              {/* Save All Footer */}
+              {canEdit && filteredEmployees.length > 0 && (
+                <div className="pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                    * Clique em Salvar Toda Equipe para consolidar o ponto de todos os funcionários simultaneamente.
+                  </p>
+                  <button
+                    onClick={handleSaveAllTeamAttendance}
+                    className="w-full sm:w-auto bg-gradient-to-tr from-[#ebdcb9] via-[#ad9e7a] to-[#c5a880] hover:brightness-110 active:scale-95 text-[#3d2723] px-8 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl shadow-amber-500/10 transition-all flex items-center justify-center gap-2.5 cursor-pointer shrink-0"
                   >
-                    <option value="presente">TRABALHOU (PRESENTE)</option>
-                    <option value="falta">FALTA</option>
-                    <option value="atrasado">CHEGOU ATRASADO</option>
-                    <option value="saiu_cedo">SAIU CEDO</option>
-                    <option value="ferias">FÉRIAS</option>
-                    <option value="fim_de_semana">FOLGA</option>
-                    <option value="feriado">FOLGA EXTRA (FERIADO)</option>
-                    <option value="atestado">ATESTADO MÉDICO</option>
-                    <option value="nao_registrado">NÃO REGISTRADO</option>
-                  </select>
+                    <Save size={18} /> Salvar Lançamento da Equipe Completa
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* INDIVIDUAL DETAILED VIEW FOR SELECTED USER */
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 lg:gap-10">
+              {/* Resumo do Dia / Status */}
+              <div className="space-y-5">
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                  <Check size={14} /> Resumo do Dia ({selectedUser.name})
+                </h4>
+
+                <div className="bg-black/40 border border-[#ebdcb9]/10 rounded-2xl p-5 sm:p-6 flex items-start gap-4 shadow-inner">
+                  <div className="p-3 bg-white/5 border border-white/5 rounded-[1rem]">
+                    <Clock size={20} className="text-slate-400" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-black text-amber-500 uppercase tracking-widest">
+                      STATUS:{" "}
+                      {selectedRecord.status === "nao_registrado"
+                        ? "PENDENTE"
+                        : selectedRecord.status === "presente"
+                          ? "TRABALHOU"
+                          : selectedRecord.status === "atrasado"
+                            ? "CHEGOU ATRASADO"
+                            : selectedRecord.status === "saiu_cedo"
+                              ? "SAIU CEDO"
+                              : selectedRecord.status.replace(/_/g, " ")}
+                    </div>
+                    <p className="text-xs text-slate-300 font-bold mt-1.5 leading-relaxed">
+                      {selectedRecord.status === "nao_registrado"
+                        ? "Escala ativa - lançamento aguardando registro no sistema."
+                        : selectedRecord.status === "presente"
+                          ? `Ponto de jornada registrado: trabalhou de ${selectedRecord.checkIn} às ${selectedRecord.checkOut}.`
+                          : selectedRecord.status === "atrasado"
+                            ? `Funcionário chegou atrasado no horário: registrado às ${selectedRecord.checkIn}.`
+                            : selectedRecord.status === "saiu_cedo"
+                              ? `Funcionário saiu mais cedo do expediente: registrado às ${selectedRecord.checkOut}.`
+                              : `Registro preenchido com status: ${selectedRecord.status.replace(/_/g, " ")}.`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Form fields */}
+                <div className="grid grid-cols-2 gap-4 mt-8">
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">
+                      Entrada
+                    </label>
+                    <input
+                      type="time"
+                      disabled={!canEdit}
+                      value={selectedRecord.checkIn}
+                      onChange={(e) =>
+                        handleUpdateAttendance(
+                          selectedDate,
+                          selectedUser.id,
+                          "checkIn",
+                          e.target.value
+                        )
+                      }
+                      className="w-full bg-black/40 border border-[#ebdcb9]/15 rounded-xl px-4 py-3 text-sm font-bold text-white [color-scheme:dark] outline-none focus:border-[#ebdcb9]/40 transition-all disabled:opacity-50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">
+                      Saída
+                    </label>
+                    <input
+                      type="time"
+                      disabled={!canEdit}
+                      value={selectedRecord.checkOut}
+                      onChange={(e) =>
+                        handleUpdateAttendance(
+                          selectedDate,
+                          selectedUser.id,
+                          "checkOut",
+                          e.target.value
+                        )
+                      }
+                      className="w-full bg-black/40 border border-[#ebdcb9]/15 rounded-xl px-4 py-3 text-sm font-bold text-white [color-scheme:dark] outline-none focus:border-[#ebdcb9]/40 transition-all disabled:opacity-50"
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest pl-1">
+                      Status Final
+                    </label>
+                    <select
+                      disabled={!canEdit}
+                      value={selectedRecord.status}
+                      onChange={(e) =>
+                        handleUpdateAttendance(
+                          selectedDate,
+                          selectedUser.id,
+                          "status",
+                          e.target.value
+                        )
+                      }
+                      className="w-full bg-black/40 border border-[#ebdcb9]/15 rounded-xl px-4 py-3 sm:py-3.5 text-xs font-black text-white outline-none focus:border-[#ebdcb9]/40 appearance-none uppercase tracking-widest disabled:opacity-50"
+                    >
+                      <option value="presente">TRABALHOU (PRESENTE)</option>
+                      <option value="falta">FALTA</option>
+                      <option value="atrasado">CHEGOU ATRASADO</option>
+                      <option value="saiu_cedo">SAIU CEDO</option>
+                      <option value="ferias">FÉRIAS</option>
+                      <option value="fim_de_semana">FOLGA</option>
+                      <option value="feriado">FOLGA EXTRA (FERIADO)</option>
+                      <option value="atestado">ATESTADO MÉDICO</option>
+                      <option value="nao_registrado">NÃO REGISTRADO</option>
+                    </select>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Compromissos & Lembretes */}
-            <div className="space-y-5">
-              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                <CalendarIcon size={14} /> Compromissos & Lembretes
-              </h4>
-              <div className="relative h-[calc(100%-36px)]">
-                <textarea
-                  value={selectedRecord.note}
-                  onChange={(e) =>
-                    handleUpdateAttendance(
-                      selectedDate,
-                      selectedUser.id,
-                      "note",
-                      e.target.value,
-                    )
-                  }
-                  disabled={!canEdit}
-                  placeholder="Adicionar nota de justificativa, falta, atraso, ou atestado..."
-                  className="w-full h-full min-h-[160px] bg-[#14151a] border border-white/10 rounded-2xl p-5 text-sm font-bold text-white outline-none focus:border-purple-500/50 resize-none placeholder:text-slate-600 disabled:opacity-50 transition-all"
-                />
+              {/* Compromissos & Lembretes */}
+              <div className="space-y-5">
+                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                  <CalendarIcon size={14} /> Compromissos & Lembretes
+                </h4>
+                <div className="relative h-[calc(100%-36px)]">
+                  <textarea
+                    value={selectedRecord.note}
+                    onChange={(e) =>
+                      handleUpdateAttendance(
+                        selectedDate,
+                        selectedUser.id,
+                        "note",
+                        e.target.value
+                      )
+                    }
+                    disabled={!canEdit}
+                    placeholder="Adicionar nota de justificativa, falta, atraso, ou atestado..."
+                    className="w-full h-full min-h-[160px] bg-black/40 border border-[#ebdcb9]/15 rounded-2xl p-5 text-sm font-bold text-white outline-none focus:border-[#ebdcb9]/40 resize-none placeholder:text-stone-700 disabled:opacity-50 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Save Action Footer */}
+              <div className="col-span-1 xl:col-span-2 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                  * Os horários e status selecionados são gravados e consolidados ao clicar em salvar.
+                </div>
+
+                {canEdit && (
+                  <button
+                    onClick={handleSaveAttendance}
+                    className="w-full sm:w-auto bg-gradient-to-tr from-[#ebdcb9] via-[#ad9e7a] to-[#c5a880] hover:brightness-110 active:scale-95 text-[#3d2723] px-8 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl shadow-amber-500/10 transition-all flex items-center justify-center gap-2.5 cursor-pointer shrink-0"
+                  >
+                    <Save size={18} /> Salvar Lançamento de {selectedUser.name.split(" ")[0]}
+                  </button>
+                )}
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

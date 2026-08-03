@@ -15,6 +15,10 @@ const AVATARS = [
 export function Configuracoes() {
   const { users, logs, currentUser, addUser, removeUser, resetAllStockToZero, logout } = useInventory();
   
+  if (currentUser?.role === 'FUNCIONARIO_B') {
+    return null;
+  }
+  
   // States for adding user
   const [newUsername, setNewUsername] = useState('');
   const [newName, setNewName] = useState('');
@@ -161,22 +165,22 @@ export function Configuracoes() {
   });
 
   return (
-    <div className="relative rounded-[2.5rem] overflow-hidden border border-white/10 bg-slate-950/80 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] text-white p-6 md:p-8 space-y-8 min-h-[600px]">
+    <div className="relative rounded-[2.5rem] overflow-hidden border border-[#ebdcb9]/15 bg-[#130d08]/75 backdrop-blur-xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] text-white p-6 md:p-8 space-y-8 min-h-[600px]">
       
       {/* Ocean twilight ambiance */}
       <div 
-        className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center tracking-normal opacity-10 mix-blend-overlay pointer-events-none"
+        className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center tracking-normal opacity-[0.05] mix-blend-overlay pointer-events-none"
       />
-      <div className="absolute top-0 right-1/4 w-[400px] h-[350px] bg-purple-500/10 blur-[130px] rounded-full pointer-events-none -translate-y-20" />
+      <div className="absolute top-0 right-1/4 w-[400px] h-[350px] bg-[#ebdcb9]/5 blur-[130px] rounded-full pointer-events-none -translate-y-20" />
 
       {/* Configurations Page Header */}
-      <div className="relative bg-gradient-to-r from-purple-500/10 via-pink-500/5 to-slate-950/40 rounded-[2.2rem] border border-white/5 p-6 md:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 backdrop-blur-xl shrink-0">
+      <div className="relative bg-gradient-to-r from-[#ebdcb9]/10 via-[#c5a880]/5 to-black/40 rounded-[2.2rem] border border-white/5 p-6 md:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 backdrop-blur-xl shrink-0">
         <div>
-          <span className="text-[10px] font-black tracking-[0.25em] text-purple-400 uppercase bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/20 shadow-sm inline-flex items-center gap-1.5 leading-none">
+          <span className="text-[10px] font-black tracking-[0.25em] text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-2.5 py-1 rounded-full border border-[#ebdcb9]/20 shadow-sm inline-flex items-center gap-1.5 leading-none">
             🛡️ SISTEMA DE PERMISSÕES
           </span>
-          <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-purple-200 tracking-tight mt-2.5">
-            Configurações e Usuários
+          <h2 className="text-3xl font-serif text-[#fbf8f2] tracking-wide mt-2.5">
+            Painel de Configurações
           </h2>
           <p className="text-slate-400 text-xs mt-1.5">Gerenciador de acessos, perfis, senhas e integridade do banco de dados.</p>
         </div>
@@ -210,7 +214,7 @@ export function Configuracoes() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left column: Add User Form */}
-        <div className="lg:col-span-1 rounded-[2.2rem] border border-white/10 bg-slate-900/40 p-6 backdrop-blur-xl relative flex flex-col justify-between">
+        <div className="lg:col-span-1 rounded-[2.2rem] border border-[#ebdcb9]/15 bg-black/20 p-6 backdrop-blur-xl relative flex flex-col justify-between">
           <div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2 border-b border-white/5 pb-3">
               <UserPlus className="w-5 h-5 text-purple-400 animate-pulse" />

@@ -45,6 +45,7 @@ export interface Thread {
   name: string;
   colorName: string;
   colorHex: string;
+  colorCode?: string;
   stock: number;
   minStockAlert: number;
 }

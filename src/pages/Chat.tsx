@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useInventory } from '../context/InventoryContext';
 import { rtdb } from '../lib/firebase';
 import { ref, onValue, push, set, update } from 'firebase/database';
-import { Send, MessageSquare, Shield, Lock, Eye, CheckCheck, Sparkles, User, Bell, Users, Trash, Pin } from 'lucide-react';
+import { Send, MessageSquare, Shield, CheckCheck, Sparkles, Users, Trash, Pin, Bell } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -35,7 +35,7 @@ export function Chat() {
                    currentUser?.role === 'ADM' || 
                    currentUser?.role === 'LIDER';
 
-  // 1. Escutar mensagens do Firebase em tempo real e remover automaticamente as com mais de 3 dias
+  // 1. Escutar mensagens do Firebase em tempo real
   useEffect(() => {
     const chatRef = ref(rtdb, 'chat/messages');
     setIsLoading(true);
@@ -47,7 +47,6 @@ export function Chat() {
         const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
         const expiredIds: string[] = [];
 
-        // Converte objeto em array e filtra mensagens com menos de 3 dias de envio
         const loadedMessages: ChatMessage[] = Object.entries(data).map(([key, val]: [string, any]) => ({
           id: key,
           ...val
@@ -63,7 +62,6 @@ export function Chat() {
           return true;
         });
 
-        // Ordenação: primeiro os fixados, depois por data de envio (mais antigo primeiro, simulando chat)
         loadedMessages.sort((a, b) => {
           if (a.pinned && !b.pinned) return -1;
           if (!a.pinned && b.pinned) return 1;
@@ -72,7 +70,6 @@ export function Chat() {
 
         setMessages(loadedMessages);
 
-        // Se houver mensagens expiradas, remove-as definitivamente do banco de dados Firebase
         if (expiredIds.length > 0 && !isReadOnly) {
           expiredIds.forEach(id => {
             const expiredRef = ref(rtdb, `chat/messages/${id}`);
@@ -83,12 +80,14 @@ export function Chat() {
         setMessages([]);
       }
       setIsLoading(false);
+    }, (error) => {
+      console.warn("Chat sync notice:", error?.message);
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, [isReadOnly]);
 
-  // 2. Rolar para o final do chat quando houver novas mensagens
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -99,12 +98,11 @@ export function Chat() {
     }
   }, [messages]);
 
-  // 3. Marcar mensagens como visualizadas pelo usuário atual
+  // 3. Marcar mensagens como visualizadas
   useEffect(() => {
     if (!currentUser || messages.length === 0) return;
 
     messages.forEach((msg) => {
-      // Se eu ainda não visualizei a mensagem (não está listada no objeto 'views')
       if (!msg.views || !msg.views[currentUser.username]) {
         const viewRef = ref(rtdb, `chat/messages/${msg.id}/views/${currentUser.username}`);
         set(viewRef, {
@@ -115,7 +113,6 @@ export function Chat() {
     });
   }, [messages, currentUser]);
 
-  // 4. Enviar mensagem para o Firebase (Qualquer usuário logado pode enviar agora)
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentUser || isReadOnly) return;
@@ -138,7 +135,6 @@ export function Chat() {
       }
     };
 
-    // Mestre, ADM e Líder podem definir urgência e fixado ao criar
     if (isWriter) {
       if (urgency !== 'comum') {
         messagePayload.urgency = urgency;
@@ -159,7 +155,6 @@ export function Chat() {
       });
   };
 
-  // 5. Apagar mensagem (somente o MESTRE pode fazer isso)
   const handleDeleteMessage = (msgId: string, senderId: string) => {
     if (isReadOnly) return;
     const canDelete = currentUser?.role === 'MESTRE';
@@ -171,7 +166,6 @@ export function Chat() {
     }
   };
 
-  // 6. Fixar/Desafixar mensagem (somente Mestre, ADM, Líder podem fazer isso)
   const handleTogglePin = (msgId: string, currentPinned: boolean) => {
     if (isReadOnly) return;
     if (!isWriter) return;
@@ -195,7 +189,7 @@ export function Chat() {
 
   const formatRole = (role: string) => {
     if (role === 'MESTRE') return 'Mestre';
-    if (role === 'ADM') return 'Administrador';
+    if (role === 'ADM') return 'Adm';
     if (role === 'LIDER') return 'Líder';
     if (role === 'FUNCIONARIO_A') return 'Confecção A';
     if (role === 'FUNCIONARIO_B') return 'Confecção B';
@@ -203,72 +197,72 @@ export function Chat() {
   };
 
   const getRoleBadgeStyle = (role: string) => {
-    if (role === 'MESTRE') return 'bg-purple-500/15 text-purple-400 border-purple-500/25';
-    if (role === 'ADM') return 'bg-pink-500/15 text-pink-400 border-pink-500/25';
-    if (role === 'LIDER') return 'bg-amber-500/15 text-amber-400 border-amber-500/25';
-    return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+    if (role === 'MESTRE') return 'bg-[#3d2723]/30 text-[#ebdcb9] border-[#ebdcb9]/40';
+    if (role === 'ADM') return 'bg-[#ea580c]/10 text-[#ea580c] border-[#ea580c]/20';
+    if (role === 'LIDER') return 'bg-[#c5a880]/20 text-[#ebdcb9] border-[#c5a880]/30';
+    return 'bg-white/5 text-slate-300 border-white/5';
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-[#09090b]/40 backdrop-blur-3xl border border-white/5 rounded-3xl overflow-hidden relative" style={{ minHeight: 'calc(100vh - 180px)' }}>
-      {/* Radiant Background Blur */}
-      <div className="absolute top-0 right-1/4 w-80 h-80 bg-pink-500/5 blur-[100px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-sky-500/5 blur-[100px] rounded-full pointer-events-none" />
+    <div className="max-w-4xl mx-auto w-full flex flex-col bg-[#130d08]/75 backdrop-blur-2xl border border-[#ebdcb9]/15 rounded-[2rem] overflow-hidden relative shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)]" style={{ minHeight: 'calc(100vh - 200px)' }}>
+      {/* Radiant Background Blur elements to simulate high production beach look */}
+      <div className="absolute top-0 right-1/4 w-80 h-80 bg-[#c5a880]/5 blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-[#ebdcb9]/5 blur-[100px] rounded-full pointer-events-none" />
 
-      {/* Top Bar / Info panel */}
-      <div className="p-4 bg-[#0c0c0e]/80 border-b border-white/5 flex items-center justify-between z-10 flex-wrap gap-3">
+      {/* 1. Elegant Header */}
+      <div className="p-4 bg-black/40 border-b border-[#ebdcb9]/10 flex flex-col sm:flex-row items-start sm:items-center justify-between z-10 gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-500/20 to-amber-500/20 flex items-center justify-center border border-pink-500/20">
-            <Bell size={18} className="text-pink-400 animate-bounce" />
+          <div className="w-9 h-9 rounded-xl bg-[#ebdcb9]/10 flex items-center justify-center border border-[#ebdcb9]/25 shrink-0">
+            <Bell size={15} className="text-[#ebdcb9] animate-pulse" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-black text-white tracking-widest uppercase m-0 leading-none">Mural de Avisos</h2>
-              <span className="text-[9px] bg-gradient-to-r from-pink-500 to-amber-500 text-white font-black px-2 py-0.5 rounded-full uppercase tracking-wider scale-90">
+              <h2 className="text-xs font-black text-[#fbf8f2] tracking-widest uppercase m-0 leading-none">Mural de Avisos</h2>
+              <span className="text-[8px] bg-gradient-to-r from-[#ebdcb9] to-[#c5a880] text-[#3d2723] font-black px-2 py-0.5 rounded-full uppercase tracking-wider scale-90">
                 Oficial
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 m-0 mt-1">Lançamento de comunicados importantes, tarefas e avisos.</p>
+            <p className="text-[9px] text-[#d7cab5] m-0 mt-1 leading-none">Lançamento de comunicados importantes, tarefas e avisos.</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
           {currentUser?.role === 'MESTRE' && (
             <button
               onClick={handleClearAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-rose-500/20 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-[8px] font-black uppercase tracking-widest rounded-lg border border-rose-500/20 transition-all cursor-pointer"
             >
-              <Trash size={12} /> Limpar Tudo
+              <Trash size={10} /> Limpar Tudo
             </button>
           )}
-          <div className="hidden sm:flex items-center gap-2.5 bg-white/[0.02] border border-white/5 px-3 py-1.5 rounded-2xl">
-            <Users size={14} className="text-pink-400" />
-            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">
+          <div className="flex items-center gap-1.5 bg-white/[0.03] border border-white/5 px-2.5 py-1.5 rounded-lg">
+            <Users size={11} className="text-[#c5a880]" />
+            <span className="text-[8px] uppercase font-bold tracking-widest text-[#ebdcb9]/60">
               Confecção Sol & Mar
             </span>
           </div>
         </div>
       </div>
 
-      {/* Message Screen Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 relative min-h-[300px]">
+      {/* 2. Message History Area */}
+      <div className="flex-grow overflow-y-auto p-5 space-y-4 relative min-h-[350px]">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center h-full py-20">
-            <div className="w-8 h-8 rounded-full border-2 border-pink-500 border-t-transparent animate-spin mb-3" />
-            <p className="text-xs text-slate-400 font-mono tracking-wider animate-pulse uppercase">Sincronizando mural...</p>
+          <div className="flex flex-col items-center justify-center h-full py-24">
+            <div className="w-8 h-8 rounded-full border-2 border-[#ebdcb9] border-t-transparent animate-spin mb-3" />
+            <p className="text-[10px] text-[#c5a880] font-bold tracking-widest animate-pulse uppercase">Sincronizando mural...</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center py-24 px-6">
-            <div className="w-14 h-14 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center text-slate-500 mb-4 shadow-sm">
+            <div className="w-14 h-14 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center text-[#c5a880]/50 mb-4 shadow-sm">
               <MessageSquare size={24} className="stroke-[1.5]" />
             </div>
-            <h3 className="text-sm font-black text-white tracking-tight uppercase">Sem avisos recentes</h3>
-            <p className="text-xs text-slate-400 max-w-xs mt-1 leading-relaxed">
+            <h3 className="text-sm font-bold text-[#fbf8f2] tracking-wider uppercase">Sem avisos recentes</h3>
+            <p className="text-xs text-[#d7cab5] max-w-xs mt-1.5 leading-relaxed">
               O mural está limpo. Comunicados importantes sobre a produção serão publicados aqui por administradores e líderes.
             </p>
           </div>
         ) : (
-          <div className="space-y-4 max-w-3xl mx-auto">
+          <div className="space-y-4 max-w-3xl mx-auto pb-4">
             {messages.map((msg) => {
               const viewEntries = Object.entries(msg.views || {});
               const filteredEntries = viewEntries.filter(([username]) => {
@@ -278,7 +272,6 @@ export function Chat() {
               });
               const currentViews = filteredEntries.map(([, val]) => val);
               const hasViewers = currentViews.length > 0;
-              const viewerNames = currentViews.map((v: any) => v.name).join(', ');
               const dateObj = new Date(msg.timestamp);
               const formattedTime = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
               const formattedDate = dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
@@ -287,14 +280,23 @@ export function Chat() {
               return (
                 <div 
                   key={msg.id} 
-                  className={`flex gap-3 relative group rounded-2xl p-3.5 transition-all duration-200 border ${
-                    isMine 
-                      ? 'bg-pink-500/[0.03] border-pink-500/10 hover:border-pink-500/20' 
-                      : 'bg-white/[0.02] border-white/5 hover:border-white/10'
+                  className={`flex gap-2.5 relative group rounded-xl p-3 sm:p-3.5 transition-all duration-200 border ${
+                    msg.pinned
+                      ? 'bg-[#c5a880]/10 border-[#c5a880]/30 shadow-sm'
+                      : isMine 
+                        ? 'bg-white/[0.03] border-[#ebdcb9]/10' 
+                        : 'bg-black/20 border-white/5'
                   }`}
                 >
-                  {/* Avatar bubble */}
-                  <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/10 shadow-md shrink-0 bg-slate-950">
+                  {/* Pin label icon */}
+                  {msg.pinned && (
+                    <div className="absolute top-3.5 right-3.5 text-[#ebdcb9] flex items-center gap-1 text-[7.5px] font-black uppercase tracking-widest bg-[#c5a880]/20 px-2 py-0.5 rounded border border-[#c5a880]/30 shadow-sm leading-none">
+                      <Pin size={7} className="text-[#ebdcb9] rotate-45" /> FIXADO
+                    </div>
+                  )}
+
+                  {/* Avatar Bubble inside high end border */}
+                  <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#ebdcb9]/25 shadow-sm shrink-0 bg-black/40">
                     <img 
                       src={msg.senderAvatar} 
                       alt={msg.senderName} 
@@ -305,46 +307,43 @@ export function Chat() {
 
                   {/* Body Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                      <span className="text-[11px] font-black tracking-tight text-white">{msg.senderName}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap mb-1 pr-12">
+                      <span className="text-[11px] font-bold text-[#fbf8f2]">{msg.senderName}</span>
                       
-                      {/* Role Emblem */}
-                      {(currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM' || currentUser?.role === 'LIDER') && (
-                        <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${getRoleBadgeStyle(msg.senderRole)}`}>
-                          {formatRole(msg.senderRole)}
+                      <span className={`text-[7px] font-black uppercase tracking-widest px-1 py-0.5 rounded border leading-none ${getRoleBadgeStyle(msg.senderRole)}`}>
+                        {formatRole(msg.senderRole)}
+                      </span>
+
+                      {msg.urgency === 'urgente' && (
+                        <span className="text-[7.5px] bg-red-950 text-red-400 border border-red-900 font-extrabold px-1 py-0.5 rounded uppercase tracking-wider leading-none">
+                          🔥 URGENTE
+                        </span>
+                      )}
+                      
+                      {msg.urgency === 'prioridade' && (
+                        <span className="text-[7.5px] bg-amber-950 text-amber-400 border border-amber-900 font-bold px-1 py-0.5 rounded uppercase tracking-wider leading-none">
+                          ⚠️ PRIORIDADE
                         </span>
                       )}
 
-                      {/* Timestamp */}
-                      <span className="text-[9px] text-slate-500 ml-auto font-mono">
-                        {formattedDate} às {formattedTime}
+                      <span className="text-[8px] text-[#c5a880]/60 font-mono">
+                        {formattedDate} - {formattedTime}
                       </span>
-
-                      {/* Delete Trigger Button (Hover state only on MESTRE) */}
-                      {currentUser?.role === 'MESTRE' && (
-                        <button
-                          onClick={() => handleDeleteMessage(msg.id, msg.senderId)}
-                          className="p-1 text-slate-500 hover:text-red-400 rounded hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity ml-1.5 cursor-pointer"
-                          title="Excluir comunicado"
-                        >
-                          <Trash size={12} />
-                        </button>
-                      )}
                     </div>
 
                     {/* Speech Text */}
-                    <p className="text-[12px] sm:text-[13px] text-slate-200 leading-relaxed whitespace-pre-wrap break-words pr-2 m-0 font-medium">
+                    <p className="text-[11px] sm:text-[11.5px] text-[#fbf8f2]/90 leading-relaxed whitespace-pre-wrap break-words pr-2 m-0 font-light">
                       {msg.text}
                     </p>
 
-                    {/* View Receipts tracking box */}
+                    {/* View Receipts tracking box inside clay bubble */}
                     {hasViewers && (
-                      <div className="mt-3.5 pt-2.5 border-t border-white/[0.03] space-y-2 select-none">
-                        <div className="flex items-center gap-1.5 text-[9px] font-black tracking-widest text-[#22c55e] uppercase">
-                          <CheckCheck size={12} className="text-emerald-400 shrink-0" />
-                          <span>Visualizado por ({currentViews.length})</span>
+                      <div className="mt-2.5 pt-2 border-t border-[#ebdcb9]/10 space-y-1.5 select-none">
+                        <div className="flex items-center gap-1.5 text-[7.5px] font-black tracking-widest text-emerald-400 uppercase">
+                          <CheckCheck size={10} className="text-emerald-400 shrink-0" />
+                          <span>Visualizado ({currentViews.length})</span>
                         </div>
-                        <div className="flex flex-wrap gap-1.5 pl-0.5">
+                        <div className="flex flex-wrap gap-1">
                           {currentViews.map((v: any, index) => {
                             const viewDate = new Date(v.timestamp);
                             const timeStr = viewDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -352,16 +351,41 @@ export function Chat() {
                             return (
                               <span 
                                 key={index}
-                                className="inline-flex items-center gap-1.5 text-[9px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider transition-all duration-200"
+                                className="inline-flex items-center gap-1 text-[8px] font-medium text-emerald-300 bg-emerald-950/25 border border-emerald-500/15 px-2 py-0.5 rounded-lg uppercase tracking-wider transition-all duration-200"
                               >
                                 <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
                                 <span className="font-bold">{v.name}</span>
-                                <span className="text-emerald-500/70 font-mono">({dateStr} às {timeStr})</span>
+                                <span className="text-emerald-500/70 font-mono text-[7px]">({dateStr} {timeStr})</span>
                               </span>
                             );
                           })}
                         </div>
                       </div>
+                    )}
+                  </div>
+
+                  {/* Hover Buttons on Right Column */}
+                  <div className="absolute right-3 bottom-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Toggle Pin element (Writers only) */}
+                    {isWriter && (
+                      <button
+                        onClick={() => handleTogglePin(msg.id, !!msg.pinned)}
+                        className="p-1.5 text-[#c5a880] hover:text-[#ebdcb9] hover:bg-[#ebdcb9]/10 rounded-lg cursor-pointer transition-all"
+                        title={msg.pinned ? "Desafixar do topo" : "Fixar no topo"}
+                      >
+                        <Pin size={12} className={msg.pinned ? "fill-current" : ""} />
+                      </button>
+                    )}
+
+                    {/* Delete trigger for Mestre */}
+                    {currentUser?.role === 'MESTRE' && (
+                      <button
+                        onClick={() => handleDeleteMessage(msg.id, msg.senderId)}
+                        className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg cursor-pointer transition-all"
+                        title="Excluir comunicado"
+                      >
+                        <Trash size={12} />
+                      </button>
                     )}
                   </div>
                 </div>
@@ -372,40 +396,40 @@ export function Chat() {
         )}
       </div>
 
-      {/* Input panel (Todos os usuários integrados podem escrever agora) */}
+      {/* 3. Input Footer Bar */}
       {currentUser && (
-        <div className="p-3 bg-[#0c0c0e]/95 border-t border-white/5 sticky bottom-0 z-20">
+        <div className="p-3 bg-black/50 border-t border-[#ebdcb9]/10 sticky bottom-0 z-20 backdrop-blur-md">
           <div className="max-w-3xl mx-auto flex flex-col gap-2">
             
-            {/* Opções extras de fixação e urgência (Apenas Mestre, ADM e Líder) */}
+            {/* Extended Options for Writers */}
             {isWriter && (
-              <div className="flex flex-wrap gap-2 items-center px-1">
-                {/* Menu suspenso grau de urgência */}
-                <div className="flex items-center gap-1.5 bg-white/[0.02] border border-white/5 rounded-xl px-2.5 py-1.5 shadow-sm">
-                  <span className="text-[9px] font-black tracking-widest uppercase text-slate-500">Urgência:</span>
+              <div className="flex flex-wrap gap-1.5 items-center px-1">
+                {/* Urgency select with custom arrow */}
+                <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 rounded-lg px-2.5 py-1 shadow-sm">
+                  <span className="text-[7.5px] font-black tracking-widest uppercase text-[#c5a880]">Urgência:</span>
                   <select
                     value={urgency}
                     onChange={(e: any) => setUrgency(e.target.value)}
                     disabled={isReadOnly}
-                    className="bg-transparent text-slate-300 text-[10px] font-bold focus:outline-none cursor-pointer uppercase tracking-wider hover:text-white"
+                    className="bg-transparent text-[#ebdcb9] text-[8px] font-black focus:outline-none cursor-pointer uppercase tracking-wider hover:text-white"
                   >
-                    <option value="comum" className="bg-slate-950 text-slate-300">Comum</option>
-                    <option value="prioridade" className="bg-slate-950 text-amber-400 font-bold">⚠️ Prioridade</option>
-                    <option value="urgente" className="bg-slate-950 text-red-500 font-black">🔥 Urgente</option>
+                    <option value="comum" className="bg-[#130d08] text-[#d7cab5]">Comum</option>
+                    <option value="prioridade" className="bg-[#130d08] text-amber-400 font-bold">⚠️ Prioridade</option>
+                    <option value="urgente" className="bg-[#130d08] text-red-500 font-black">🔥 Urgente</option>
                   </select>
                 </div>
 
-                {/* Checkbox fixar no topo */}
-                <label className="flex items-center gap-2 bg-white/[0.02] border border-white/5 rounded-xl px-2.5 py-1.5 shadow-sm cursor-pointer select-none group/lbl hover:bg-white/[0.04] transition-colors">
+                {/* Pin toggle */}
+                <label className="flex items-center gap-1.5 bg-white/[0.02] border border-white/5 rounded-lg px-2.5 py-1 shadow-sm cursor-pointer select-none hover:bg-white/[0.04] transition-colors">
                   <input
                     type="checkbox"
                     checked={pinnedOnSend}
                     onChange={(e) => setPinnedOnSend(e.target.checked)}
                     disabled={isReadOnly}
-                    className="w-3.5 h-3.5 text-pink-500 bg-[#0c0c0e]/80 border-white/10 rounded focus:ring-0 focus:ring-offset-0 focus:outline-none cursor-pointer accent-pink-500"
+                    className="w-3 h-3 text-[#ebdcb9] bg-black/40 border-white/10 rounded focus:ring-0 focus:ring-offset-0 focus:outline-none cursor-pointer accent-[#c5a880]"
                   />
-                  <span className="text-[9px] font-black tracking-widest uppercase text-slate-500 group-hover/lbl:text-slate-300 transition-colors flex items-center gap-1">
-                    <Pin size={10} className="text-pink-400 shrink-0" />
+                  <span className="text-[7.5px] font-black tracking-widest uppercase text-[#c5a880] flex items-center gap-1">
+                    <Pin size={7} className="text-[#ebdcb9] shrink-0" />
                     Fixar no Topo
                   </span>
                 </label>
@@ -418,7 +442,7 @@ export function Chat() {
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Escreva uma mensagem ou comunicado para a confecção..."
                 disabled={isReadOnly}
-                className="flex-1 bg-white/[0.03] border border-white/10 rounded-2xl px-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500/20 transition-all resize-none max-h-24 min-h-[44px]"
+                className="flex-1 bg-black/40 border border-[#ebdcb9]/15 rounded-xl px-3.5 py-2 text-[11px] text-[#fbf8f2]/90 placeholder-[#c5a880]/30 focus:outline-none focus:border-[#ebdcb9]/50 focus:ring-1 focus:ring-[#ebdcb9]/10 transition-all resize-none max-h-20 min-h-[38px] leading-relaxed"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -429,14 +453,14 @@ export function Chat() {
               <button
                 type="submit"
                 disabled={!newMessage.trim() || isReadOnly}
-                className={`w-[44px] h-[44px] rounded-2xl flex items-center justify-center transition-all cursor-pointer shadow-lg ${
+                className={`w-[38px] h-[38px] rounded-xl flex items-center justify-center transition-all cursor-pointer shadow-md shrink-0 ${
                   newMessage.trim() && !isReadOnly
-                    ? 'bg-gradient-to-r from-pink-500 to-amber-500 text-white hover:opacity-90 active:scale-95 shadow-pink-500/10'
-                    : 'bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed'
+                    ? 'bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] text-[#3d2723] hover:scale-105 active:scale-95'
+                    : 'bg-white/5 text-stone-600 border border-white/5 cursor-not-allowed'
                 }`}
                 aria-label="Enviar mensagem"
               >
-                <Send size={15} />
+                <Send size={12} />
               </button>
             </form>
           </div>

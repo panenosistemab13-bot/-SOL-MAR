@@ -125,10 +125,10 @@ export function PwaInstaller() {
   if (!showInstaller) {
     // Renderiza um pequeno botão discreto no canto/ajustes para caso o usuário queira instalar manualmente depois
     return (
-      <div className="fixed bottom-20 right-4 z-[999]">
+      <div className="fixed top-3 left-3 z-[9999]">
         <button 
           onClick={() => setShowInstaller(true)}
-          className="flex items-center gap-1.5 bg-gradient-to-r from-pink-500 to-amber-500 text-white font-black text-[9px] uppercase tracking-widest px-3 py-2 rounded-full border border-pink-400/30 shadow-lg shadow-pink-500/20 active:scale-95 transition-all cursor-pointer"
+          className="flex items-center gap-1.5 bg-gradient-to-r from-pink-500 to-amber-500 text-white font-black text-[9px] uppercase tracking-widest px-2.5 py-1.5 rounded-full border border-pink-400/30 shadow-lg shadow-pink-500/20 active:scale-95 transition-all cursor-pointer h-8"
         >
           <Download size={11} className="animate-bounce" />
           Instalar App

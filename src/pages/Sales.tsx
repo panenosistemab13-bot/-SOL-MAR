@@ -224,33 +224,32 @@ export function Sales() {
     <div className="relative space-y-8 select-none text-white pb-12">
       {/* Immersive Sunset Ocean Background Filter */}
       <div 
-        className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1439066615861-d1af74d74000?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center opacity-30 mix-blend-color-dodge pointer-events-none rounded-[3rem]"
-        style={{ filter: 'contrast(1.2) saturate(1.8)' }}
+        className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center opacity-[0.05] pointer-events-none rounded-[3rem]"
       />
 
       {/* Luxury Glowing Sea Orbs */}
-      <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-pink-500/10 blur-[150px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-10 left-1/4 w-[500px] h-[500px] bg-sky-500/10 blur-[170px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-[#ebdcb9]/5 blur-[150px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-10 left-1/4 w-[500px] h-[500px] bg-[#c5a880]/5 blur-[170px] rounded-full pointer-events-none" />
 
       {/* Top action header */}
-      <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5 bg-slate-950/40 p-6 rounded-[2.5rem] border border-white/5 backdrop-blur-xl z-20 overflow-hidden shadow-2xl">
-        <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-pink-500/5 to-transparent pointer-events-none" />
+      <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5 bg-[#130d08]/75 p-6 rounded-[2.5rem] border border-[#ebdcb9]/15 backdrop-blur-xl z-20 overflow-hidden shadow-2xl">
+        <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-[#ebdcb9]/5 to-transparent pointer-events-none" />
         
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-pink-500 to-sky-500 p-0.5 shadow-lg shadow-pink-500/15 flex items-center justify-center relative">
-            <Compass className="w-7 h-7 text-white animate-spin" style={{ animationDuration: '60s' }} />
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] p-0.5 shadow-lg flex items-center justify-center relative">
+            <Compass className="w-7 h-7 text-[#ebdcb9] animate-spin" style={{ animationDuration: '60s' }} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black tracking-widest text-pink-400 bg-pink-500/10 px-2.5 py-1 rounded-full border border-pink-500/20 uppercase">
+              <span className="text-[9px] font-black tracking-widest text-[#ebdcb9] bg-[#ebdcb9]/10 px-2.5 py-1 rounded-full border border-[#ebdcb9]/25 uppercase">
                 Auditoria de Bordo
               </span>
-              <span className="text-[9px] font-black tracking-widest text-sky-400 bg-sky-500/10 px-2.5 py-1 rounded-full border border-sky-500/20 uppercase">
+              <span className="text-[9px] font-black tracking-widest text-[#c5a880] bg-[#c5a880]/10 px-2.5 py-1 rounded-full border border-[#c5a880]/25 uppercase">
                 Praia & Sol
               </span>
             </div>
-            <h1 className="text-xl font-extrabold tracking-widest uppercase text-white mt-1.5">
-              Cabine de Faturamento e Relatórios
+            <h1 className="text-xl font-serif tracking-wide text-white mt-1.5">
+              Faturamento e Relatório de Vendas
             </h1>
           </div>
         </div>
@@ -259,7 +258,7 @@ export function Sales() {
           <button 
             type="button"
             onClick={() => setIsNewSaleOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-sky-500 to-pink-500 hover:opacity-90 text-white px-5 py-3 rounded-full transition-all text-xs font-bold uppercase tracking-wider shadow-lg shadow-pink-500/10"
+            className="flex items-center gap-2 bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] hover:brightness-105 hover:scale-105 active:scale-95 text-[#3d2723] px-5 py-3 rounded-full transition-all text-xs font-black uppercase tracking-wider shadow-md"
           >
             <ShoppingBag size={15} />
             Lançar Venda
