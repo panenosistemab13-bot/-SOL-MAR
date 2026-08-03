@@ -28,8 +28,9 @@ import { ref, set } from "firebase/database";
 import { rtdb } from "../lib/firebase";
 
 export function Dashboard() {
-  const { bikinis, threads, lowStockItemsCount, logs, users, currentUser } =
+  const { bikinis, threads, lowStockItemsCount, logs, users, currentUser, theme } =
     useInventory();
+  const isLight = theme === 'light';
 
   const handleClearLogs = () => {
     if (
@@ -69,19 +70,35 @@ export function Dashboard() {
   const totalThreads = threads.reduce((sum, item) => sum + item.stock, 0);
 
   return (
-    <div className="relative rounded-[2.5rem] overflow-hidden border border-[#ebdcb9]/15 bg-[#130d08]/75 backdrop-blur-xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] text-white p-6 md:p-8 space-y-8">
+    <div className={cn(
+      "relative rounded-[2.5rem] overflow-hidden border backdrop-blur-xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] p-6 md:p-8 space-y-8 transition-colors duration-300",
+      isLight ? "bg-white border-slate-200 text-black shadow-slate-200/50" : "bg-[#130d08]/75 border-[#ebdcb9]/15 text-white"
+    )}>
       {/* Immersive Ocean Background Layer */}
-      <div
-        className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center tracking-normal opacity-5 mix-blend-overlay pointer-events-none"
-      />
+      {!isLight && (
+        <div
+          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center tracking-normal opacity-5 mix-blend-overlay pointer-events-none"
+        />
+      )}
 
       {/* Decorative Wave Glows */}
-      <div className="absolute top-0 left-1/4 w-[500px] h-[350px] bg-sky-500/10 blur-[130px] rounded-full pointer-events-none -translate-y-20" />
-      <div className="absolute bottom-10 right-1/4 w-[400px] h-[300px] bg-pink-500/10 blur-[120px] rounded-full pointer-events-none translate-y-20" />
+      <div className={cn(
+        "absolute top-0 left-1/4 w-[500px] h-[350px] blur-[130px] rounded-full pointer-events-none -translate-y-20",
+        isLight ? "bg-blue-100/30" : "bg-sky-500/10"
+      )} />
+      <div className={cn(
+        "absolute bottom-10 right-1/4 w-[400px] h-[300px] blur-[120px] rounded-full pointer-events-none translate-y-20",
+        isLight ? "bg-amber-100/20" : "bg-pink-500/10"
+      )} />
 
       {/* Luxury Beach Header Section */}
-      <div className="relative bg-gradient-to-r from-[#ebdcb9]/10 via-[#c5a880]/5 to-black/40 rounded-[2.2rem] border border-[#ebdcb9]/15 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl overflow-hidden shadow-inner">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center opacity-[0.05] pointer-events-none" />
+      <div className={cn(
+        "relative rounded-[2.2rem] border p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl overflow-hidden shadow-inner transition-all",
+        isLight 
+          ? "bg-gradient-to-r from-amber-50 to-blue-50 border-slate-100" 
+          : "bg-gradient-to-r from-[#ebdcb9]/10 via-[#c5a880]/5 to-black/40 border-[#ebdcb9]/15"
+      )}>
+        {!isLight && <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center opacity-[0.05] pointer-events-none" />}
 
         {/* Glowing Sun and Waves visual title */}
         <div className="flex items-center gap-5 relative z-10">
@@ -97,12 +114,20 @@ export function Dashboard() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black tracking-[0.25em] text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-2.5 py-1 rounded-full border border-[#ebdcb9]/20 flex items-center gap-1.5 shadow-sm">
-                <Sparkles size={11} className="animate-pulse text-[#ebdcb9]" />{" "}
+              <span className={cn(
+                "text-[10px] font-black tracking-[0.25em] uppercase px-2.5 py-1 rounded-full border flex items-center gap-1.5 shadow-sm",
+                isLight 
+                  ? "text-amber-700 bg-amber-50 border-amber-200" 
+                  : "text-[#ebdcb9] bg-[#ebdcb9]/10 border-[#ebdcb9]/20"
+              )}>
+                <Sparkles size={11} className={cn("animate-pulse", isLight ? "text-amber-500" : "text-[#ebdcb9]")} />{" "}
                 SOL & MAR LOGÍSTICA
               </span>
             </div>
-            <h2 className="text-3xl font-serif text-[#fbf8f2] tracking-wide mt-1.5">
+            <h2 className={cn(
+              "text-3xl font-serif tracking-wide mt-1.5",
+              isLight ? "text-slate-900" : "text-[#fbf8f2]"
+            )}>
               Painel de Gestão de Inventário
             </h2>
           </div>
@@ -130,16 +155,30 @@ export function Dashboard() {
       {/* Main Glass Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Card 1: Biquínis Total */}
-        <div className="relative group overflow-hidden rounded-[2.2rem] border border-[#ebdcb9]/15 bg-black/20 p-8 shadow-2xl backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:border-[#ebdcb9]/35 hover:shadow-sky-400/5">
+        <div className={cn(
+          "relative group overflow-hidden rounded-[2.2rem] border p-8 shadow-2xl backdrop-blur-xl transition-all duration-500 hover:-translate-y-1",
+          isLight 
+            ? "bg-slate-50 border-slate-200 hover:border-amber-300 shadow-slate-200/50" 
+            : "border-[#ebdcb9]/15 bg-black/20 hover:border-[#ebdcb9]/35 hover:shadow-sky-400/5"
+        )}>
           {/* Subtle Pink/Ocean wave image inside */}
-          <div className="absolute -right-20 -top-20 w-52 h-52 bg-[#ebdcb9]/10 blur-[80px] rounded-full group-hover:bg-[#ebdcb9]/20 transition-all duration-700" />
+          <div className={cn(
+            "absolute -right-20 -top-20 w-52 h-52 blur-[80px] rounded-full transition-all duration-700",
+            isLight ? "bg-amber-200/10 group-hover:bg-amber-200/20" : "bg-[#ebdcb9]/10 group-hover:bg-[#ebdcb9]/20"
+          )} />
           <div className="absolute -left-20 -bottom-20 w-44 h-44 bg-[#c5a880]/5 blur-[70px] rounded-full pointer-events-none" />
 
           <div className="flex items-center justify-between relative z-10 mb-6">
-            <div className="p-3 bg-[#ebdcb9]/10 text-[#ebdcb9] rounded-2xl border border-[#ebdcb9]/20 shadow-md shadow-[#ebdcb9]/5">
-              <Package size={24} className="text-[#ebdcb9]" />
+            <div className={cn(
+              "p-3 rounded-2xl border shadow-md",
+              isLight ? "bg-amber-100 text-amber-600 border-amber-200 shadow-amber-500/5" : "bg-[#ebdcb9]/10 text-[#ebdcb9] border-[#ebdcb9]/20 shadow-[#ebdcb9]/5"
+            )}>
+              <Package size={24} />
             </div>
-            <span className="text-[11px] font-bold tracking-widest text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 border border-[#ebdcb9]/20 px-3 py-1 rounded-full">
+            <span className={cn(
+              "text-[11px] font-bold tracking-widest uppercase border px-3 py-1 rounded-full",
+              isLight ? "bg-amber-100 text-amber-700 border-amber-200" : "text-[#ebdcb9] bg-[#ebdcb9]/10 border border-[#ebdcb9]/20"
+            )}>
               Coleção Sol & Mar
             </span>
           </div>
@@ -148,29 +187,43 @@ export function Dashboard() {
             <p className="text-xs font-bold text-slate-400 tracking-[0.15em] uppercase mb-1">
               Biquínis no Cabide
             </p>
-            <h3 className="text-5xl font-black font-sans text-white tracking-tight flex items-baseline">
+            <h3 className={cn("text-5xl font-black font-sans tracking-tight flex items-baseline", isLight ? "text-slate-900" : "text-white")}>
               {totalBikinis}
               <span className="text-sm font-bold text-[#c5a880] ml-2 font-mono uppercase tracking-wider">
                 peças
               </span>
             </h3>
             {/* Custom visual progress track in container footer */}
-            <div className="w-full bg-white/5 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div className={cn("w-full h-1.5 rounded-full mt-4 overflow-hidden", isLight ? "bg-slate-200" : "bg-white/5")}>
               <div className="bg-gradient-to-r from-[#ebdcb9] to-[#ad9e7a] h-full w-[80%] rounded-full opacity-80" />
             </div>
           </div>
         </div>
 
         {/* Card 2: Aviamentos e Fios */}
-        <div className="relative group overflow-hidden rounded-[2.2rem] border border-[#ebdcb9]/15 bg-black/20 p-8 shadow-2xl backdrop-blur-xl transition-all duration-500 hover:-translate-y-1 hover:border-[#ebdcb9]/35 hover:shadow-sky-400/5">
-          <div className="absolute -right-20 -top-20 w-52 h-52 bg-[#c5a880]/10 blur-[80px] rounded-full group-hover:bg-[#c5a880]/20 transition-all duration-700" />
+        <div className={cn(
+          "relative group overflow-hidden rounded-[2.2rem] border p-8 shadow-2xl backdrop-blur-xl transition-all duration-500 hover:-translate-y-1",
+          isLight 
+            ? "bg-slate-50 border-slate-200 hover:border-amber-300 shadow-slate-200/50" 
+            : "border-[#ebdcb9]/15 bg-black/20 hover:border-[#ebdcb9]/35 hover:shadow-sky-400/5"
+        )}>
+          <div className={cn(
+            "absolute -right-20 -top-20 w-52 h-52 blur-[80px] rounded-full transition-all duration-700",
+            isLight ? "bg-amber-200/10 group-hover:bg-amber-200/20" : "bg-[#c5a880]/10 group-hover:bg-[#c5a880]/20"
+          )} />
           <div className="absolute -left-20 -bottom-20 w-44 h-44 bg-[#ebdcb9]/5 blur-[70px] rounded-full pointer-events-none" />
 
           <div className="flex items-center justify-between relative z-10 mb-6">
-            <div className="p-3 bg-[#ebdcb9]/10 text-[#ebdcb9] rounded-2xl border border-[#ebdcb9]/20 shadow-md shadow-[#ebdcb9]/5">
-              <Scissors size={24} className="text-[#ebdcb9]" />
+            <div className={cn(
+              "p-3 rounded-2xl border shadow-md",
+              isLight ? "bg-amber-100 text-amber-600 border-amber-200 shadow-amber-500/5" : "bg-[#ebdcb9]/10 text-[#ebdcb9] border-[#ebdcb9]/20 shadow-[#ebdcb9]/5"
+            )}>
+              <Scissors size={24} />
             </div>
-            <span className="text-[11px] font-bold tracking-widest text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 border border-[#ebdcb9]/20 px-3 py-1 rounded-full">
+            <span className={cn(
+              "text-[11px] font-bold tracking-widest uppercase border px-3 py-1 rounded-full",
+              isLight ? "bg-amber-100 text-amber-700 border-amber-200" : "text-[#ebdcb9] bg-[#ebdcb9]/10 border border-[#ebdcb9]/20"
+            )}>
               Aviamentos & Fios
             </span>
           </div>
@@ -179,13 +232,13 @@ export function Dashboard() {
             <p className="text-xs font-bold text-slate-400 tracking-[0.15em] uppercase mb-1">
               Insumos & Aviamentos
             </p>
-            <h3 className="text-5xl font-black font-sans text-white tracking-tight flex items-baseline">
+            <h3 className={cn("text-5xl font-black font-sans tracking-tight flex items-baseline", isLight ? "text-slate-900" : "text-white")}>
               {totalThreads}
               <span className="text-sm font-bold text-[#c5a880] ml-2 font-mono uppercase tracking-wider">
                 fios e rolos
               </span>
             </h3>
-            <div className="w-full bg-white/5 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div className={cn("w-full h-1.5 rounded-full mt-4 overflow-hidden", isLight ? "bg-slate-200" : "bg-white/5")}>
               <div className="bg-gradient-to-r from-[#ebdcb9] to-[#c5a880] h-full w-[65%] rounded-full opacity-80" />
             </div>
           </div>
@@ -196,8 +249,8 @@ export function Dashboard() {
           className={cn(
             "relative group overflow-hidden rounded-[2.2rem] border p-8 shadow-2xl backdrop-blur-xl transition-all duration-500 hover:-translate-y-1",
             lowStockItemsCount > 0
-              ? "bg-[#ea580c]/5 border-rose-500/30 hover:border-rose-400/50 shadow-rose-950/20"
-              : "bg-black/20 border-[#ebdcb9]/15 hover:border-emerald-500/30",
+              ? (isLight ? "bg-rose-50 border-rose-200 shadow-rose-200/50" : "bg-[#ea580c]/5 border-rose-500/30 hover:border-rose-400/50 shadow-rose-950/20")
+              : (isLight ? "bg-slate-50 border-slate-200 hover:border-emerald-300" : "bg-black/20 border-[#ebdcb9]/15 hover:border-emerald-500/30"),
           )}
         >
           <div
@@ -214,8 +267,8 @@ export function Dashboard() {
               className={cn(
                 "p-4 rounded-3xl border shadow-md",
                 lowStockItemsCount > 0
-                  ? "bg-rose-500/20 border-rose-500/30 text-rose-400 shadow-rose-500/5"
-                  : "bg-emerald-500/20 border-emerald-500/30 text-emerald-400",
+                  ? (isLight ? "bg-rose-100 border-rose-200 text-rose-600 shadow-rose-500/5" : "bg-rose-500/20 border-rose-500/30 text-rose-400 shadow-rose-500/5")
+                  : (isLight ? "bg-emerald-100 border-emerald-200 text-emerald-600" : "bg-emerald-500/20 border-emerald-500/30 text-emerald-400"),
               )}
             >
               <AlertTriangle size={26} />
@@ -224,8 +277,8 @@ export function Dashboard() {
               className={cn(
                 "text-[10px] font-mono tracking-widest uppercase px-3 py-1 rounded-full border",
                 lowStockItemsCount > 0
-                  ? "bg-rose-500/10 border-rose-500/20 text-rose-300 animate-pulse"
-                  : "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
+                  ? (isLight ? "bg-rose-100 border-rose-200 text-rose-700 animate-pulse" : "bg-rose-500/10 border-rose-500/20 text-rose-300 animate-pulse")
+                  : (isLight ? "bg-emerald-100 border-emerald-200 text-emerald-700" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"),
               )}
             >
               {lowStockItemsCount > 0 ? "Maré Alta (Alerta)" : "Maré Calma"}
@@ -236,13 +289,13 @@ export function Dashboard() {
             <p className="text-xs font-bold text-slate-400 tracking-[0.15em] uppercase mb-1">
               Reposição Necessária
             </p>
-            <h3 className="text-5xl font-black font-sans text-white tracking-tight flex items-baseline">
+            <h3 className={cn("text-5xl font-black font-sans tracking-tight flex items-baseline", isLight ? "text-slate-900" : "text-white")}>
               {lowStockItemsCount}
               <span className="text-sm font-bold text-slate-400 ml-2 font-mono uppercase tracking-wider">
                 críticos
               </span>
             </h3>
-            <div className="w-full bg-white/5 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div className={cn("w-full h-1.5 rounded-full mt-4 overflow-hidden", isLight ? "bg-slate-200" : "bg-white/5")}>
               <div
                 className={cn(
                   "h-full rounded-full opacity-80",
@@ -259,13 +312,19 @@ export function Dashboard() {
       {/* Ocean Chart & Alerts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Glowing Ocean Wave Chart */}
-        <div className="lg:col-span-2 rounded-[2.2rem] border border-[#ebdcb9]/15 bg-black/20 backdrop-blur-xl p-6 md:p-8 relative overflow-hidden group">
+        <div className={cn(
+          "lg:col-span-2 rounded-[2.2rem] border backdrop-blur-xl p-6 md:p-8 relative overflow-hidden group",
+          isLight ? "bg-slate-50 border-slate-200 shadow-slate-200/50" : "bg-black/20 border-[#ebdcb9]/15"
+        )}>
           <div className="absolute top-0 right-0 w-80 h-80 bg-[#ebdcb9]/5 blur-[100px] rounded-full pointer-events-none" />
 
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-4 border-b border-[#ebdcb9]/10 relative z-10">
+          <div className={cn(
+            "flex flex-wrap items-center justify-between gap-4 mb-8 pb-4 border-b relative z-10",
+            isLight ? "border-slate-200" : "border-[#ebdcb9]/10"
+          )}>
             <div>
-              <h3 className="text-lg font-serif text-[#fbf8f2] tracking-wide flex items-center gap-2">
-                <Waves size={18} className="text-[#ebdcb9] animate-pulse" />{" "}
+              <h3 className={cn("text-lg font-serif tracking-wide flex items-center gap-2", isLight ? "text-slate-900" : "text-[#fbf8f2]")}>
+                <Waves size={18} className={cn("animate-pulse", isLight ? "text-amber-500" : "text-[#ebdcb9]")} />{" "}
                 Distribuição de Modelos
               </h3>
               <p className="text-xs text-slate-400 mt-1">
@@ -277,13 +336,13 @@ export function Dashboard() {
             <div className="flex items-center gap-4 text-xs">
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.5)]" />
-                <span className="text-slate-300 font-mono text-[10px]">
+                <span className={cn("font-mono text-[10px]", isLight ? "text-slate-600" : "text-slate-300")}>
                   Tons de Azul
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.5)]" />
-                <span className="text-slate-300 font-mono text-[10px]">
+                <span className={cn("font-mono text-[10px]", isLight ? "text-slate-600" : "text-slate-300")}>
                   Neon Pink
                 </span>
               </div>
@@ -367,10 +426,16 @@ export function Dashboard() {
         </div>
 
         {/* Sophisticated Praia Alerts Grid - Floating Marine Cards */}
-        <div className="rounded-[2.2rem] border border-[#ebdcb9]/15 bg-black/20 backdrop-blur-xl p-6 md:p-8 flex flex-col relative overflow-hidden group">
+        <div className={cn(
+          "rounded-[2.2rem] border backdrop-blur-xl p-6 md:p-8 flex flex-col relative overflow-hidden group",
+          isLight ? "bg-slate-50 border-slate-200 shadow-slate-200/50" : "bg-black/20 border-[#ebdcb9]/15"
+        )}>
           <div className="absolute bottom-0 left-0 w-60 h-60 bg-pink-500/5 blur-[100px] rounded-full pointer-events-none" />
 
-          <h3 className="text-lg font-black font-sans text-white mb-6 border-b border-white/5 pb-4 flex items-center justify-between uppercase tracking-[0.15em] relative z-10">
+          <h3 className={cn(
+            "text-lg font-black font-sans mb-6 border-b pb-4 flex items-center justify-between uppercase tracking-[0.15em] relative z-10",
+            isLight ? "text-slate-900 border-slate-200" : "text-white border-white/5"
+          )}>
             <span className="flex items-center gap-2">⚓ Alertas da Areia</span>
             <span className="text-[10px] bg-rose-500/10 text-rose-400 font-bold px-2 py-0.5 rounded-full border border-rose-500/20">
               AÇÃO
@@ -394,10 +459,13 @@ export function Dashboard() {
                 {lowBikinis.map((b) => (
                   <div
                     key={b.id}
-                    className="p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 hover:border-pink-500/20 transition-all duration-300 flex items-center justify-between group/alert"
+                    className={cn(
+                      "p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group/alert",
+                      isLight ? "bg-white border-slate-100 hover:border-rose-300" : "bg-white/[0.02] border-white/5 hover:border-pink-500/20"
+                    )}
                   >
                     <div className="min-w-0 pr-3">
-                      <p className="font-black text-white text-xs tracking-wider uppercase truncate">
+                      <p className={cn("font-black text-xs tracking-wider uppercase truncate", isLight ? "text-slate-900" : "text-white")}>
                         {b.model}
                       </p>
 
@@ -406,7 +474,7 @@ export function Dashboard() {
                           Tam: {b.size}
                         </span>
 
-                        <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
+                        <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-md border", isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/5")}>
                           <span
                             className="w-2 h-2 rounded-full shadow-md"
                             style={{ backgroundColor: b.colorHex }}
@@ -438,15 +506,18 @@ export function Dashboard() {
                 {lowThreads.map((t) => (
                   <div
                     key={t.id}
-                    className="p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] border border-slate-800 hover:border-sky-500/20 transition-all duration-300 flex items-center justify-between group/alert"
+                    className={cn(
+                      "p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between group/alert",
+                      isLight ? "bg-white border-slate-100 hover:border-sky-300" : "bg-white/[0.02] border-slate-800 hover:border-sky-500/20"
+                    )}
                   >
                     <div className="min-w-0 pr-3">
-                      <p className="font-black text-slate-200 text-xs tracking-wider uppercase truncate">
+                      <p className={cn("font-black text-xs tracking-wider uppercase truncate", isLight ? "text-slate-900" : "text-slate-200")}>
                         {t.name}
                       </p>
 
                       <div className="flex items-center gap-2 mt-1.5">
-                        <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
+                        <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-md border", isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/5")}>
                           <span
                             className="w-2 h-2 rounded-full shadow-md"
                             style={{ backgroundColor: t.colorHex }}
@@ -481,12 +552,18 @@ export function Dashboard() {
       </div>
 
       {/* Real-time Change Alerts & Notifications Logs */}
-      <div className="rounded-[2.2rem] border border-white/10 bg-slate-900/40 backdrop-blur-xl p-6 md:p-8 relative overflow-hidden group">
+      <div className={cn(
+        "rounded-[2.2rem] border backdrop-blur-xl p-6 md:p-8 relative overflow-hidden group",
+        isLight ? "bg-slate-50 border-slate-200 shadow-slate-200/50" : "bg-slate-900/40 border-white/10"
+      )}>
         <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/5 blur-[100px] rounded-full pointer-events-none" />
 
-        <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-6 relative z-10 flex-wrap gap-4">
+        <div className={cn(
+          "flex items-center justify-between border-b pb-4 mb-6 relative z-10 flex-wrap gap-4",
+          isLight ? "border-slate-200" : "border-white/5"
+        )}>
           <div>
-            <h3 className="text-lg font-black font-sans text-white uppercase tracking-[0.15em] flex items-center gap-2">
+            <h3 className={cn("text-lg font-black font-sans uppercase tracking-[0.15em] flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
               <Bell size={18} className="text-purple-400" /> Histórico de
               Alterações e Notificações
             </h3>
@@ -531,17 +608,20 @@ export function Dashboard() {
               return (
                 <div
                   key={log.id}
-                  className="p-4 rounded-2xl bg-white/[0.015] hover:bg-white/[0.04] border border-white/5 hover:border-purple-500/20 transition-all duration-300 flex items-center justify-between gap-4"
+                  className={cn(
+                    "p-4 rounded-2xl border transition-all duration-300 flex items-center justify-between gap-4",
+                    isLight ? "bg-white border-slate-100 hover:border-purple-300 shadow-sm" : "bg-white/[0.015] border-white/5 hover:border-purple-500/20"
+                  )}
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     <img
                       src={avatar}
                       alt={log.workerName}
-                      className="w-10 h-10 rounded-md object-cover shrink-0 border border-white/10"
+                      className={cn("w-10 h-10 rounded-md object-cover shrink-0 border", isLight ? "border-slate-200" : "border-white/10")}
                       referrerPolicy="no-referrer"
                     />
                     <div className="min-w-0">
-                      <p className="text-xs text-slate-200 font-medium leading-normal">
+                      <p className={cn("text-xs font-medium leading-normal", isLight ? "text-slate-900" : "text-slate-200")}>
                         <strong className="text-purple-300 font-bold tracking-wider uppercase">
                           {log.workerName.toUpperCase()}
                         </strong>{" "}
@@ -553,7 +633,7 @@ export function Dashboard() {
                     </div>
                   </div>
 
-                  <span className="text-[10px] text-slate-400 bg-white/5 border border-white/5 px-2.5 py-1 rounded-lg font-mono shrink-0">
+                  <span className={cn("text-[10px] border px-2.5 py-1 rounded-lg font-mono shrink-0", isLight ? "text-slate-500 bg-slate-50 border-slate-100" : "text-slate-400 bg-white/5 border-white/5")}>
                     {parsedTime}
                   </span>
                 </div>

@@ -5,7 +5,8 @@ import { cn } from '../lib/utils';
 import { Plus, Minus, Search, AlertCircle, Sun, Waves, Sparkles, Anchor, ChevronRight, Eye, Layers } from 'lucide-react';
 
 export function Bikinis() {
-  const { bikinis, updateBikiniStock, setBikiniStock, addBikiniModel, removeBikiniModel, currentUser, isReadOnly } = useInventory();
+  const { bikinis, updateBikiniStock, setBikiniStock, addBikiniModel, removeBikiniModel, currentUser, isReadOnly, theme } = useInventory();
+  const isLight = theme === 'light';
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [newModelName, setNewModelName] = useState('');
@@ -70,18 +71,34 @@ export function Bikinis() {
   }, [filteredItems]);
 
   return (
-    <div className="relative md:rounded-[2.5rem] overflow-hidden md:border md:border-[#ebdcb9]/15 bg-[#130d08]/75 backdrop-blur-xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] text-white p-4 md:p-8 space-y-6 md:space-y-8 min-h-full">
+    <div className={cn(
+      "relative md:rounded-[2.5rem] overflow-hidden md:border backdrop-blur-xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] p-4 md:p-8 space-y-6 md:space-y-8 min-h-full transition-colors duration-300",
+      isLight ? "bg-white border-slate-200 text-black shadow-slate-200/50" : "bg-[#130d08]/75 border-[#ebdcb9]/15 text-white"
+    )}>
       {/* Immersive Ocean Background Layer */}
-      <div 
-        className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center tracking-normal opacity-[0.05] mix-blend-overlay pointer-events-none"
-      />
+      {!isLight && (
+        <div 
+          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center tracking-normal opacity-[0.05] mix-blend-overlay pointer-events-none"
+        />
+      )}
 
       {/* Decorative Wave Glows */}
-      <div className="absolute top-0 right-1/4 w-[500px] h-[350px] bg-pink-500/10 blur-[130px] rounded-full pointer-events-none -translate-y-20" />
-      <div className="absolute bottom-10 left-1/4 w-[400px] h-[300px] bg-sky-500/10 blur-[120px] rounded-full pointer-events-none translate-y-20" />
+      <div className={cn(
+        "absolute top-0 right-1/4 w-[500px] h-[350px] blur-[130px] rounded-full pointer-events-none -translate-y-20",
+        isLight ? "bg-pink-100/30" : "bg-pink-500/10"
+      )} />
+      <div className={cn(
+        "absolute bottom-10 left-1/4 w-[400px] h-[300px] blur-[120px] rounded-full pointer-events-none translate-y-20",
+        isLight ? "bg-blue-100/20" : "bg-sky-500/10"
+      )} />
 
       {/* Luxury Beach Header Section */}
-      <div className="relative bg-gradient-to-r from-[#ebdcb9]/10 via-[#c5a880]/5 to-black/40 rounded-2xl sm:rounded-[2.2rem] border border-white/5 p-4 sm:p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 backdrop-blur-xl overflow-hidden shadow-inner select-none">
+      <div className={cn(
+        "relative rounded-2xl sm:rounded-[2.2rem] border p-4 sm:p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 backdrop-blur-xl overflow-hidden shadow-inner select-none transition-all",
+        isLight 
+          ? "bg-gradient-to-r from-amber-50 to-blue-50 border-slate-100" 
+          : "bg-gradient-to-r from-[#ebdcb9]/10 via-[#c5a880]/5 to-black/40 border-white/5"
+      )}>
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center opacity-[0.05] pointer-events-none" />
         
         {/* Glowing Sun and Waves visual title */}
@@ -93,10 +110,18 @@ export function Bikinis() {
             <Waves className="absolute bottom-1.5 right-1.5 w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ebdcb9] animate-bounce" />
           </div>
           <div className="min-w-0">
-            <span className="text-[9px] sm:text-[10px] font-black tracking-[0.25em] text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-2.5 py-1 rounded-full border border-[#cbdcb9]/20 flex items-center gap-1.5 w-fit shadow-sm">
-              <Sparkles size={11} className="animate-pulse text-[#ebdcb9]" /> PORTAL DE BIQUÍNIS
+            <span className={cn(
+              "text-[9px] sm:text-[10px] font-black tracking-[0.25em] uppercase px-2.5 py-1 rounded-full border flex items-center gap-1.5 w-fit shadow-sm",
+              isLight 
+                ? "text-amber-700 bg-amber-50 border-amber-200" 
+                : "text-[#ebdcb9] bg-[#ebdcb9]/10 border-[#cbdcb9]/20"
+            )}>
+              <Sparkles size={11} className={cn("animate-pulse", isLight ? "text-amber-500" : "text-[#ebdcb9]")} /> PORTAL DE BIQUÍNIS
             </span>
-            <h2 className="text-xl sm:text-3xl font-serif text-[#fbf8f2] tracking-wide mt-1">
+            <h2 className={cn(
+              "text-xl sm:text-3xl font-serif tracking-wide mt-1",
+              isLight ? "text-slate-900" : "text-[#fbf8f2]"
+            )}>
               Grade de Estampa & Estoques
             </h2>
           </div>
@@ -134,11 +159,14 @@ export function Bikinis() {
                   "flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold shrink-0 transition-all cursor-pointer whitespace-nowrap active:scale-95",
                   isSelected
                     ? "border-[#ebdcb9] bg-[#ebdcb9]/20 text-[#ebdcb9] shadow-md ring-1 ring-[#ebdcb9]/40"
-                    : "border-white/10 bg-slate-900/60 text-stone-300 hover:bg-white/5"
+                    : (isLight ? "border-slate-200 bg-slate-100 text-slate-600" : "border-white/10 bg-slate-900/60 text-stone-300 hover:bg-white/5")
                 )}
               >
                 <span>{model}</span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/40 text-stone-400">
+                <span className={cn(
+                  "text-[10px] font-mono px-1.5 py-0.5 rounded",
+                  isLight ? "bg-slate-200 text-slate-500" : "bg-black/40 text-stone-400"
+                )}>
                   {modelStock}u
                 </span>
               </button>
@@ -249,8 +277,8 @@ export function Bikinis() {
                     className={cn(
                       "relative group rounded-[2rem] border text-left p-4 transition-all duration-300 select-none overflow-hidden flex items-center justify-between backdrop-blur-md shadow-lg w-full",
                       isSelected 
-                        ? "border-pink-500/60 bg-gradient-to-r from-pink-500/[0.15] via-slate-900/40 to-slate-950/80 shadow-pink-500/10 ring-2 ring-pink-500/20" 
-                        : "border-white/5 bg-slate-900/35 hover:border-sky-500/30 hover:bg-slate-900/40"
+                        ? (isLight ? "border-amber-400 bg-amber-50 text-amber-900 shadow-amber-100 ring-2 ring-amber-200" : "border-pink-500/60 bg-gradient-to-r from-pink-500/[0.15] via-slate-900/40 to-slate-950/80 shadow-pink-500/10 ring-2 ring-pink-500/20")
+                        : (isLight ? "border-slate-100 bg-slate-50 hover:bg-slate-100 text-slate-600" : "border-white/5 bg-slate-900/35 hover:border-sky-500/30 hover:bg-slate-900/40")
                     )}
                   >
                     {/* Subtle waves flare in background */}
@@ -316,20 +344,32 @@ export function Bikinis() {
         {/* Right Column: Active model variations details / workbench */}
         <div className="col-span-1 lg:col-span-8 xl:col-span-9">
           {selectedModel ? (
-            <div className="relative z-10 border border-[#ebdcb9]/15 bg-black/20 rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-6 md:p-8 space-y-6 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className={cn(
+              "relative z-10 border rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-6 md:p-8 space-y-6 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500",
+              isLight ? "bg-slate-50/50 border-slate-100" : "border-[#ebdcb9]/15 bg-black/20"
+            )}>
               
               {/* Detailed Workstation Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#ebdcb9]/10">
+              <div className={cn(
+                "flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b",
+                isLight ? "border-slate-200" : "border-[#ebdcb9]/10"
+              )}>
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#ebdcb9]/20 to-[#c5a880]/10 border border-[#ebdcb9]/15 flex items-center justify-center shrink-0">
-                    <Waves className="w-6 h-6 text-[#ebdcb9] animate-pulse" />
+                  <div className={cn(
+                    "w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0",
+                    isLight ? "bg-amber-100 border-amber-200 text-amber-600" : "bg-gradient-to-tr from-[#ebdcb9]/20 to-[#c5a880]/10 border-[#ebdcb9]/15 text-[#ebdcb9]"
+                  )}>
+                    <Waves className="w-6 h-6 animate-pulse" />
                   </div>
                   <div>
-                    <span className="text-[9px] font-black text-[#ebdcb9] bg-[#ebdcb9]/10 border border-[#ebdcb9]/25 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    <span className={cn(
+                      "text-[9px] font-black border px-2 py-0.5 rounded-full uppercase tracking-wider",
+                      isLight ? "bg-amber-100 border-amber-200 text-amber-700" : "text-[#ebdcb9] bg-[#ebdcb9]/10 border border-[#ebdcb9]/25"
+                    )}>
                       Variações Ativas
                     </span>
                     <div className="flex items-center gap-3.5 mt-1.5 flex-wrap">
-                      <h3 className="text-xl font-extrabold text-white tracking-widest uppercase leading-none">{selectedModel}</h3>
+                      <h3 className={cn("text-xl font-extrabold tracking-widest uppercase leading-none", isLight ? "text-slate-900" : "text-white")}>{selectedModel}</h3>
                       {isAdmOrMestre && !isReadOnly && (
                         <button
                           type="button"
@@ -350,13 +390,18 @@ export function Bikinis() {
 
                 {/* Interactive Search Tool */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#c5a880]" size={13} />
+                  <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2", isLight ? "text-slate-400" : "text-[#c5a880]")} size={13} />
                   <input 
                     type="text" 
                     placeholder="Buscar tamanho ou cor..." 
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="w-full sm:w-64 pl-8 pr-4 py-2 bg-black/40 border border-[#ebdcb9]/15 hover:border-[#ebdcb9]/45 transition-all rounded-full text-[11px] text-white focus:outline-none placeholder:text-stone-600"
+                    className={cn(
+                      "w-full sm:w-64 pl-8 pr-4 py-2 border transition-all rounded-full text-[11px] focus:outline-none",
+                      isLight 
+                        ? "bg-white border-slate-200 text-black placeholder:text-slate-400 focus:border-amber-400" 
+                        : "bg-black/40 border border-[#ebdcb9]/15 text-white hover:border-[#ebdcb9]/45 placeholder:text-stone-600"
+                    )}
                   />
                 </div>
               </div>
@@ -374,7 +419,10 @@ export function Bikinis() {
                     return (
                       <div 
                         key={colorName}
-                        className="border border-[#ebdcb9]/10 bg-black/30 rounded-[2.5rem] p-5 space-y-4 shadow-xl relative overflow-hidden group/color-card"
+                        className={cn(
+                          "border rounded-[2.5rem] p-5 space-y-4 shadow-xl relative overflow-hidden group/color-card",
+                          isLight ? "bg-white border-slate-100 shadow-slate-200/50" : "border-[#ebdcb9]/10 bg-black/30"
+                        )}
                       >
                         {/* Light subtle glow of the color itself at the background on hover */}
                         <div 
@@ -383,7 +431,10 @@ export function Bikinis() {
                         />
                         
                         {/* Color Info Header */}
-                        <div className="flex items-center justify-between pb-3 border-b border-white/5 relative z-10 select-none">
+                        <div className={cn(
+                          "flex items-center justify-between pb-3 border-b relative z-10 select-none",
+                          isLight ? "border-slate-50" : "border-white/5"
+                        )}>
                           <div className="flex items-center gap-3">
                             <div 
                               className="w-6 h-6 rounded-full border border-white/20 shadow-lg relative" 
@@ -393,14 +444,17 @@ export function Bikinis() {
                               }} 
                             />
                             <div>
-                              <h4 className="text-sm font-black tracking-wider uppercase text-slate-100">{colorName}</h4>
+                              <h4 className={cn("text-sm font-black tracking-wider uppercase", isLight ? "text-slate-800" : "text-slate-100")}>{colorName}</h4>
                               <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Cor ativa</p>
                             </div>
                           </div>
                           
-                          <div className="bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl text-right">
+                          <div className={cn(
+                            "border px-2.5 py-1 rounded-xl text-right",
+                            isLight ? "bg-slate-50 border-slate-100" : "bg-white/5 border-white/5"
+                          )}>
                             <span className="text-[10px] text-stone-400 font-mono tracking-wider uppercase">Total: </span>
-                            <span className="text-xs font-black text-[#ebdcb9] font-mono">{colorGroupTotalStock} u</span>
+                            <span className={cn("text-xs font-black font-mono", isLight ? "text-slate-900" : "text-[#ebdcb9]")}>{colorGroupTotalStock} u</span>
                           </div>
                         </div>
 
@@ -412,10 +466,10 @@ export function Bikinis() {
                               <div 
                                 key={v.id} 
                                 className={cn(
-                                  "p-3 rounded-2xl bg-white/[0.015] border flex flex-col justify-between gap-2.5 hover:bg-white/[0.03] transition-all relative overflow-hidden",
+                                  "p-3 rounded-2xl border flex flex-col justify-between gap-2.5 hover:bg-opacity-80 transition-all relative overflow-hidden",
                                   isCritical 
-                                    ? "border-rose-500/20 bg-rose-500/[0.02]" 
-                                    : "border-white/5 hover:border-sky-500/20"
+                                    ? (isLight ? "border-rose-200 bg-rose-50" : "border-rose-500/20 bg-rose-500/[0.02]")
+                                    : (isLight ? "bg-slate-50 border-slate-100 hover:border-amber-200" : "bg-white/[0.015] border-white/5 hover:border-sky-500/20 hover:bg-white/[0.03]")
                                 )}
                               >
                                 {isCritical && (
@@ -424,7 +478,10 @@ export function Bikinis() {
 
                                 {/* Size Label & Little warning indicators */}
                                 <div className="flex items-center justify-between pointer-events-none">
-                                  <span className="font-black text-[10px] text-sky-400 bg-sky-500/10 border border-sky-500/10 px-1.5 py-0.5 rounded-lg">
+                                  <span className={cn(
+                                    "font-black text-[10px] border px-1.5 py-0.5 rounded-lg",
+                                    isLight ? "text-amber-700 bg-amber-50 border-amber-100" : "text-sky-400 bg-sky-500/10 border-sky-500/10"
+                                  )}>
                                     {v.size}
                                   </span>
                                   {isCritical && (
@@ -444,8 +501,10 @@ export function Bikinis() {
                                     onWheel={(e) => (e.target as HTMLElement).blur()}
                                     placeholder="0"
                                     className={cn(
-                                      "w-full text-center py-1.5 bg-white/5 hover:bg-white/10 focus:bg-slate-950/90 border border-white/5 focus:border-pink-500/40 rounded-xl font-mono text-xl font-black select-text focus:outline-none focus:ring-0 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                                      isCritical ? "text-rose-400 focus:text-rose-400" : "text-white focus:text-pink-300"
+                                      "w-full text-center py-1.5 border rounded-xl font-mono text-xl font-black select-text focus:outline-none focus:ring-0 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                                      isLight 
+                                        ? "bg-white border-slate-200 text-slate-900 focus:border-amber-400" 
+                                        : "bg-white/5 hover:bg-white/10 focus:bg-slate-950/90 border-white/5 focus:border-pink-500/40 text-white focus:text-pink-300"
                                     )}
                                   />
                                   <span className="text-[8px] text-slate-500 font-mono block uppercase mt-0.5 tracking-widest">Estoque</span>
@@ -461,9 +520,12 @@ export function Bikinis() {
               </div>
             </div>
           ) : (
-            <div className="bg-slate-900/40 rounded-[3rem] border border-white/5 py-24 text-center shadow-xl backdrop-blur-xl flex flex-col items-center justify-center gap-4">
+            <div className={cn(
+              "rounded-[3rem] border py-24 text-center shadow-xl backdrop-blur-xl flex flex-col items-center justify-center gap-4",
+              isLight ? "bg-slate-50 border-slate-100" : "bg-slate-900/40 border-white/5"
+            )}>
               <Waves size={40} className="text-pink-500 opacity-20 animate-bounce" />
-              <p className="text-slate-400 font-sans tracking-widest font-bold text-xs uppercase">Selecione um modelo à esquerda.</p>
+              <p className={cn("font-sans tracking-widest font-bold text-xs uppercase", isLight ? "text-slate-400" : "text-slate-400")}>Selecione um modelo à esquerda.</p>
             </div>
           )}
         </div>

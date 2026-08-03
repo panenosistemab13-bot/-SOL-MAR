@@ -49,137 +49,165 @@ interface ChatMessage {
 
 import { moderateContent } from '../lib/ai';
 
-export function Chat() {
-  const { currentUser, isReadOnly, users } = useInventory();
+export function Chat({ onBack }: { onBack?: () => void }) {
+  const { currentUser, isReadOnly, users, theme } = useInventory();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [urgency, setUrgency] = useState<'comum' | 'prioridade' | 'urgente'>('comum');
-  const [pinnedOnSend, setPinnedOnSend] = useState(false);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [mediaBlob, setMediaBlob] = useState<Blob | null>(null);
+  const [showViewDetails, setShowViewDetails] = useState<string | null>(null);
+  
+  // Administrative states
+  const [urgency, setUrgency] = useState<'comum' | 'urgente' | 'crítico'>('comum');
+  const [pinnedOnSend, setPinnedOnSend] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isWriter = currentUser?.role === 'MESTRE' || 
-                   currentUser?.role === 'ADM' || 
-                   currentUser?.role === 'LIDER';
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-  // Mock DMs for Instagram look
+  const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
+  const isWriter = isAdmOrMestre || currentUser?.role === 'LIDER';
+
+  // Chat Definitions - Unified Groups
   const dms = [
     { 
       id: 'mural', 
-      name: 'Mural de Avisos', 
+      name: 'Mural de Avisos 📢', 
       avatar: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=100&q=80', 
-      lastMsg: messages.length > 0 ? messages[messages.length - 1].text : 'Bem-vindo ao mural oficial', 
-      time: messages.length > 0 ? new Date(messages[messages.length - 1].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Agora',
+      lastMsg: 'Avisos oficiais da gerência', 
+      time: 'Grupo',
       isGroup: true,
-      unread: messages.some(m => !m.views || !m.views[currentUser?.username || ''])
+      unread: false,
+      restricted: true // Only Admins can send
     },
-    { id: '1', name: 'Luciana', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80', lastMsg: 'Biquíni azul finalizado!', time: '1h', unread: true },
-    { id: '2', name: 'Fernanda', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=100&q=80', lastMsg: 'Viu o novo modelo?', time: '3h', unread: false },
-    { id: '3', name: ' Jefferson', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80', lastMsg: 'Estoque atualizado.', time: 'Ontem', unread: false },
-    { id: '4', name: 'Ana Paula', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80', lastMsg: 'Me envia o molde?', time: 'Ter', unread: false },
+    { 
+      id: 'resenha', 
+      name: 'Resenha 🏖️', 
+      avatar: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=100&q=80', 
+      lastMsg: 'Espaço para diversão!', 
+      time: 'Grupo',
+      isGroup: true,
+      unread: false,
+      restricted: false
+    },
   ];
 
   const filteredDMs = dms.filter(dm => 
-    dm.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    dm.lastMsg.toLowerCase().includes(searchQuery.toLowerCase())
+    dm.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // 1. Escutar mensagens do Firebase em tempo real
+  // Sync Messages based on active chat
   useEffect(() => {
-    const chatRef = ref(rtdb, 'chat/messages');
+    if (!activeChat) return;
+    
+    const path = `chat/groups/${activeChat}/messages`;
+    const chatRef = ref(rtdb, path);
     setIsLoading(true);
 
     const unsubscribe = onValue(chatRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const now = new Date().getTime();
-        const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
-        const expiredIds: string[] = [];
-
         const loadedMessages: ChatMessage[] = Object.entries(data).map(([key, val]: [string, any]) => ({
           id: key,
           ...val
-        })).filter(msg => {
-          if (msg.senderId === 'jeff' || msg.senderName?.toLowerCase().includes('jefferson')) return false;
-          const msgSender = users?.find(u => u.id === msg.senderId);
-          if (msgSender?.username === 'jeff') return false;
+        }));
 
-          if (!msg.timestamp) return true;
-          const msgTime = new Date(msg.timestamp).getTime();
-          if (isNaN(msgTime)) return true;
-          const isExpired = (now - msgTime) > threeDaysMs;
-          if (isExpired) {
-            expiredIds.push(msg.id);
-            return false;
-          }
-          return true;
-        });
-
-        loadedMessages.sort((a, b) => {
-          if (a.pinned && !b.pinned) return -1;
-          if (!a.pinned && b.pinned) return 1;
-          return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-        });
-
+        loadedMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
         setMessages(loadedMessages);
-
-        if (expiredIds.length > 0 && !isReadOnly) {
-          expiredIds.forEach(id => {
-            const expiredRef = ref(rtdb, `chat/messages/${id}`);
-            set(expiredRef, null).catch(err => console.error("Erro ao limpar aviso antigo:", err));
-          });
-        }
       } else {
         setMessages([]);
       }
       setIsLoading(false);
-    }, (error) => {
-      console.warn("Chat sync notice:", error?.message);
-      setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [isReadOnly, users]);
+  }, [activeChat]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // View Tracking
   useEffect(() => {
-    if (messages.length > 0 && activeChat === 'mural') {
-      scrollToBottom();
-    }
-  }, [messages, activeChat]);
-
-  // 3. Marcar mensagens como visualizadas
-  useEffect(() => {
-    if (!currentUser || messages.length === 0 || activeChat !== 'mural') return;
+    if (!currentUser || messages.length === 0 || !activeChat) return;
 
     messages.forEach((msg) => {
       if (!msg.views || !msg.views[currentUser.username]) {
-        const viewRef = ref(rtdb, `chat/messages/${msg.id}/views/${currentUser.username}`);
+        const viewRef = ref(rtdb, `chat/groups/${activeChat}/messages/${msg.id}/views/${currentUser.username}`);
         set(viewRef, {
           name: currentUser.name,
           timestamp: new Date().toISOString()
-        }).catch(err => console.error("Erro ao registrar visualização:", err));
+        }).catch(err => console.error("Error logging view:", err));
       }
     });
   }, [messages, currentUser, activeChat]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !currentUser || isReadOnly) return;
+  // Audio Recording Logic
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
 
-    // Moderation check
-    const safety = await moderateContent(newMessage.trim());
-    if (!safety.isSafe) {
-      alert(`Aviso impróprio detectado: ${safety.reason || 'Siga as diretrizes do SOL & MAR.'}`);
-      return;
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setMediaBlob(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+    } catch (err) {
+      console.error("Error accessing microphone:", err);
+      alert("Não foi possível acessar o microfone.");
     }
+  };
 
-    const chatRef = ref(rtdb, 'chat/messages');
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  useEffect(() => {
+    let interval: any;
+    if (isRecording) {
+      interval = setInterval(() => setRecordingTime(t => t + 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        sendMediaMessage('image', base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const sendMediaMessage = async (type: 'image' | 'audio', content: string) => {
+    if (!activeChat || !currentUser || isReadOnly) return;
+    
+    const chatRef = ref(rtdb, `chat/groups/${activeChat}/messages`);
     const newMsgRef = push(chatRef);
 
     const messagePayload: any = {
@@ -187,7 +215,9 @@ export function Chat() {
       senderName: currentUser.name,
       senderRole: currentUser.role,
       senderAvatar: currentUser.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80",
-      text: newMessage.trim(),
+      text: type === 'image' ? '[Foto]' : '[Áudio]',
+      type,
+      mediaUrl: content,
       timestamp: new Date().toISOString(),
       views: {
         [currentUser.username]: {
@@ -197,13 +227,41 @@ export function Chat() {
       }
     };
 
-    if (isWriter) {
-      if (urgency !== 'comum') {
-        messagePayload.urgency = urgency;
+    set(newMsgRef, messagePayload).catch(err => console.error("Error sending media:", err));
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !currentUser || isReadOnly || !activeChat) return;
+
+    // Check Mural restriction
+    if (activeChat === 'mural' && !isAdmOrMestre) {
+      alert("Apenas Administradores podem enviar mensagens no Mural.");
+      return;
+    }
+
+    const chatRef = ref(rtdb, `chat/groups/${activeChat}/messages`);
+    const newMsgRef = push(chatRef);
+
+    const messagePayload: any = {
+      senderId: currentUser.id,
+      senderName: currentUser.name,
+      senderRole: currentUser.role,
+      senderAvatar: currentUser.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80",
+      text: newMessage.trim(),
+      type: 'text',
+      timestamp: new Date().toISOString(),
+      views: {
+        [currentUser.username]: {
+          name: currentUser.name,
+          timestamp: new Date().toISOString()
+        }
       }
-      if (pinnedOnSend) {
-        messagePayload.pinned = true;
-      }
+    };
+
+    if (activeChat === 'mural' && !isMobile) {
+      if (urgency !== 'comum') messagePayload.urgency = urgency;
+      if (pinnedOnSend) messagePayload.pinned = true;
     }
 
     set(newMsgRef, messagePayload)
@@ -212,45 +270,49 @@ export function Chat() {
         setUrgency('comum');
         setPinnedOnSend(false);
       })
-      .catch((err) => {
-        console.error("Erro ao enviar mensagem:", err);
-      });
+      .catch((err) => console.error("Error sending message:", err));
   };
 
+  const canSendMessages = activeChat === 'resenha' || (activeChat === 'mural' && isAdmOrMestre);
+
   const handleDeleteMessage = (msgId: string) => {
-    if (isReadOnly) return;
-    const canDelete = currentUser?.role === 'MESTRE';
+    if (isReadOnly || !activeChat) return;
+    const canDelete = currentUser?.role === 'MESTRE' || currentUser?.id === messages.find(m => m.id === msgId)?.senderId;
     if (!canDelete) return;
 
-    if (window.confirm("Deseja realmente remover este aviso importante?")) {
-      const msgRef = ref(rtdb, `chat/messages/${msgId}`);
-      set(msgRef, null).catch(err => console.error("Erro ao remover aviso:", err));
+    if (window.confirm("Deseja realmente remover esta mensagem?")) {
+      const msgRef = ref(rtdb, `chat/groups/${activeChat}/messages/${msgId}`);
+      set(msgRef, null).catch(err => console.error("Erro ao remover mensagem:", err));
     }
   };
 
   const handleTogglePin = (msgId: string, currentPinned: boolean) => {
-    if (isReadOnly) return;
+    if (isReadOnly || !activeChat) return;
     if (!isWriter) return;
 
-    const msgRef = ref(rtdb, `chat/messages/${msgId}`);
+    const msgRef = ref(rtdb, `chat/groups/${activeChat}/messages/${msgId}`);
     update(msgRef, {
       pinned: !currentPinned
     }).catch(err => console.error("Erro ao fixar/desafixar comunicado:", err));
   };
 
   const handleClearAll = () => {
-    if (isReadOnly) return;
+    if (isReadOnly || !activeChat) return;
     const canDelete = currentUser?.role === 'MESTRE';
     if (!canDelete) return;
 
-    if (window.confirm("Deseja realmente apagar TODOS os comunicados deste mural? Esta ação é irreversível.")) {
-      const chatRef = ref(rtdb, `chat/messages`);
-      set(chatRef, null).catch(err => console.error("Erro ao apagar mural:", err));
+    if (window.confirm(`Deseja realmente apagar TODAS as mensagens de ${activeChat}? Esta ação é irreversível.`)) {
+      const chatRef = ref(rtdb, `chat/groups/${activeChat}/messages`);
+      set(chatRef, null).catch(err => console.error("Erro ao apagar mensagens:", err));
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto w-full flex flex-col bg-[#000000] md:bg-[#130d08]/75 md:backdrop-blur-2xl md:border md:border-[#ebdcb9]/15 md:rounded-[2rem] overflow-hidden relative h-full md:h-[calc(100vh-200px)]">
+    <div className={cn(
+      "max-w-4xl mx-auto w-full flex flex-col overflow-hidden relative transition-colors duration-300",
+      theme === 'light' ? "bg-white text-black shadow-2xl border-slate-200" : "bg-black md:bg-[#130d08]/75 text-white md:border md:border-[#ebdcb9]/15 shadow-black/50",
+      isMobile ? "fixed inset-0 z-[60] h-screen" : "min-h-[calc(100vh-200px)] md:h-[calc(100vh-200px)] md:backdrop-blur-2xl md:rounded-[2rem]"
+    )}>
       <AnimatePresence mode="wait">
         {!activeChat ? (
           <motion.div 
@@ -262,57 +324,98 @@ export function Chat() {
             className="flex-1 flex flex-col overflow-hidden"
           >
             {/* Header Inbox */}
-            <div className="flex items-center justify-between p-4 px-6 pt-6 bg-black/20">
+            <div className={cn(
+              "flex items-center justify-between p-4 px-6 pt-6 transition-colors duration-300 lg:hidden",
+              theme === 'light' ? "bg-slate-50/50" : "bg-black/20"
+            )}>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-white tracking-tight">{currentUser?.username || 'mensagens'}</h1>
-                <ChevronLeft className="-rotate-90 text-white/60" size={16} />
+                {isMobile && onBack && (
+                  <button 
+                    onClick={onBack}
+                    className={cn(
+                      "p-2 -ml-2 transition-colors",
+                      theme === 'light' ? "text-slate-600 hover:text-black" : "text-white/70 hover:text-white"
+                    )}
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                )}
+                <h1 className={cn(
+                  "text-xl font-bold tracking-tight",
+                  theme === 'light' ? "text-black" : "text-white"
+                )}>{currentUser?.username || 'mensagens'}</h1>
+                <ChevronLeft className={cn("-rotate-90", theme === 'light' ? "text-slate-400" : "text-white/60")} size={16} />
               </div>
-              <div className="flex items-center gap-6">
-                <Video size={24} className="text-white" />
-                <Edit3 size={22} className="text-white" />
+              <div className="flex items-center gap-6 lg:hidden">
+                <Video size={24} className={theme === 'light' ? "text-black" : "text-white"} />
+                <Edit3 size={22} className={theme === 'light' ? "text-black" : "text-white"} />
               </div>
             </div>
 
             {/* Search Bar */}
-            <div className="px-4 py-2">
-              <div className="relative flex items-center bg-white/10 rounded-xl px-3 py-2 text-white/50">
+            <div className="px-4 py-2 lg:hidden">
+              <div className={cn(
+                "relative flex items-center rounded-xl px-3 py-2 transition-colors duration-300",
+                theme === 'light' ? "bg-slate-100 text-slate-500" : "bg-white/10 text-white/50"
+              )}>
                 <Search size={16} className="mr-2" />
                 <input 
                   type="text" 
                   placeholder="Pesquisar" 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent w-full text-sm outline-none text-white placeholder:text-white/40 font-medium"
+                  className={cn(
+                    "bg-transparent w-full text-sm outline-none font-medium",
+                    theme === 'light' ? "text-black placeholder:text-slate-400" : "text-white placeholder:text-white/40"
+                  )}
                 />
               </div>
             </div>
 
             {/* Notes Row (IG style) */}
-            <div className="flex items-center gap-4 overflow-x-auto no-scrollbar px-6 py-4">
+            <div className="flex items-center gap-4 overflow-x-auto no-scrollbar px-6 py-4 lg:hidden">
               <div className="flex flex-col items-center gap-1.5 shrink-0">
-                <div className="w-16 h-16 rounded-full border-2 border-white/20 p-0.5 relative">
+                <div className={cn(
+                  "w-16 h-16 rounded-full border-2 p-0.5 relative",
+                  theme === 'light' ? "border-slate-200" : "border-white/20"
+                )}>
                   <img src={currentUser?.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
-                  <div className="absolute bottom-0 right-0 bg-sky-500 rounded-full p-0.5 border-2 border-black">
+                  <div className={cn(
+                    "absolute bottom-0 right-0 bg-sky-500 rounded-full p-0.5 border-2",
+                    theme === 'light' ? "border-white" : "border-black"
+                  )}>
                     <Plus size={10} className="text-white" />
                   </div>
                 </div>
-                <span className="text-[10px] text-white/60">Sua nota</span>
+                <span className={cn(
+                  "text-[10px]",
+                  theme === 'light' ? "text-slate-500" : "text-white/60"
+                )}>Sua nota</span>
               </div>
               {users?.slice(0, 5).filter(u => u.id !== currentUser?.id).map(user => (
                 <div key={user.id} className="flex flex-col items-center gap-1.5 shrink-0">
-                  <div className="w-16 h-16 rounded-full border-2 border-white/10 p-0.5">
+                  <div className={cn(
+                    "w-16 h-16 rounded-full border-2 p-0.5",
+                    theme === 'light' ? "border-slate-100" : "border-white/10"
+                  )}>
                     <img src={user.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
                   </div>
-                  <span className="text-[10px] text-white/60">{user.username}</span>
+                  <span className={cn(
+                    "text-[10px]",
+                    theme === 'light' ? "text-slate-500" : "text-white/60"
+                  )}>{user.username}</span>
                 </div>
               ))}
             </div>
 
             {/* Messages List */}
             <div className="flex-1 overflow-y-auto px-4 pb-20 md:pb-4">
-              <div className="flex items-center justify-between px-2 mb-2">
-                <h2 className="text-sm font-bold text-white">Mensagens</h2>
-                <button className="text-sky-500 text-xs font-semibold">Solicitações</button>
+              <div className="flex items-center justify-between px-2 mb-2 lg:hidden">
+                <h2 className={cn(
+                  "text-sm font-bold",
+                  theme === 'light' ? "text-black" : "text-white"
+                )}>Mensagens</h2>
+                <button className="text-sky-500 text-xs font-semibold lg:hidden">Solicitações</button>
               </div>
               
               <div className="space-y-1">
@@ -320,28 +423,47 @@ export function Chat() {
                   <button 
                     key={dm.id}
                     onClick={() => setActiveChat(dm.id)}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-2xl transition-colors active:scale-[0.98] cursor-pointer group"
+                    className={cn(
+                      "w-full flex items-center gap-3 p-3 rounded-2xl transition-colors active:scale-[0.98] cursor-pointer group",
+                      theme === 'light' ? "hover:bg-slate-100" : "hover:bg-white/5"
+                    )}
                   >
                     <div className="w-14 h-14 rounded-full p-0.5 bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex shrink-0">
-                      <div className="w-full h-full rounded-full bg-black p-0.5">
+                      <div className={cn(
+                        "w-full h-full rounded-full p-0.5",
+                        theme === 'light' ? "bg-white" : "bg-black"
+                      )}>
                         <img src={dm.avatar} alt="" className="w-full h-full rounded-full object-cover" />
                       </div>
                     </div>
                     <div className="flex-1 text-left min-w-0">
-                      <p className="text-[13px] font-bold text-white truncate">{dm.name}</p>
+                      <p className={cn(
+                        "text-[13px] font-bold truncate",
+                        theme === 'light' ? "text-black" : "text-white"
+                      )}>{dm.name}</p>
                       <div className="flex items-center gap-1">
                         <p className={cn(
                           "text-[12px] truncate",
-                          dm.unread ? "text-white font-bold" : "text-white/50 font-normal"
+                          dm.unread 
+                            ? (theme === 'light' ? "text-black font-bold" : "text-white font-bold") 
+                            : (theme === 'light' ? "text-slate-500 font-normal" : "text-white/50 font-normal")
                         )}>
                           {dm.lastMsg}
                         </p>
-                        <span className="text-[10px] text-white/30 shrink-0">• {dm.time}</span>
+                        <span className={cn(
+                          "text-[10px] shrink-0",
+                          theme === 'light' ? "text-slate-400" : "text-white/30"
+                        )}>• {dm.time}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       {dm.unread && <div className="w-2 h-2 bg-sky-500 rounded-full shadow-sm shadow-sky-500/50" />}
-                      <Camera size={20} className="text-white/40 group-hover:text-white transition-colors" />
+                      <Camera size={20} className={cn(
+                        "transition-colors",
+                        theme === 'light' 
+                          ? "text-slate-400 group-hover:text-black" 
+                          : "text-white/40 group-hover:text-white"
+                      )} />
                     </div>
                   </button>
                 ))}
@@ -355,168 +477,479 @@ export function Chat() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
             transition={{ duration: 0.2 }}
-            className="flex-1 flex flex-col overflow-hidden bg-black"
+            className={cn(
+              "flex-1 flex flex-col overflow-hidden transition-colors duration-300",
+              theme === 'light' ? "bg-white" : "bg-black"
+            )}
           >
-            {/* Header Chat */}
-            <div className="flex items-center justify-between p-4 border-b border-white/5 bg-black/40 backdrop-blur-xl z-20">
-              <div className="flex items-center gap-2">
+            {/* Header Chat (IG Mobile Style) */}
+            <div className={cn(
+              "flex items-center justify-between px-3 py-2 border-b z-20 transition-colors duration-500",
+              theme === 'dark' ? "bg-black border-white/10 text-white" : "bg-white border-slate-200 text-black"
+            )}>
+              <div className="flex items-center gap-1">
                 <button 
                   onClick={() => setActiveChat(null)}
-                  className="p-2 -ml-2 text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+                  className="p-2 -ml-2 active:scale-90 transition-transform cursor-pointer"
                 >
                   <ChevronLeft size={28} />
                 </button>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-white/10 overflow-hidden">
+                  <div className="w-9 h-9 rounded-full bg-white/10 overflow-hidden border border-white/10 shadow-sm">
                     <img src={dms.find(d => d.id === activeChat)?.avatar} alt="" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-bold text-white leading-tight">
-                      {dms.find(d => d.id === activeChat)?.name}
+                    <span className="text-[15px] font-bold leading-none tracking-tight">
+                      {dms.find(d => d.id === activeChat)?.name.replace('📢', '').replace('🏖️', '').trim()}
                     </span>
-                    <span className="text-[10px] text-emerald-500 font-medium leading-tight">Ativo(a) agora</span>
+                    <span className={cn(
+                      "text-[12px] font-medium mt-1 leading-none",
+                      theme === 'dark' ? "text-white/40" : "text-slate-400"
+                    )}>
+                      {activeChat === 'mural' ? 'Informativo Oficial' : 'Ativo(a) agora'}
+                    </span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-5">
-                <Phone size={22} className="text-white" />
-                <Video size={24} className="text-white" />
-                <Info size={22} className="text-white" />
+              <div className="flex items-center gap-5 pr-1 lg:hidden">
+                <Phone size={22} className="cursor-pointer active:scale-90 transition-transform" />
+                <Video size={24} className="cursor-pointer active:scale-90 transition-transform" />
               </div>
             </div>
-
             {/* Chat Body */}
-            <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 bg-[#000000]">
-              {activeChat === 'mural' ? (
-                <>
-                  <div className="flex flex-col items-center py-8 mb-4">
-                    <div className="w-20 h-20 rounded-full bg-white/5 p-1 mb-3">
-                      <img src="https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=150&q=80" alt="" className="w-full h-full rounded-full object-cover" />
-                    </div>
-                    <h3 className="text-lg font-bold text-white">Mural de Avisos</h3>
-                    <p className="text-[12px] text-white/50">Grupo • Confecção Sol & Mar</p>
-                    <button className="mt-4 px-4 py-1.5 bg-white/10 rounded-lg text-xs font-bold text-white hover:bg-white/20 transition-colors">
-                      Ver Perfil
-                    </button>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5 pb-4">
-                    {messages.map((msg, index) => {
-                      const isMine = currentUser?.id === msg.senderId;
-                      const showAvatar = !isMine && (index === 0 || messages[index - 1].senderId !== msg.senderId);
-                      const isLastInGroup = index === messages.length - 1 || messages[index + 1].senderId !== msg.senderId;
-                      
-                      return (
-                        <div 
-                          key={msg.id} 
-                          className={cn(
-                            "flex flex-col max-w-[75%]",
-                            isMine ? "self-end items-end" : "self-start items-start",
-                            showAvatar ? "mt-4" : "mt-0.5"
+            <div className={cn(
+              "flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 transition-colors duration-300",
+              theme === 'light' ? "bg-white" : "bg-black"
+            )}>
+              <div className="flex flex-col gap-4 pb-4">
+                {messages.map((msg, index) => {
+                  const isMine = currentUser?.id === msg.senderId;
+                  const showAvatar = !isMine && (index === 0 || messages[index - 1].senderId !== msg.senderId);
+                  
+                  // DESKTOP MURAL STYLE
+                  if (!isMobile && activeChat === 'mural') {
+                    const viewCount = msg.views ? Object.keys(msg.views).length : 0;
+                    return (
+                      <div key={msg.id} className="w-full max-w-5xl mx-auto">
+                        <div className={cn(
+                          "rounded-[2rem] p-8 relative group border transition-all duration-300",
+                          theme === 'light' 
+                            ? "bg-slate-50/50 border-slate-100 shadow-xl" 
+                            : "bg-[#1f1610]/40 border-white/5 shadow-2xl"
+                        )}>
+                          {msg.pinned && (
+                            <div className={cn(
+                              "absolute top-6 right-8 flex items-center gap-2 px-3 py-1 rounded-full border",
+                              theme === 'light'
+                                ? "bg-amber-100/50 text-amber-700 border-amber-200"
+                                : "bg-[#ebdcb9]/10 text-[#ebdcb9] border-[#ebdcb9]/20"
+                            )}>
+                              <Pin size={12} className="rotate-45" />
+                              <span className="text-[10px] font-bold uppercase tracking-widest">Fixado</span>
+                            </div>
                           )}
-                        >
-                          {!isMine && showAvatar && (
-                            <span className="text-[10px] text-white/40 mb-1 ml-1 font-bold">{msg.senderName}</span>
-                          )}
-                          
-                          <div className="flex items-end gap-2 w-full">
-                            {!isMine && (
-                              <div className="w-6 h-6 shrink-0 rounded-full overflow-hidden bg-white/5 mb-0.5">
-                                {showAvatar && <img src={msg.senderAvatar} alt="" className="w-full h-full object-cover" />}
-                              </div>
-                            )}
-                            
-                            <div className="relative group flex-1">
-                              <div 
-                                className={cn(
-                                  "px-4 py-2.5 rounded-[20px] text-[13px] leading-snug whitespace-pre-wrap break-words inline-block min-w-[30px]",
-                                  isMine 
-                                    ? "bg-[#3797f0] text-white rounded-br-[4px] float-right" 
-                                    : "bg-[#262626] text-white rounded-bl-[4px]",
-                                  msg.pinned && "ring-1 ring-[#c5a880]/50 bg-[#c5a880]/10"
-                                )}
-                              >
-                                {msg.text}
-                              </div>
 
-                              {/* Admin Actions Tooltip */}
+                          <div className="flex items-start gap-4 mb-4">
+                            <div className={cn(
+                              "w-12 h-12 rounded-2xl overflow-hidden border shrink-0",
+                              theme === 'light' ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/10"
+                            )}>
+                              <img src={msg.senderAvatar} alt="" className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-3">
+                                  <span className={cn(
+                                    "text-sm font-bold",
+                                    theme === 'light' ? "text-black" : "text-white"
+                                  )}>{msg.senderName.toLowerCase()}</span>
+                                  <span className={cn(
+                                    "text-[10px] font-medium",
+                                    theme === 'light' ? "text-slate-500" : "text-white/30"
+                                  )}>
+                                    {new Date(msg.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} - {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                  {msg.urgency && msg.urgency !== 'comum' && (
+                                    <span className={cn(
+                                      "px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest",
+                                      msg.urgency === 'crítico' ? "bg-rose-500/20 text-rose-500 border border-rose-500/30" : "bg-amber-500/20 text-amber-500 border border-amber-500/30"
+                                    )}>
+                                      {msg.urgency}
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                <button 
+                                  onClick={() => setShowViewDetails(showViewDetails === msg.id ? null : msg.id)}
+                                  className={cn(
+                                    "p-1 transition-colors",
+                                    theme === 'light' ? "text-slate-400 hover:text-black" : "text-white/20 hover:text-white"
+                                  )}
+                                >
+                                  <MoreVertical size={16} />
+                                </button>
+                              </div>
+                              
+                              {showViewDetails === msg.id && (
+                                <motion.div 
+                                  initial={{ opacity: 0, y: -10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="mb-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4"
+                                >
+                                  <h4 className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <CheckCheck size={12} />
+                                    Histórico de Visualização
+                                  </h4>
+                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                    {msg.views && Object.values(msg.views).map((v: any, idx) => (
+                                      <div key={idx} className="flex flex-col bg-emerald-500/5 border border-emerald-500/10 px-2 py-1.5 rounded-lg">
+                                        <span className="text-[10px] font-bold text-emerald-500 uppercase truncate">{v.name}</span>
+                                        <span className="text-[8px] text-emerald-500/60">
+                                          {new Date(v.timestamp).toLocaleDateString()} às {new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </motion.div>
+                              )}
+
                               <div className={cn(
-                                "absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1",
-                                isMine ? "-left-12" : "-right-12"
+                                "text-[15px] leading-relaxed whitespace-pre-wrap",
+                                theme === 'light' ? "text-slate-800" : "text-white/90"
                               )}>
-                                {currentUser?.role === 'MESTRE' && (
-                                  <button onClick={() => handleDeleteMessage(msg.id)} className="p-1 text-rose-500 hover:scale-110">
-                                    <Trash size={12} />
-                                  </button>
+                                {msg.type === 'image' && (
+                                  <div className={cn(
+                                    "mt-3 rounded-2xl overflow-hidden border max-w-2xl",
+                                    theme === 'light' ? "border-slate-100 shadow-sm" : "border-white/10"
+                                  )}>
+                                    <img src={msg.mediaUrl} alt="Imagem" className="w-full h-auto" />
+                                  </div>
+                                )}
+                                {msg.type === 'audio' && (
+                                  <div className={cn(
+                                    "mt-3 flex items-center gap-4 p-4 rounded-2xl border max-w-md",
+                                    theme === 'light' ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/10"
+                                  )}>
+                                    <div className={cn(
+                                      "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+                                      theme === 'light' ? "bg-amber-100" : "bg-[#ebdcb9]/20"
+                                    )}>
+                                      <Mic size={18} className={theme === 'light' ? "text-amber-700" : "text-[#ebdcb9]"} />
+                                    </div>
+                                    <audio controls className={cn("h-10 flex-1 opacity-80", theme === 'dark' ? "filter invert" : "")}>
+                                      <source src={msg.mediaUrl} type="audio/webm" />
+                                    </audio>
+                                  </div>
+                                )}
+                                {msg.text && msg.type !== 'image' && msg.type !== 'audio' && msg.text}
+                                {msg.text && (msg.type === 'image' || msg.type === 'audio') && msg.text !== '[Foto]' && msg.text !== '[Áudio]' && (
+                                  <p className="mt-3">{msg.text}</p>
                                 )}
                               </div>
                             </div>
                           </div>
-                          
-                          {isMine && isLastInGroup && (
-                            <span className="text-[10px] text-white/30 mt-1 mr-1">Visto</span>
+
+                          <div className={cn(
+                            "pt-6 mt-6 border-t space-y-4",
+                            theme === 'light' ? "border-slate-100" : "border-white/5"
+                          )}>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
+                              <CheckCheck size={14} />
+                              VISUALIZADO ({viewCount})
+                            </div>
+                            
+                            <div className="flex flex-wrap gap-2">
+                              {msg.views && Object.values(msg.views).map((v: any, idx) => (
+                                <div key={idx} className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                  <span className="text-[10px] font-bold text-emerald-500 uppercase">{v.name.split(' ')[0]}</span>
+                                  <span className="text-[9px] text-emerald-500/50">
+                                    ({new Date(v.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} {new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {isAdmOrMestre && (
+                            <button 
+                              onClick={() => handleDeleteMessage(msg.id)}
+                              className={cn(
+                                "absolute bottom-6 right-8 p-2 transition-colors opacity-0 group-hover:opacity-100",
+                                theme === 'light' ? "text-slate-300 hover:text-rose-500" : "text-white/10 hover:text-rose-500"
+                              )}
+                            >
+                              <Trash size={16} />
+                            </button>
                           )}
                         </div>
-                      );
-                    })}
-                    <div ref={messagesEndRef} />
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center py-20 px-6">
-                  <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                    <MessageSquare size={40} className="text-white/20" />
-                  </div>
-                  <h3 className="text-lg font-bold text-white">Iniciar conversa</h3>
-                  <p className="text-sm text-white/50 max-w-[240px] mt-2">
-                    Envie mensagens privadas para outros colaboradores da Sol & Mar.
-                  </p>
-                  <button className="mt-6 px-6 py-2 bg-sky-500 rounded-lg text-sm font-bold text-white shadow-lg active:scale-95 transition-transform">
-                    Enviar mensagem
-                  </button>
-                </div>
-              )}
+                      </div>
+                    );
+                  }
+
+                  // MOBILE / INSTAGRAM STYLE
+                  return (
+                    <div 
+                      key={msg.id} 
+                      className={cn(
+                        "flex flex-col max-w-[85%] mb-1",
+                        isMine ? "self-end items-end" : "self-start items-start"
+                      )}
+                    >
+                      {!isMine && showAvatar && (
+                        <span className={cn(
+                          "text-[10px] mb-1 ml-1 font-bold transition-colors duration-500",
+                          theme === 'dark' ? "text-white/40" : "text-black/40"
+                        )}>{msg.senderName}</span>
+                      )}
+                      
+                      <div className="flex items-end gap-2 w-full">
+                        {!isMine && (
+                          <div className="w-7 h-7 shrink-0 rounded-full overflow-hidden bg-white/5 mb-0.5">
+                            {showAvatar && <img src={msg.senderAvatar} alt="" className="w-full h-full object-cover" />}
+                          </div>
+                        )}
+                        
+                        <div className="relative group flex-1">
+                          <div 
+                            className={cn(
+                              "px-4 py-2.5 rounded-[22px] text-[15px] leading-tight whitespace-pre-wrap break-words inline-block min-w-[30px]",
+                              isMine 
+                                ? (theme === 'dark' ? "bg-[#3797f0] text-white rounded-br-[4px]" : "bg-[#3797f0] text-white rounded-br-[4px]")
+                                : (theme === 'dark' ? "bg-[#262626] text-white rounded-bl-[4px]" : "bg-[#efefef] text-black rounded-bl-[4px]")
+                            )}
+                          >
+                            {/* Media content */}
+                            {msg.type === 'image' && (
+                              <div className={cn(
+                                "mb-1 rounded-lg overflow-hidden border",
+                                theme === 'dark' ? "border-white/10" : "border-black/10"
+                              )}>
+                                <img src={msg.mediaUrl} alt="Imagem" className="max-w-full h-auto" />
+                              </div>
+                            )}
+                            {msg.type === 'audio' && (
+                              <div className="flex items-center gap-3 py-1">
+                                <div className={cn(
+                                  "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                                  theme === 'dark' ? "bg-white/10" : "bg-black/10"
+                                )}>
+                                  <Mic size={14} className={cn(theme === 'dark' ? "text-white" : "text-[#3d2723]")} />
+                                </div>
+                                <audio controls className={cn("h-8 max-w-[180px]", theme === 'dark' ? "filter invert" : "")}>
+                                  <source src={msg.mediaUrl} type="audio/webm" />
+                                </audio>
+                              </div>
+                            )}
+                            {msg.text && msg.type !== 'image' && msg.type !== 'audio' && msg.text}
+                            {msg.text && (msg.type === 'image' || msg.type === 'audio') && msg.text !== '[Foto]' && msg.text !== '[Áudio]' && (
+                              <p className="mt-1">{msg.text}</p>
+                            )}
+                          </div>
+
+                          {/* Message Actions - Visualization Tracking */}
+                          <div className={cn(
+                            "absolute bottom-0 flex items-center gap-1",
+                            isMine ? "-left-8" : "-right-8"
+                          )}>
+                            <button 
+                              onClick={() => setShowViewDetails(showViewDetails === msg.id ? null : msg.id)}
+                              className="p-1 text-white/20 hover:text-white transition-colors"
+                            >
+                              <MoreVertical size={14} />
+                            </button>
+                          </div>
+
+                          {/* Visualization Details Modal/Overlay */}
+                          {showViewDetails === msg.id && (
+                            <motion.div 
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="absolute bottom-full mb-2 z-50 bg-[#1f1610] border border-white/10 rounded-xl p-3 shadow-2xl min-w-[180px] max-w-[240px]"
+                            >
+                              <h4 className="text-[10px] font-bold text-[#ebdcb9] uppercase tracking-widest mb-2 pb-1 border-b border-white/5">Visualizado por:</h4>
+                              <div className="space-y-2 max-h-[150px] overflow-y-auto no-scrollbar">
+                                {msg.views && Object.values(msg.views).length > 0 ? (
+                                  Object.values(msg.views).map((v: any, idx) => (
+                                    <div key={idx} className="flex flex-col">
+                                      <span className="text-[11px] font-medium text-white">{v.name}</span>
+                                      <span className="text-[9px] text-white/40">
+                                        {new Date(v.timestamp).toLocaleDateString()} às {new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <span className="text-[10px] text-white/30 italic">Ninguém viu ainda</span>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </div>
             </div>
 
-            {/* Footer Input IG Style */}
-            <div className="p-3 bg-black">
-              <form 
-                onSubmit={handleSendMessage}
-                className="flex items-center gap-3 bg-[#262626] rounded-full px-4 py-2"
-              >
-                <div className="w-8 h-8 rounded-full bg-sky-500 flex items-center justify-center shrink-0">
-                  <Camera size={18} className="text-white fill-current" />
-                </div>
-                
-                <input 
-                  type="text" 
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Mensagem..." 
-                  className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/40"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage(e);
-                    }
-                  }}
-                />
+            {/* Footer Input */}
+            <div className={cn(
+              "p-3 transition-colors duration-500",
+              theme === 'dark' ? "bg-black border-t border-white/5" : "bg-white border-t border-slate-100"
+            )}>
+              {canSendMessages ? (
+                <div className="space-y-3">
+                  {!isMobile && activeChat === 'mural' && (
+                    <div className={cn(
+                      "flex items-center gap-4 px-4 py-2 border-b transition-colors",
+                      theme === 'light' ? "border-slate-100" : "border-white/5"
+                    )}>
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "text-[10px] font-bold uppercase tracking-widest",
+                          theme === 'light' ? "text-slate-400" : "text-white/40"
+                        )}>Urgência:</span>
+                        <select 
+                          value={urgency}
+                          onChange={(e: any) => setUrgency(e.target.value)}
+                          className={cn(
+                            "bg-transparent text-[10px] font-bold uppercase tracking-widest outline-none border-none cursor-pointer transition-colors",
+                            theme === 'light' ? "text-amber-600 hover:text-black" : "text-[#ebdcb9] hover:text-white"
+                          )}
+                        >
+                          <option value="comum">Comum</option>
+                          <option value="urgente" className="text-amber-500">Urgente</option>
+                          <option value="crítico" className="text-rose-500">Crítico</option>
+                        </select>
+                      </div>
 
-                {newMessage.trim() ? (
-                  <button 
-                    type="submit"
-                    className="text-sky-500 font-bold text-sm px-2 cursor-pointer active:scale-95"
+                      <div className={cn(
+                        "w-px h-4",
+                        theme === 'light' ? "bg-slate-200" : "bg-white/10"
+                      )} />
+
+                      <button 
+                        onClick={() => setPinnedOnSend(!pinnedOnSend)}
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-1 rounded-lg transition-all",
+                          pinnedOnSend 
+                            ? (theme === 'light' ? "bg-amber-100 text-amber-700" : "bg-[#ebdcb9]/20 text-[#ebdcb9]") 
+                            : (theme === 'light' ? "text-slate-400 hover:text-black" : "text-white/40 hover:text-white")
+                        )}
+                      >
+                        <Pin size={14} className={cn("transition-transform", pinnedOnSend && "rotate-45")} />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Fixar no Topo</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {isRecording && (
+                    <div className="flex items-center justify-between px-4 py-2 bg-rose-500/20 border border-rose-500/30 rounded-2xl mb-2 animate-pulse">
+                      <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-rose-500" />
+                        <span className="text-xs font-bold text-rose-500">Gravando: {recordingTime}s</span>
+                      </div>
+                      <button 
+                        onClick={stopRecording}
+                        className="text-xs font-bold text-white bg-rose-500 px-3 py-1 rounded-lg"
+                      >
+                        Parar e Enviar
+                      </button>
+                    </div>
+                  )}
+
+                  <form 
+                    onSubmit={handleSendMessage}
+                    className={cn(
+                      "flex items-center gap-2 rounded-full px-1.5 py-1.5 transition-colors duration-500",
+                      theme === 'dark' ? "bg-[#262626]" : "bg-[#f2f2f2]"
+                    )}
                   >
-                    Enviar
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <Mic size={22} className="text-white" />
-                    <ImageIcon size={22} className="text-white" />
-                    <Smile size={22} className="text-white" />
-                  </div>
-                )}
-              </form>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                    />
+                    
+                    <button 
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-8 h-8 rounded-full bg-[#3797f0] flex items-center justify-center shrink-0 active:scale-90 transition-transform ml-1 shadow-sm"
+                    >
+                      <Camera size={18} className="text-white" />
+                    </button>
+                    
+                    <input 
+                      type="text" 
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder={activeChat === 'mural' ? "Aviso importante..." : "Mensagem..."} 
+                      className={cn(
+                        "flex-1 bg-transparent text-[15px] outline-none px-3 py-1 transition-colors duration-500",
+                        theme === 'dark' ? "text-white placeholder:text-white/40" : "text-black placeholder:text-slate-400"
+                      )}
+                      disabled={isRecording}
+                    />
+
+                    <div className="flex items-center gap-3 pr-2.5 mr-0.5">
+                      {newMessage.trim() ? (
+                        <button 
+                          type="submit"
+                          className="text-[#3797f0] font-bold text-[15px] px-2 cursor-pointer active:scale-95 transition-transform"
+                        >
+                          Enviar
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-4">
+                          <button 
+                            type="button"
+                            onMouseDown={startRecording}
+                            onTouchStart={startRecording}
+                            onMouseUp={stopRecording}
+                            onTouchEnd={stopRecording}
+                            className={cn(
+                              "transition-all active:scale-90",
+                              isRecording ? "text-rose-500 scale-125" : (theme === 'dark' ? "text-white/80 hover:text-white" : "text-slate-600 hover:text-black")
+                            )}
+                          >
+                            <Mic size={22} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className={cn(
+                              "transition-all active:scale-90",
+                              theme === 'dark' ? "text-white/80 hover:text-white" : "text-slate-600 hover:text-black"
+                            )}
+                          >
+                            <ImageIcon size={22} />
+                          </button>
+                          <button
+                            type="button"
+                            className={cn(
+                              "transition-all active:scale-90",
+                              theme === 'dark' ? "text-white/80 hover:text-white" : "text-slate-600 hover:text-black"
+                            )}
+                          >
+                            <Smile size={22} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                <div className={cn(
+                  "py-4 text-center text-xs font-bold uppercase tracking-widest",
+                  theme === 'dark' ? "text-white/20" : "text-slate-300"
+                )}>
+                  Somente leitura neste grupo
+                </div>
+              )}
             </div>
           </motion.div>
         )}

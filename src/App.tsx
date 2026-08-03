@@ -15,15 +15,28 @@ import { GlobalPinnedAlerts } from './components/GlobalPinnedAlerts';
 import { LayoutDashboard, Tag, Package, Scissors, ShoppingCart, Settings, LogOut, Sparkles, MessageSquare, CalendarCheck } from 'lucide-react';
 import { Attendance } from './pages/Attendance';
 import { InstagramMobileHeader, InstagramStoriesRow, InstagramMobileBottomNav, UserProfileGalleryModal } from './components/InstagramMobileNav';
+import { cn } from './lib/utils';
 
 // @ts-ignore
 import backgroundImage from './assets/images/sol_mar_bg_1781047598977.png';
 
 function AppContent() {
-  const { lowStockItemsCount, unreadMessagesCount, currentUser, logout } = useInventory(); 
+  const { lowStockItemsCount, unreadMessagesCount, currentUser, logout, theme } = useInventory(); 
   
   const [isStandalone, setIsStandalone] = useState(false);
   const [currentTab, setCurrentTab] = useState('menu');
+  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
+
+  const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
+
+  const navTabs = React.useMemo(() => {
+    const tabs = ['chat', 'bikinis', 'threads', 'sales'];
+    if (isAdmOrMestre) {
+      tabs.push('attendance');
+    }
+    tabs.push('configuracoes');
+    return tabs;
+  }, [isAdmOrMestre]);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -34,7 +47,6 @@ function AppContent() {
     }
   }, []);
 
-  const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
   const isFuncionarioB = currentUser?.role === 'FUNCIONARIO_B';
 
   const tabTitles: Record<string, string> = {
@@ -47,12 +59,6 @@ function AppContent() {
     configuracoes: 'Configurações do Sistema',
     publi: 'Criar Publicação'
   };
-
-  const navTabs = ['chat', 'bikinis', 'threads', 'sales'];
-  if (isAdmOrMestre) {
-    navTabs.push('attendance');
-  }
-  navTabs.push('configuracoes');
 
   React.useEffect(() => {
     if (currentTab === 'dashboard') {
@@ -121,14 +127,18 @@ function AppContent() {
 
   // Early return logic removed
 
-  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
-
   return (
     <div 
-      className="min-h-screen flex text-[#fbf8f2] font-sans selection:bg-[#ebdcb9]/35 selection:text-[#3d2723] bg-[#1a130c] bg-cover bg-center bg-no-repeat relative overflow-hidden pb-16 md:pb-0"
-      style={{ backgroundImage: `url(${backgroundImage})` }}
+      className={cn(
+        "min-h-screen flex font-sans selection:bg-[#ebdcb9]/35 selection:text-[#3d2723] bg-cover bg-center bg-no-repeat relative overflow-hidden pb-16 md:pb-0 transition-colors duration-500",
+        theme === 'dark' ? "text-[#fbf8f2] bg-[#1a130c]" : "text-black bg-white"
+      )}
+      style={{ backgroundImage: theme === 'dark' ? `url(${backgroundImage})` : 'none' }}
     >
-      <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/45 to-black/90 z-0 pointer-events-none" />
+      <div className={cn(
+        "absolute inset-0 z-0 pointer-events-none transition-opacity duration-500",
+        theme === 'dark' ? "bg-gradient-to-b from-black/85 via-black/45 to-black/90 opacity-100" : "bg-white opacity-0"
+      )} />
       
       {/* INSTAGRAM MOBILE TOP HEADER & STORIES ROW */}
       <InstagramMobileHeader 
@@ -206,7 +216,10 @@ function AppContent() {
           </header>
         )}
         
-        <div id="main-scroll-container" className="flex-1 overflow-y-auto no-scrollbar p-0 md:p-12 pb-24 md:pb-12 relative touch-pan-y">
+        <div id="main-scroll-container" className={cn(
+          "flex-1 overflow-y-auto no-scrollbar p-0 md:p-12 pb-24 md:pb-12 relative touch-pan-y",
+          currentTab === 'chat' && "pb-0"
+        )}>
           <div className="max-w-7xl mx-auto h-full relative z-10">
             {currentTab === 'menu' && (
               <>
@@ -229,7 +242,7 @@ function AppContent() {
             {currentTab === 'bikinis' && <Bikinis />}
             {currentTab === 'threads' && <Threads />}
             {currentTab === 'sales' && <Sales />}
-            {currentTab === 'chat' && <Chat />}
+            {currentTab === 'chat' && <Chat onBack={() => setCurrentTab('menu')} />}
             {currentTab === 'attendance' && isAdmOrMestre && <Attendance />}
             {currentTab === 'configuracoes' && <Configuracoes />}
           </div>
@@ -237,12 +250,14 @@ function AppContent() {
       </main>
 
       {/* INSTAGRAM MOBILE BOTTOM NAVIGATION BAR */}
-      <InstagramMobileBottomNav 
-        currentTab={currentTab} 
-        onSelect={setCurrentTab} 
-        viewingProfileUserId={viewingProfileUserId}
-        onSelectProfile={setViewingProfileUserId}
-      />
+      {currentTab !== 'chat' && (
+        <InstagramMobileBottomNav 
+          currentTab={currentTab} 
+          onSelect={setCurrentTab} 
+          viewingProfileUserId={viewingProfileUserId}
+          onSelectProfile={setViewingProfileUserId}
+        />
+      )}
 
       {/* GLOBAL PROFILE MODAL FOR MOBILE */}
       {viewingProfileUserId && (

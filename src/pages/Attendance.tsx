@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useInventory } from "../context/InventoryContext";
+import { cn } from "../lib/utils";
 import { ref, onValue, update } from "firebase/database";
 import { rtdb } from "../lib/firebase";
 import {
@@ -128,7 +129,8 @@ const MONTHS = [
 ];
 
 export function Attendance() {
-  const { users, currentUser } = useInventory();
+  const { users, currentUser, theme } = useInventory();
+  const isLight = theme === 'light';
 
   if (currentUser?.role !== 'MESTRE' && currentUser?.role !== 'ADM') {
     return null;
@@ -520,10 +522,16 @@ export function Attendance() {
   };
 
   return (
-    <div className="flex flex-col space-y-6 w-full max-w-[1400px] mx-auto p-2 pb-24 lg:pb-8">
+    <div className={cn(
+      "flex flex-col space-y-6 w-full max-w-[1400px] mx-auto p-2 pb-24 lg:pb-8 transition-colors duration-300",
+      isLight ? "bg-white text-black" : ""
+    )}>
       {/* Header Titles */}
       <div className="mb-2">
-        <h2 className="text-3xl font-serif text-[#fbf8f2] tracking-wide">
+        <h2 className={cn(
+          "text-3xl font-serif tracking-wide",
+          isLight ? "text-slate-900" : "text-[#fbf8f2]"
+        )}>
           Lista de Presença
         </h2>
         <p className="text-[10px] text-[#c5a880] font-black tracking-widest uppercase mt-1">
@@ -532,37 +540,49 @@ export function Attendance() {
       </div>
 
       {/* Top Banner (User & Legend) */}
-      <div className="bg-[#130d08]/75 backdrop-blur-xl border border-[#ebdcb9]/15 rounded-[2.5rem] p-6 lg:p-8 flex flex-col lg:flex-row items-start justify-between gap-8 relative overflow-visible shadow-[0_20px_50px_rgba(0,0,0,0.6)]">
+      <div className={cn(
+        "backdrop-blur-xl border rounded-[2.5rem] p-6 lg:p-8 flex flex-col lg:flex-row items-start justify-between gap-8 relative overflow-visible transition-all",
+        isLight 
+          ? "bg-white/80 border-slate-200 shadow-slate-200/50" 
+          : "bg-[#130d08]/75 border-[#ebdcb9]/15 shadow-[0_20px_50px_rgba(0,0,0,0.6)]"
+      )}>
         {/* Users Horizontal List */}
         <div className="flex-1 min-w-0 flex flex-col">
           <div className="flex flex-wrap sm:flex-nowrap sm:overflow-x-auto gap-3 pb-4 sm:pb-2 custom-scrollbar pr-4">
             {visibleUsers.map((u) => {
               const isSelected = u.id === selectedUserId;
               return (
-                <button
-                  key={u.id}
-                  onClick={() => setSelectedUserId(u.id)}
-                  className={`flex items-center gap-3 p-3 rounded-2xl shrink-0 text-left transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-[#ebdcb9]/15 ring-1 ring-[#ebdcb9]/40 shadow-[0_0_20px_rgba(235,220,185,0.15)]"
-                      : "hover:bg-white/5 ring-1 ring-[#ebdcb9]/5"
-                  }`}
-                >
-                  <div
-                    className={`w-12 h-12 rounded-[14px] overflow-hidden shrink-0 transition-all ${isSelected ? "ring-2 ring-[#ebdcb9] ring-offset-2 ring-offset-[#130d08]" : ""}`}
+                  <button
+                    key={u.id}
+                    onClick={() => setSelectedUserId(u.id)}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-2xl shrink-0 text-left transition-all cursor-pointer",
+                      isSelected
+                        ? "bg-[#ebdcb9]/15 ring-1 ring-[#ebdcb9]/40 shadow-[0_0_20px_rgba(235,220,185,0.15)]"
+                        : (isLight ? "hover:bg-slate-100 ring-1 ring-slate-200" : "hover:bg-white/5 ring-1 ring-[#ebdcb9]/5")
+                    )}
                   >
-                    <img
-                      src={u.avatarUrl}
-                      className="w-full h-full object-cover"
-                      alt="Avatar"
-                    />
-                  </div>
-                  <div className="pr-4">
-                    <div className="text-sm font-black text-white uppercase tracking-tight">
-                      {u.name.split(" ")[0]}
+                    <div
+                      className={cn(
+                        "w-12 h-12 rounded-[14px] overflow-hidden shrink-0 transition-all",
+                        isSelected ? "ring-2 ring-[#ebdcb9] ring-offset-2 ring-offset-[#130d08]" : ""
+                      )}
+                    >
+                      <img
+                        src={u.avatarUrl}
+                        className="w-full h-full object-cover"
+                        alt="Avatar"
+                      />
                     </div>
-                  </div>
-                </button>
+                    <div className="pr-4">
+                      <div className={cn(
+                        "text-sm font-black uppercase tracking-tight",
+                        isLight ? "text-slate-900" : "text-white"
+                      )}>
+                        {u.name.split(" ")[0]}
+                      </div>
+                    </div>
+                  </button>
               );
             })}
           </div>
@@ -621,22 +641,36 @@ export function Attendance() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] xl:grid-cols-[380px_1fr] gap-6">
         {/* Calendar Left Panel */}
-        <div className="bg-[#130d08]/75 backdrop-blur-xl border border-[#ebdcb9]/15 rounded-[2.5rem] p-6 xl:p-8 flex flex-col w-full shadow-2xl relative">
+        <div className={cn(
+          "backdrop-blur-xl border rounded-[2.5rem] p-6 xl:p-8 flex flex-col w-full shadow-2xl relative",
+          isLight 
+            ? "bg-white border-slate-200" 
+            : "bg-[#130d08]/75 border-[#ebdcb9]/15"
+        )}>
           <div className="flex items-center justify-between mb-8">
             <button
               onClick={() => handleMonthChange(-1)}
-              className="w-9 h-9 flex items-center justify-center bg-white/[0.02] border border-white/5 hover:bg-white/10 hover:border-white/10 rounded-xl transition-all cursor-pointer"
+              className={cn(
+                "w-9 h-9 flex items-center justify-center border hover:bg-white/10 rounded-xl transition-all cursor-pointer",
+                isLight ? "bg-slate-50 border-slate-200" : "bg-white/[0.02] border-white/5 hover:border-white/10"
+              )}
             >
-              <ChevronLeft size={16} className="text-slate-400" />
+              <ChevronLeft size={16} className={cn(isLight ? "text-slate-600" : "text-slate-400")} />
             </button>
-            <h3 className="text-sm font-black text-white uppercase tracking-widest">
+            <h3 className={cn(
+              "text-sm font-black uppercase tracking-widest",
+              isLight ? "text-slate-900" : "text-white"
+            )}>
               {MONTHS[currentMonth]} {currentYear}
             </h3>
             <button
               onClick={() => handleMonthChange(1)}
-              className="w-9 h-9 flex items-center justify-center bg-white/[0.02] border border-white/5 hover:bg-white/10 hover:border-white/10 rounded-xl transition-all cursor-pointer"
+              className={cn(
+                "w-9 h-9 flex items-center justify-center border hover:bg-white/10 rounded-xl transition-all cursor-pointer",
+                isLight ? "bg-slate-50 border-slate-200" : "bg-white/[0.02] border-white/5 hover:border-white/10"
+              )}
             >
-              <ChevronRight size={16} className="text-slate-400" />
+              <ChevronRight size={16} className={cn(isLight ? "text-slate-600" : "text-slate-400")} />
             </button>
           </div>
           <div className="grid grid-cols-7 gap-1 text-center mb-5">
@@ -653,22 +687,44 @@ export function Attendance() {
             {renderCalendarDays()}
           </div>
 
-          <div className="mt-10 pt-6 border-t border-[#ebdcb9]/10 hidden md:block">
-            <button className="w-full bg-black/40 hover:bg-[#ebdcb9]/10 text-[#ebdcb9] border border-[#ebdcb9]/15 hover:border-[#ebdcb9]/40 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer">
+          <div className={cn(
+            "mt-10 pt-6 border-t hidden md:block",
+            isLight ? "border-slate-100" : "border-[#ebdcb9]/10"
+          )}>
+            <button className={cn(
+              "w-full border py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer",
+              isLight 
+                ? "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100" 
+                : "bg-black/40 hover:bg-[#ebdcb9]/10 text-[#ebdcb9] border-[#ebdcb9]/15 hover:border-[#ebdcb9]/40"
+            )}>
               Planejar Férias
             </button>
           </div>
         </div>
 
         {/* Daily Panel Right */}
-        <div className="bg-[#130d08]/75 backdrop-blur-xl border border-[#ebdcb9]/15 rounded-[2.5rem] p-6 lg:p-8 flex flex-col relative w-full shadow-2xl">
+        <div className={cn(
+          "backdrop-blur-xl border rounded-[2.5rem] p-6 lg:p-8 flex flex-col relative w-full shadow-2xl",
+          isLight 
+            ? "bg-white border-slate-200" 
+            : "bg-[#130d08]/75 border-[#ebdcb9]/15"
+        )}>
           {/* Header & Date */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6 pb-6 border-b border-white/5">
+          <div className={cn(
+            "flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6 pb-6 border-b",
+            isLight ? "border-slate-100" : "border-white/5"
+          )}>
             <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+              <h2 className={cn(
+                "text-2xl sm:text-3xl font-black uppercase tracking-tight flex items-center gap-3",
+                isLight ? "text-slate-900" : "text-white"
+              )}>
                 {String(selectedDate.getDate()).padStart(2, "0")} DE{" "}
                 {MONTHS[selectedDate.getMonth()]}
-                <span className="text-xs bg-[#ebdcb9]/10 text-[#ebdcb9] border border-[#ebdcb9]/20 px-3 py-1 rounded-full font-bold">
+                <span className={cn(
+                  "text-xs border px-3 py-1 rounded-full font-bold",
+                  isLight ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-[#ebdcb9]/10 text-[#ebdcb9] border-[#ebdcb9]/20"
+                )}>
                   {currentYear}
                 </span>
               </h2>
@@ -714,7 +770,10 @@ export function Attendance() {
           </div>
 
           {/* Search Bar for Employee Name */}
-          <div className="mb-6 bg-black/40 border border-[#ebdcb9]/15 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className={cn(
+            "mb-6 border rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4",
+            isLight ? "bg-slate-50 border-slate-200" : "bg-black/40 border-[#ebdcb9]/15"
+          )}>
             <div className="relative w-full sm:w-auto flex-1">
               <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#c5a880]" />
               <input
@@ -722,7 +781,12 @@ export function Attendance() {
                 placeholder="Digitar / Colocar Nome do Funcionário para filtrar..."
                 value={searchEmployeeName}
                 onChange={(e) => setSearchEmployeeName(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-xs font-bold text-white placeholder:text-stone-500 outline-none focus:border-[#ebdcb9]/40 transition-all"
+                className={cn(
+                  "w-full border rounded-xl pl-11 pr-4 py-3 text-xs font-bold outline-none transition-all",
+                  isLight 
+                    ? "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-amber-400" 
+                    : "bg-white/5 border-white/10 text-white placeholder:text-stone-500 focus:border-[#ebdcb9]/40"
+                )}
               />
             </div>
             {searchEmployeeName && (
@@ -825,10 +889,16 @@ export function Attendance() {
                     return (
                       <div
                         key={emp.id}
-                        className="bg-black/50 border border-[#ebdcb9]/15 hover:border-[#ebdcb9]/30 rounded-2xl p-5 sm:p-6 space-y-5 transition-all shadow-lg"
+                        className={cn(
+                          "border hover:border-[#ebdcb9]/30 rounded-2xl p-5 sm:p-6 space-y-5 transition-all shadow-lg",
+                          isLight ? "bg-slate-50 border-slate-200" : "bg-black/50 border-[#ebdcb9]/15"
+                        )}
                       >
                         {/* Employee Card Header */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/5">
+                        <div className={cn(
+                          "flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b",
+                          isLight ? "border-slate-100" : "border-white/5"
+                        )}>
                           <div className="flex items-center gap-3.5">
                             <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 border border-[#ebdcb9]/30 shadow-md">
                               <img
@@ -839,7 +909,10 @@ export function Attendance() {
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <h4 className="text-sm font-black text-white uppercase tracking-tight">
+                                <h4 className={cn(
+                                  "text-sm font-black uppercase tracking-tight",
+                                  isLight ? "text-slate-900" : "text-white"
+                                )}>
                                   {emp.name}
                                 </h4>
                               </div>
@@ -906,7 +979,12 @@ export function Attendance() {
                                   e.target.value
                                 )
                               }
-                              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white [color-scheme:dark] outline-none focus:border-[#ebdcb9]/40 transition-all disabled:opacity-50"
+                              className={cn(
+                                "w-full border rounded-xl px-3.5 py-2.5 text-xs font-bold outline-none transition-all disabled:opacity-50",
+                                isLight 
+                                  ? "bg-white border-slate-200 text-slate-900 focus:border-amber-400" 
+                                  : "bg-white/5 border-white/10 text-white [color-scheme:dark] focus:border-[#ebdcb9]/40"
+                              )}
                             />
                           </div>
 
@@ -927,7 +1005,12 @@ export function Attendance() {
                                   e.target.value
                                 )
                               }
-                              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white [color-scheme:dark] outline-none focus:border-[#ebdcb9]/40 transition-all disabled:opacity-50"
+                              className={cn(
+                                "w-full border rounded-xl px-3.5 py-2.5 text-xs font-bold outline-none transition-all disabled:opacity-50",
+                                isLight 
+                                  ? "bg-white border-slate-200 text-slate-900 focus:border-amber-400" 
+                                  : "bg-white/5 border-white/10 text-white [color-scheme:dark] focus:border-[#ebdcb9]/40"
+                              )}
                             />
                           </div>
 
@@ -947,7 +1030,12 @@ export function Attendance() {
                                   e.target.value
                                 )
                               }
-                              className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-black text-white outline-none focus:border-[#ebdcb9]/40 uppercase tracking-widest disabled:opacity-50"
+                              className={cn(
+                                "w-full border rounded-xl px-3.5 py-2.5 text-xs font-black outline-none uppercase tracking-widest disabled:opacity-50",
+                                isLight 
+                                  ? "bg-white border-slate-200 text-slate-900 focus:border-amber-400" 
+                                  : "bg-white/5 border-white/10 text-white focus:border-[#ebdcb9]/40"
+                              )}
                             >
                               <option value="presente">TRABALHOU (PRESENTE)</option>
                               <option value="falta">FALTA</option>
@@ -977,7 +1065,12 @@ export function Attendance() {
                                 e.target.value
                               )
                             }
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white placeholder:text-stone-600 outline-none focus:border-[#ebdcb9]/40 transition-all"
+                            className={cn(
+                              "w-full border rounded-xl px-3.5 py-2.5 text-xs font-bold outline-none transition-all",
+                              isLight 
+                                ? "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-amber-400" 
+                                : "bg-white/5 border-white/10 text-white placeholder:text-stone-600 focus:border-[#ebdcb9]/40"
+                            )}
                           />
 
                           {/* Quick Action Presets */}

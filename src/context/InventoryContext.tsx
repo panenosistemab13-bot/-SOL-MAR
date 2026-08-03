@@ -48,6 +48,9 @@ interface InventoryContextType {
   editPostComment: (postId: string, commentId: string, text: string) => Promise<void>;
   clearNotifications: () => void;
   isReadOnly: boolean;
+  theme: 'dark' | 'light';
+  isMobile: boolean;
+  setTheme: (theme: 'dark' | 'light') => void;
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
@@ -149,6 +152,41 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const isReadOnly = currentUser?.role === 'FUNCIONARIO_B';
 
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const [themeState, setThemeState] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    if (currentUser) {
+      const saved = localStorage.getItem(`sol_mar_theme_${currentUser.id}`);
+      if (saved) {
+        setThemeState(saved as 'dark' | 'light');
+      } else {
+        setThemeState('dark');
+      }
+    } else {
+      setThemeState('dark');
+    }
+  }, [currentUser]);
+
+  const theme = isMobile ? themeState : 'dark';
+
+  const setTheme = (newTheme: 'dark' | 'light') => {
+    if (!isMobile) return;
+    setThemeState(newTheme);
+    if (currentUser) {
+      localStorage.setItem(`sol_mar_theme_${currentUser.id}`, newTheme);
+    }
+  };
 
   useEffect(() => {
     if (!currentUser) {
@@ -774,7 +812,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       addBikini, addBikiniModel, updateBikiniStock, setBikiniStock, updateBikiniDividedStock, removeBikini, removeBikiniModel,
       addThread, updateThreadStock, setThreadStock, updateThreadColorCode, removeThread,
       registerSale, resetAllStockToZero, lowStockItemsCount, unreadMessagesCount,
-      login, logout, addUser, removeUser, addStory, deleteStory, addGalleryPost, likeGalleryPost, deleteGalleryPost, editGalleryPost, pinGalleryPost, addPostComment, deletePostComment, editPostComment, clearNotifications, isReadOnly
+      login, logout, addUser, removeUser, addStory, deleteStory, addGalleryPost, likeGalleryPost, deleteGalleryPost, editGalleryPost, pinGalleryPost, addPostComment, deletePostComment, editPostComment, clearNotifications, isReadOnly,
+      theme, setTheme, isMobile
     }}>
       {children}
     </InventoryContext.Provider>

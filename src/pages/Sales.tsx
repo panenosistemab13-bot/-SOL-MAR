@@ -43,9 +43,10 @@ import {
 import { cn } from '../lib/utils';
 
 export function Sales() {
-  const { sales, bikinis, registerSale } = useInventory();
+  const { sales, bikinis, registerSale, theme } = useInventory();
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<any>(null);
   const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
+  const isLight = theme === 'light';
 
   // New sale state
   const [selectedBikiniId, setSelectedBikiniId] = useState<string>('');
@@ -221,19 +222,35 @@ export function Sales() {
 
 
   return (
-    <div className="relative space-y-8 select-none text-white pb-12">
+    <div className={cn(
+      "relative space-y-8 select-none pb-12 transition-colors duration-300 min-h-full",
+      isLight ? "bg-white text-black" : "text-white"
+    )}>
       {/* Immersive Sunset Ocean Background Filter */}
-      <div 
-        className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center opacity-[0.05] pointer-events-none rounded-[3rem]"
-      />
+      {!isLight && (
+        <div 
+          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center opacity-[0.05] pointer-events-none rounded-[3rem]"
+        />
+      )}
 
       {/* Luxury Glowing Sea Orbs */}
-      <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-[#ebdcb9]/5 blur-[150px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-10 left-1/4 w-[500px] h-[500px] bg-[#c5a880]/5 blur-[170px] rounded-full pointer-events-none" />
+      <div className={cn(
+        "absolute top-0 right-1/4 w-[400px] h-[400px] blur-[150px] rounded-full pointer-events-none",
+        isLight ? "bg-amber-100/30" : "bg-[#ebdcb9]/5"
+      )} />
+      <div className={cn(
+        "absolute bottom-10 left-1/4 w-[500px] h-[500px] blur-[170px] rounded-full pointer-events-none",
+        isLight ? "bg-blue-100/20" : "bg-[#c5a880]/5"
+      )} />
 
       {/* Top action header */}
-      <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5 bg-[#130d08]/75 p-4 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border border-[#ebdcb9]/15 backdrop-blur-xl z-20 overflow-hidden shadow-2xl">
-        <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-[#ebdcb9]/5 to-transparent pointer-events-none" />
+      <div className={cn(
+        "relative flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5 p-4 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border backdrop-blur-xl z-20 overflow-hidden shadow-2xl transition-all",
+        isLight 
+          ? "bg-white/80 border-slate-200 shadow-slate-200/50" 
+          : "bg-[#130d08]/75 border-[#ebdcb9]/15 shadow-black/50"
+      )}>
+        {!isLight && <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-[#ebdcb9]/5 to-transparent pointer-events-none" />}
         
         <div className="flex items-center gap-3.5 sm:gap-4">
           <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] p-0.5 shadow-lg flex items-center justify-center relative shrink-0">
@@ -241,14 +258,27 @@ export function Sales() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[8px] sm:text-[9px] font-black tracking-widest text-[#ebdcb9] bg-[#ebdcb9]/10 px-2.5 py-1 rounded-full border border-[#ebdcb9]/25 uppercase">
+              <span className={cn(
+                "text-[8px] sm:text-[9px] font-black tracking-widest px-2.5 py-1 rounded-full border uppercase",
+                isLight 
+                  ? "text-amber-700 bg-amber-50 border-amber-200" 
+                  : "text-[#ebdcb9] bg-[#ebdcb9]/10 border-[#ebdcb9]/25"
+              )}>
                 Auditoria de Bordo
               </span>
-              <span className="text-[8px] sm:text-[9px] font-black tracking-widest text-[#c5a880] bg-[#c5a880]/10 px-2.5 py-1 rounded-full border border-[#c5a880]/25 uppercase">
+              <span className={cn(
+                "text-[8px] sm:text-[9px] font-black tracking-widest px-2.5 py-1 rounded-full border uppercase",
+                isLight 
+                  ? "text-blue-700 bg-blue-50 border-blue-200" 
+                  : "text-[#c5a880] bg-[#c5a880]/10 border-[#c5a880]/25"
+              )}>
                 Praia & Sol
               </span>
             </div>
-            <h1 className="text-lg sm:text-xl font-serif tracking-wide text-white mt-1">
+            <h1 className={cn(
+              "text-lg sm:text-xl font-serif tracking-wide mt-1",
+              isLight ? "text-slate-900" : "text-white"
+            )}>
               Faturamento e Relatório de Vendas
             </h1>
           </div>
@@ -268,7 +298,10 @@ export function Sales() {
             type="button"
             onClick={handleExportPDF}
             disabled={sales.length === 0}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-100 px-4 sm:px-5 py-2.5 sm:py-3 rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold uppercase tracking-wider"
+            className={cn(
+              "flex-1 sm:flex-none flex items-center justify-center gap-2 border px-4 sm:px-5 py-2.5 sm:py-3 rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold uppercase tracking-wider",
+              isLight ? "bg-white border-slate-200 text-slate-600 hover:bg-slate-100" : "bg-white/5 border-white/10 hover:bg-white/10 text-slate-100"
+            )}
           >
             <Download size={15} className="text-sky-400" />
             Certificar PDF
@@ -280,7 +313,10 @@ export function Sales() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 relative z-10 animate-fade-in">
         
         {/* STATS 1: Collected tides */}
-        <div className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-slate-900/30 backdrop-blur-xl p-6 group transition-all duration-300 hover:border-pink-500/30 shadow-lg">
+        <div className={cn(
+          "relative overflow-hidden rounded-[2.2rem] border backdrop-blur-xl p-6 group transition-all duration-300 hover:border-pink-500/30 shadow-lg",
+          isLight ? "bg-white border-slate-200" : "bg-slate-900/30 border-white/10"
+        )}>
           <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/10 blur-2xl rounded-full" />
           <div className="flex items-center justify-between mb-4">
             <span className="text-[10px] font-black text-pink-400 uppercase tracking-widest bg-pink-500/15 border border-pink-500/15 px-2.5 py-1 rounded-lg">
@@ -292,7 +328,7 @@ export function Sales() {
           </div>
           <div className="space-y-1">
             <p className="text-[10px] text-slate-400 uppercase font-black tracking-wider">Ondas de Caixa</p>
-            <h3 className="text-3xl font-black font-mono text-white tracking-tight">
+            <h3 className={cn("text-3xl font-black font-mono tracking-tight", isLight ? "text-slate-900" : "text-white")}>
               {formatCurrency(stats.totalRev)}
             </h3>
           </div>
@@ -301,13 +337,16 @@ export function Sales() {
             <span>Meta de Verão</span>
             <span className="text-pink-300 font-bold">100% ativa</span>
           </div>
-          <div className="w-full bg-white/5 h-1 rounded-full mt-2 overflow-hidden">
+          <div className={cn("w-full h-1 rounded-full mt-2 overflow-hidden", isLight ? "bg-slate-200" : "bg-white/5")}>
             <div className="bg-pink-500 h-full w-[70%] rounded-full shadow-[0_0_8px_#ec4899]" />
           </div>
         </div>
 
         {/* STATS 2: Lançados */}
-        <div className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-slate-900/30 backdrop-blur-xl p-6 group transition-all duration-300 hover:border-sky-400/30 shadow-lg">
+        <div className={cn(
+          "relative overflow-hidden rounded-[2.2rem] border backdrop-blur-xl p-6 group transition-all duration-300 hover:border-sky-400/30 shadow-lg",
+          isLight ? "bg-white border-slate-200" : "bg-slate-900/30 border-white/10"
+        )}>
           <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/10 blur-2xl rounded-full" />
           <div className="flex items-center justify-between mb-4">
             <span className="text-[10px] font-black text-sky-400 uppercase tracking-widest bg-sky-500/15 border border-sky-500/15 px-2.5 py-1 rounded-lg">
@@ -319,7 +358,7 @@ export function Sales() {
           </div>
           <div className="space-y-1">
             <p className="text-[10px] text-slate-400 uppercase font-black tracking-wider">Volumes ao Vento</p>
-            <h3 className="text-3xl font-black font-mono text-white tracking-tight flex items-baseline gap-1">
+            <h3 className={cn("text-3xl font-black font-mono tracking-tight flex items-baseline gap-1", isLight ? "text-slate-900" : "text-white")}>
               {stats.totalItems} <span className="text-xs font-bold text-slate-500 uppercase">unidades</span>
             </h3>
           </div>
@@ -327,13 +366,16 @@ export function Sales() {
             <span>Remessa</span>
             <span className="text-sky-300 font-bold">Atlântico Sul</span>
           </div>
-          <div className="w-full bg-white/5 h-1 rounded-full mt-2 overflow-hidden">
+          <div className={cn("w-full h-1 rounded-full mt-2 overflow-hidden", isLight ? "bg-slate-200" : "bg-white/5")}>
             <div className="bg-sky-400 h-full w-[85%] rounded-full shadow-[0_0_8px_#38bdf8]" />
           </div>
         </div>
 
         {/* STATS 3: Ticket medio */}
-        <div className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-slate-900/30 backdrop-blur-xl p-6 group transition-all duration-300 hover:border-pink-500/30 shadow-lg">
+        <div className={cn(
+          "relative overflow-hidden rounded-[2.2rem] border backdrop-blur-xl p-6 group transition-all duration-300 hover:border-pink-500/30 shadow-lg",
+          isLight ? "bg-white border-slate-200" : "bg-slate-900/30 border-white/10"
+        )}>
           <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/10 blur-2xl rounded-full" />
           <div className="flex items-center justify-between mb-4">
             <span className="text-[10px] font-black text-pink-400 uppercase tracking-widest bg-pink-500/15 border border-pink-500/15 px-2.5 py-1 rounded-lg">
@@ -345,7 +387,7 @@ export function Sales() {
           </div>
           <div className="space-y-1">
             <p className="text-[10px] text-slate-400 uppercase font-black tracking-wider">Média por Concha</p>
-            <h3 className="text-3xl font-black font-mono text-white tracking-tight">
+            <h3 className={cn("text-3xl font-black font-mono tracking-tight", isLight ? "text-slate-900" : "text-white")}>
               {formatCurrency(stats.averageTicket)}
             </h3>
           </div>
@@ -353,13 +395,16 @@ export function Sales() {
             <span>Performance</span>
             <span className="text-pink-300 font-bold">Excelente</span>
           </div>
-          <div className="w-full bg-white/5 h-1 rounded-full mt-2 overflow-hidden">
+          <div className={cn("w-full h-1 rounded-full mt-2 overflow-hidden", isLight ? "bg-slate-200" : "bg-white/5")}>
             <div className="bg-gradient-to-r from-sky-400 to-pink-500 h-full w-[60%] rounded-full shadow-[0_0_8px_#ec4899]" />
           </div>
         </div>
 
         {/* STATS 4: Favorito */}
-        <div className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-slate-900/30 backdrop-blur-xl p-6 group transition-all duration-300 hover:border-sky-400/30 shadow-lg">
+        <div className={cn(
+          "relative overflow-hidden rounded-[2.2rem] border backdrop-blur-xl p-6 group transition-all duration-300 hover:border-sky-400/30 shadow-lg",
+          isLight ? "bg-white border-slate-200" : "bg-slate-900/30 border-white/10"
+        )}>
           <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/10 blur-2xl rounded-full" />
           <div className="flex items-center justify-between mb-4">
             <span className="text-[10px] font-black text-sky-400 uppercase tracking-widest bg-sky-500/15 border border-sky-500/15 px-2.5 py-1 rounded-lg">
@@ -371,7 +416,7 @@ export function Sales() {
           </div>
           <div className="space-y-1">
             <p className="text-[10px] text-slate-400 uppercase font-black tracking-wider">A Estrela da Estação</p>
-            <h3 className="text-xl font-black text-white tracking-tight uppercase truncate">
+            <h3 className={cn("text-xl font-black tracking-tight uppercase truncate", isLight ? "text-slate-900" : "text-white")}>
               {stats.favoriteModel}
             </h3>
           </div>
@@ -379,7 +424,7 @@ export function Sales() {
             <span>Demanda</span>
             <span className="text-sky-300 font-extrabold uppercase animate-pulse">Alta</span>
           </div>
-          <div className="w-full bg-white/5 h-1 rounded-full mt-2 overflow-hidden">
+          <div className={cn("w-full h-1 rounded-full mt-2 overflow-hidden", isLight ? "bg-slate-200" : "bg-white/5")}>
             <div className="bg-sky-400 h-full w-[95%] rounded-full shadow-[0_0_8px_#38bdf8]" />
           </div>
         </div>

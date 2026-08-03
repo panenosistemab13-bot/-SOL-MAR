@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Home, 
   Tag, 
@@ -20,7 +20,9 @@ import {
   Type,
   Trash2,
   Mic,
-  Square
+  Square,
+  PlusSquare,
+  ChevronLeft
 } from 'lucide-react';
 import { useInventory } from '../context/InventoryContext';
 import { cn } from '../lib/utils';
@@ -34,51 +36,95 @@ interface InstagramMobileNavProps {
 }
 
 export function UserProfileGalleryModal({ userId, onClose }: { userId: string; onClose: () => void }) {
-  const { users, galleryPosts, currentUser } = useInventory();
+  const { users, galleryPosts, currentUser, theme } = useInventory();
   const user = users.find(u => u.id === userId);
   const userPosts = galleryPosts.filter(p => p.userId === userId);
 
   if (!user) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col overflow-y-auto">
-      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#120c08]">
-        <h3 className="font-serif font-bold text-white text-lg">Perfil de {user.name || user.username}</h3>
-        <button onClick={onClose} className="p-2 text-white/70 hover:text-white">
+    <div className={cn(
+      "fixed inset-0 z-50 flex flex-col overflow-y-auto transition-colors duration-500",
+      theme === 'dark' ? "bg-black/90 backdrop-blur-md" : "bg-white"
+    )}>
+      <div className={cn(
+        "flex items-center justify-between p-4 border-b transition-colors duration-500",
+        theme === 'dark' ? "border-white/10 bg-[#120c08]" : "border-black/10 bg-white"
+      )}>
+        <h3 className={cn(
+          "font-serif font-bold text-lg transition-colors duration-500",
+          theme === 'dark' ? "text-white" : "text-[#3d2723]"
+        )}>Perfil de {user.name || user.username}</h3>
+        <button onClick={onClose} className={cn(
+          "p-2 transition-colors duration-500",
+          theme === 'dark' ? "text-white/70 hover:text-white" : "text-[#3d2723]/70 hover:text-[#3d2723]"
+        )}>
           <X size={22} />
         </button>
       </div>
 
       <div className="p-4 flex flex-col items-center gap-4">
-        <img src={user.avatarUrl} alt={user.name} className="w-24 h-24 rounded-full object-cover border-2 border-[#ebdcb9] bg-black shadow-lg" />
+        <img 
+          src={user.avatarUrl} 
+          alt={user.name} 
+          className={cn(
+            "w-24 h-24 rounded-full object-cover border-2 shadow-lg transition-colors duration-500",
+            theme === 'dark' ? "border-[#ebdcb9] bg-black" : "border-black/10 bg-white"
+          )} 
+        />
         <div className="text-center">
-          <h2 className="text-xl font-bold text-white">{user.name}</h2>
+          <h2 className={cn(
+            "text-xl font-bold transition-colors duration-500",
+            theme === 'dark' ? "text-white" : "text-[#3d2723]"
+          )}>{user.name}</h2>
           <p className="text-xs text-[#ebdcb9] uppercase font-mono mt-0.5">@{user.username}</p>
-          <p className="text-xs text-white/60 mt-2">{userPosts.length} publicações</p>
+          <p className={cn(
+            "text-xs mt-2 transition-colors duration-500",
+            theme === 'dark' ? "text-white/60" : "text-[#3d2723]/60"
+          )}>{userPosts.length} publicações</p>
         </div>
       </div>
 
       <div className="flex flex-col gap-8 p-0 mt-4 pb-20">
         {userPosts.length === 0 ? (
-          <div className="text-center py-12 text-white/50 text-sm">Nenhuma publicação ainda.</div>
+          <div className={cn(
+            "text-center py-12 text-sm transition-colors duration-500",
+            theme === 'dark' ? "text-white/50" : "text-[#3d2723]/50"
+          )}>Nenhuma publicação ainda.</div>
         ) : (
           userPosts.map(post => {
             const postLikes = post.likes || [];
             const postComments = post.comments || [];
             
             return (
-              <div key={post.id} className="w-full bg-black/20 flex flex-col">
+              <div key={post.id} className={cn(
+                "w-full flex flex-col transition-colors duration-500",
+                theme === 'dark' ? "bg-black/20" : "bg-black/5"
+              )}>
                 {/* Header */}
                 <div className="flex items-center gap-3 p-3">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] p-[1.5px]">
-                    <img src={user.avatarUrl} alt="" className="w-full h-full rounded-full object-cover border border-black bg-black" />
+                    <img 
+                      src={user.avatarUrl} 
+                      alt="" 
+                      className={cn(
+                        "w-full h-full rounded-full object-cover border transition-colors duration-500",
+                        theme === 'dark' ? "border-black bg-black" : "border-white bg-white"
+                      )} 
+                    />
                   </div>
-                  <span className="font-bold text-sm text-white">{user.username}</span>
+                  <span className={cn(
+                    "font-bold text-sm transition-colors duration-500",
+                    theme === 'dark' ? "text-white" : "text-[#3d2723]"
+                  )}>{user.username}</span>
                 </div>
 
                 {/* Post Image */}
                 {post.imageUrl && (
-                  <div className="w-full aspect-square bg-white/5 relative">
+                  <div className={cn(
+                    "w-full aspect-square relative",
+                    theme === 'dark' ? "bg-white/5" : "bg-black/5"
+                  )}>
                     <img src={post.imageUrl} alt="" className="w-full h-full object-cover" />
                   </div>
                 )}
@@ -87,45 +133,72 @@ export function UserProfileGalleryModal({ userId, onClose }: { userId: string; o
                 <div className="p-4 pt-3">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-4">
-                      <Heart size={26} className={postLikes.includes(currentUser?.id || '') ? "text-red-500 fill-red-500" : "text-white"} />
-                      <MessageCircle size={26} className="text-white" />
-                      <Send size={24} className="text-white -rotate-12" />
+                      <Heart 
+                        size={26} 
+                        className={cn(
+                          "transition-colors",
+                          postLikes.includes(currentUser?.id || '') ? "text-red-500 fill-red-500" : (theme === 'dark' ? "text-white" : "text-[#3d2723]")
+                        )} 
+                      />
+                      <MessageCircle size={26} className={cn(theme === 'dark' ? "text-white" : "text-[#3d2723]")} />
+                      <Send size={24} className={cn("-rotate-12", theme === 'dark' ? "text-white" : "text-[#3d2723]")} />
                     </div>
-                    <Bookmark size={26} className="text-white" />
+                    <Bookmark size={26} className={cn(theme === 'dark' ? "text-white" : "text-[#3d2723]")} />
                   </div>
 
                   {/* Likes Count */}
                   <div className="mb-2">
-                    <p className="text-sm font-bold text-white">
+                    <p className={cn(
+                      "text-sm font-bold transition-colors duration-500",
+                      theme === 'dark' ? "text-white" : "text-[#3d2723]"
+                    )}>
                       {postLikes.length} {postLikes.length === 1 ? 'curtida' : 'curtidas'}
                     </p>
                   </div>
 
                   {/* Caption */}
                   {post.caption && (
-                    <p className="text-sm text-white leading-relaxed mb-2">
+                    <p className={cn(
+                      "text-sm leading-relaxed mb-2 transition-colors duration-500",
+                      theme === 'dark' ? "text-white" : "text-[#3d2723]"
+                    )}>
                       <span className="font-bold mr-2">{user.username}</span>
                       {post.caption}
                     </p>
                   )}
 
                   {/* Date */}
-                  <p className="text-[10px] text-white/40 uppercase font-bold mb-4">
+                  <p className={cn(
+                    "text-[10px] uppercase font-bold mb-4 transition-colors duration-500",
+                    theme === 'dark' ? "text-white/40" : "text-[#3d2723]/40"
+                  )}>
                     {new Date(post.createdAt).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
 
-                  {/* Comments Section (matching attachment style) */}
+                  {/* Comments Section */}
                   {postComments.length > 0 && (
                     <div className="space-y-3 mb-4">
                       {postComments.map((comment, idx) => (
-                        <div key={idx} className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                        <div key={idx} className={cn(
+                          "rounded-2xl p-4 border transition-colors duration-500",
+                          theme === 'dark' ? "bg-white/5 border-white/5" : "bg-black/5 border-black/5"
+                        )}>
                           <div className="flex items-start gap-3">
-                            <p className="text-sm text-white leading-relaxed">
+                            <p className={cn(
+                              "text-sm leading-relaxed transition-colors duration-500",
+                              theme === 'dark' ? "text-white" : "text-[#3d2723]"
+                            )}>
                               <span className="font-black mr-2 text-[#ebdcb9]">{comment.userName}</span>
-                              <span className="font-medium text-white/90">{comment.text}</span>
+                              <span className={cn(
+                                "font-medium transition-colors duration-500",
+                                theme === 'dark' ? "text-white/90" : "text-[#3d2723]/90"
+                              )}>{comment.text}</span>
                             </p>
                           </div>
-                          <p className="text-[10px] text-white/30 font-bold mt-2">
+                          <p className={cn(
+                            "text-[10px] font-bold mt-2 transition-colors duration-500",
+                            theme === 'dark' ? "text-white/30" : "text-black/30"
+                          )}>
                             {new Date(comment.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
@@ -134,12 +207,25 @@ export function UserProfileGalleryModal({ userId, onClose }: { userId: string; o
                   )}
 
                   {/* Add Comment Input */}
-                  <div className="flex items-center gap-3 pt-2 border-t border-white/5">
-                    <img src={currentUser?.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover border border-white/10" />
+                  <div className={cn(
+                    "flex items-center gap-3 pt-2 border-t transition-colors duration-500",
+                    theme === 'dark' ? "border-white/5" : "border-black/5"
+                  )}>
+                    <img 
+                      src={currentUser?.avatarUrl} 
+                      alt="" 
+                      className={cn(
+                        "w-7 h-7 rounded-full object-cover border transition-colors duration-500",
+                        theme === 'dark' ? "border-white/10" : "border-black/10"
+                      )} 
+                    />
                     <input 
                       type="text" 
                       placeholder="Adicione um comentário..." 
-                      className="bg-transparent text-sm text-white/80 w-full outline-none placeholder:text-white/30"
+                      className={cn(
+                        "bg-transparent text-sm w-full outline-none transition-colors duration-500",
+                        theme === 'dark' ? "text-white/80 placeholder:text-white/30" : "text-[#3d2723]/80 placeholder:text-[#3d2723]/30"
+                      )}
                     />
                   </div>
                 </div>
@@ -153,7 +239,7 @@ export function UserProfileGalleryModal({ userId, onClose }: { userId: string; o
 }
 
 export function MobileNotificationsModal({ onClose, onSelectUser }: { onClose: () => void; onSelectUser: (userId: string) => void }) {
-  const { galleryPosts, users, currentUser, clearNotifications } = useInventory();
+  const { galleryPosts, users, currentUser, clearNotifications, theme } = useInventory();
 
   const activities: Array<{
     id: string;
@@ -231,9 +317,18 @@ export function MobileNotificationsModal({ onClose, onSelectUser }: { onClose: (
   activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col overflow-y-auto">
-      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#120c08]">
-        <h3 className="font-serif font-bold text-white text-lg">Notificações</h3>
+    <div className={cn(
+      "fixed inset-0 z-50 flex flex-col overflow-y-auto transition-colors duration-500",
+      theme === 'dark' ? "bg-black/90 backdrop-blur-md" : "bg-white"
+    )}>
+      <div className={cn(
+        "flex items-center justify-between p-4 border-b transition-colors duration-500",
+        theme === 'dark' ? "border-white/10 bg-[#120c08]" : "border-black/10 bg-white"
+      )}>
+        <h3 className={cn(
+          "font-serif font-bold text-lg transition-colors duration-500",
+          theme === 'dark' ? "text-white" : "text-[#3d2723]"
+        )}>Notificações</h3>
         <div className="flex items-center gap-2">
           {activities.length > 0 && (
             <button 
@@ -247,13 +342,19 @@ export function MobileNotificationsModal({ onClose, onSelectUser }: { onClose: (
               Limpar
             </button>
           )}
-          <button onClick={onClose} className="p-2 text-white/70 hover:text-white">
+          <button onClick={onClose} className={cn(
+            "p-2 transition-colors duration-500",
+            theme === 'dark' ? "text-white/70 hover:text-white" : "text-[#3d2723]/70 hover:text-[#3d2723]"
+          )}>
             <X size={22} />
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col divide-y divide-white/5">
+      <div className={cn(
+        "flex flex-col divide-y transition-colors duration-500",
+        theme === 'dark' ? "divide-white/5" : "divide-black/5"
+      )}>
         {activities.map(act => {
           const actUser = users.find(u => u.id === act.userId);
           return (
@@ -264,18 +365,37 @@ export function MobileNotificationsModal({ onClose, onSelectUser }: { onClose: (
                   onSelectUser(act.userId);
                 }
               }}
-              className="flex items-center gap-3 p-4 hover:bg-white/5 transition-colors cursor-pointer"
+              className={cn(
+                "flex items-center gap-3 p-4 transition-colors cursor-pointer",
+                theme === 'dark' ? "hover:bg-white/5" : "hover:bg-black/5"
+              )}
             >
-              <img src={actUser?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"} alt="" className="w-11 h-11 rounded-full object-cover border border-white/20 bg-black shrink-0" />
+              <img 
+                src={actUser?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"} 
+                alt="" 
+                className={cn(
+                  "w-11 h-11 rounded-full object-cover border shrink-0 transition-colors duration-500",
+                  theme === 'dark' ? "border-white/20 bg-black" : "border-black/10 bg-white"
+                )} 
+              />
               <div className="flex-1 flex flex-col">
-                <p className="text-sm text-white/90 leading-snug">{act.text}</p>
-                <span className="text-[10px] text-white/40 mt-1">{new Date(act.time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                <p className={cn(
+                  "text-sm leading-snug transition-colors duration-500",
+                  theme === 'dark' ? "text-white/90" : "text-[#3d2723]/90"
+                )}>{act.text}</p>
+                <span className={cn(
+                  "text-[10px] mt-1 transition-colors duration-500",
+                  theme === 'dark' ? "text-white/40" : "text-[#3d2723]/40"
+                )}>{new Date(act.time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
               </div>
             </div>
           );
         })}
         {activities.length === 0 && (
-          <div className="text-center py-16 text-white/50 text-sm">Nenhuma notificação recente.</div>
+          <div className={cn(
+            "text-center py-16 text-sm transition-colors duration-500",
+            theme === 'dark' ? "text-white/50" : "text-[#3d2723]/50"
+          )}>Nenhuma notificação recente.</div>
         )}
       </div>
     </div>
@@ -283,7 +403,7 @@ export function MobileNotificationsModal({ onClose, onSelectUser }: { onClose: (
 }
 
 export function InstagramMobileHeader({ currentTab, onSelect, viewingProfileUserId, onSelectProfile }: InstagramMobileNavProps) {
-  const { lowStockItemsCount, unreadMessagesCount, currentUser, galleryPosts, users } = useInventory();
+  const { lowStockItemsCount, unreadMessagesCount, currentUser, galleryPosts, users, theme } = useInventory();
   const [showNotifications, setShowNotifications] = useState(false);
   const [internalViewingProfileUserId, setInternalViewingProfileUserId] = useState<string | null>(null);
 
@@ -291,27 +411,40 @@ export function InstagramMobileHeader({ currentTab, onSelect, viewingProfileUser
   const setEffectiveProfileUserId = onSelectProfile || setInternalViewingProfileUserId;
 
   const lastCleared = currentUser?.lastNotificationsClear ? new Date(currentUser.lastNotificationsClear).getTime() : 0;
-  const recentPostsCount = galleryPosts?.filter(p => 
-    p.userId !== currentUser?.id && 
-    users.find(u => u.id === p.userId)?.username !== 'jeff' &&
-    new Date(p.createdAt).getTime() > lastCleared
-  ).length || 0;
+  
+  const recentPostsCount = useMemo(() => {
+    if (!galleryPosts || !users) return 0;
+    return galleryPosts.filter(p => 
+      p.userId !== currentUser?.id && 
+      users.find(u => u.id === p.userId)?.username !== 'jeff' &&
+      new Date(p.createdAt).getTime() > lastCleared
+    ).length;
+  }, [galleryPosts, users, currentUser?.id, lastCleared]);
   
   return (
     <>
-      <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#120c08]/95 border-b border-white/10 px-4 py-2.5 flex items-center justify-between backdrop-blur-xl shadow-lg">
+      <header className={cn(
+        "md:hidden fixed top-0 left-0 right-0 z-50 border-b px-4 py-2.5 flex items-center justify-between backdrop-blur-xl shadow-lg transition-colors duration-500",
+        theme === 'dark' ? "bg-[#120c08]/95 border-white/10" : "bg-white/95 border-black/5"
+      )}>
         {/* Brand Logo in Instagram-style Serif */}
         <button 
           onClick={() => onSelect('menu')} 
           className="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform"
         >
           <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] p-[1.5px] flex items-center justify-center">
-            <div className="w-full h-full bg-[#120c08] rounded-full flex items-center justify-center">
+            <div className={cn(
+              "w-full h-full rounded-full flex items-center justify-center transition-colors duration-500",
+              theme === 'dark' ? "bg-[#120c08]" : "bg-white"
+            )}>
               <Sparkles size={13} className="text-[#ebdcb9]" />
             </div>
           </div>
           <div className="flex flex-col text-left">
-            <span className="font-serif italic font-extrabold text-lg text-white tracking-wider leading-none">
+            <span className={cn(
+              "font-serif italic font-extrabold text-lg tracking-wider leading-none transition-colors duration-500",
+              theme === 'dark' ? "text-white" : "text-[#3d2723]"
+            )}>
               Sol & Mar
             </span>
             <span className="text-[8px] text-[#c5a880] uppercase tracking-widest font-mono leading-none mt-0.5">
@@ -325,24 +458,36 @@ export function InstagramMobileHeader({ currentTab, onSelect, viewingProfileUser
           {/* Critical Alerts Heart/Notification Icon */}
           <button
             onClick={() => setShowNotifications(true)}
-            className="relative text-slate-300 hover:text-white p-1.5 rounded-full active:scale-90 transition-transform cursor-pointer"
+            className={cn(
+              "relative p-1.5 rounded-full active:scale-90 transition-all cursor-pointer",
+              theme === 'dark' ? "text-slate-300 hover:text-white" : "text-[#3d2723]/60 hover:text-[#3d2723]"
+            )}
             title="Notificações"
           >
             <Heart size={22} className={recentPostsCount > 0 ? "text-rose-400 fill-rose-500/20 animate-pulse" : ""} />
             {recentPostsCount > 0 && (
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-[#120c08]" />
+              <span className={cn(
+                "absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border",
+                theme === 'dark' ? "border-[#120c08]" : "border-white"
+              )} />
             )}
           </button>
 
           {/* Direct Messages Icon */}
           <button
             onClick={() => onSelect('chat')}
-            className="relative text-slate-300 hover:text-white p-1.5 rounded-full active:scale-90 transition-transform cursor-pointer"
+            className={cn(
+              "relative p-1.5 rounded-full active:scale-90 transition-all cursor-pointer",
+              theme === 'dark' ? "text-slate-300 hover:text-white" : "text-[#3d2723]/60 hover:text-[#3d2723]"
+            )}
             title="Mural de Mensagens"
           >
             <Send size={21} className="rotate-[-20deg]" />
             {unreadMessagesCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-gradient-to-tr from-[#ec4899] to-[#dc2743] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-lg border border-[#120c08]">
+              <span className={cn(
+                "absolute -top-0.5 -right-0.5 bg-gradient-to-tr from-[#ec4899] to-[#dc2743] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-lg border",
+                theme === 'dark' ? "border-[#120c08]" : "border-white"
+              )}>
                 {unreadMessagesCount}
               </span>
             )}
@@ -454,7 +599,7 @@ export function AudioRecorder({ onRecordingComplete }: { onRecordingComplete: (b
 }
 
 export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: { viewingProfileUserId?: string | null, onSelectProfile?: (id: string | null) => void }) {
-  const { users, stories, currentUser, addStory, deleteStory } = useInventory();
+  const { users, stories, currentUser, addStory, deleteStory, theme } = useInventory();
   
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [isAddingStory, setIsAddingStory] = useState(false);
@@ -467,25 +612,27 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
   const effectiveProfileUserId = viewingProfileUserId !== undefined ? viewingProfileUserId : internalViewingProfileUserId;
   const setEffectiveProfileUserId = onSelectProfile || setInternalViewingProfileUserId;
 
-  // Group stories by user
-  const storiesByUser = users.filter(u => u.username !== 'jeff' && u.name.toLowerCase() !== 'jefferson').map(user => {
-    return {
-      user,
-      userStories: stories.filter(s => s.userId === user.id).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-    };
-  });
+  // Group stories by user - Memoized to prevent infinite loops
+  const storiesByUser = React.useMemo(() => {
+    const groups = users.filter(u => u.username !== 'jeff' && u.name.toLowerCase() !== 'jefferson').map(user => {
+      return {
+        user,
+        userStories: stories.filter(s => s.userId === user.id).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      };
+    });
 
-  // Move current user to the front
-  storiesByUser.sort((a, b) => {
-    if (a.user.id === currentUser?.id) return -1;
-    if (b.user.id === currentUser?.id) return 1;
-    return 0;
-  });
+    // Move current user to the front
+    return groups.sort((a, b) => {
+      if (a.user.id === currentUser?.id) return -1;
+      if (b.user.id === currentUser?.id) return 1;
+      return 0;
+    });
+  }, [users, stories, currentUser?.id]);
 
   const handleAddStory = () => {
-    if (!newStoryContent.trim()) return;
+    if (!newStoryContent.trim() || !currentUser) return;
     addStory({
-      userId: currentUser!.id,
+      userId: currentUser.id,
       type: newStoryType,
       content: newStoryContent.trim()
     });
@@ -550,7 +697,10 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
 
   return (
     <>
-      <div className="md:hidden w-full overflow-x-auto no-scrollbar scrollbar-none py-3 px-3 bg-[#120c08]/60 border-b border-white/5 backdrop-blur-md">
+      <div className={cn(
+        "md:hidden w-full overflow-x-auto no-scrollbar scrollbar-none py-3 px-3 backdrop-blur-md transition-colors duration-500",
+        theme === 'dark' ? "bg-[#120c08]/60 border-b border-white/5" : "bg-white/80 border-b border-black/5"
+      )}>
         <div className="flex items-center gap-4 w-max">
           {storiesByUser.map(({ user, userStories }) => {
             const isCurrentUser = user.id === currentUser?.id;
@@ -592,10 +742,13 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
                     "p-[2px] rounded-full transition-all duration-300 relative",
                     hasStories
                       ? "bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] ring-2 ring-amber-400/40 shadow-lg"
-                      : "bg-white/10"
+                      : (theme === 'dark' ? "bg-white/10" : "bg-black/10")
                   )}
                 >
-                  <div className="p-[2px] bg-[#120c08] rounded-full relative">
+                  <div className={cn(
+                    "p-[2px] rounded-full relative transition-colors duration-500",
+                    theme === 'dark' ? "bg-[#120c08]" : "bg-white"
+                  )}>
                     <img
                       src={user.avatarUrl}
                       alt={user.name}
@@ -611,13 +764,19 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
                       e.stopPropagation();
                       setIsAddingStory(true);
                     }}
-                    className="absolute bottom-4 right-0 bg-blue-500 rounded-full w-5 h-5 flex items-center justify-center border-2 border-[#120c08] z-10 hover:scale-110 transition-transform"
+                    className={cn(
+                      "absolute bottom-4 right-0 bg-blue-500 rounded-full w-5 h-5 flex items-center justify-center border-2 z-10 hover:scale-110 transition-all",
+                      theme === 'dark' ? "border-[#120c08]" : "border-white"
+                    )}
                   >
                     <Plus size={12} className="text-white" />
                   </div>
                 )}
 
-                <span className="text-[10px] tracking-tight font-medium max-w-[62px] truncate text-stone-300">
+                <span className={cn(
+                  "text-[10px] tracking-tight font-medium max-w-[62px] truncate transition-colors duration-500",
+                  theme === 'dark' ? "text-stone-300" : "text-stone-800"
+                )}>
                   {isCurrentUser ? 'Seu story' : (user.name || user.username)}
                 </span>
               </button>
@@ -837,108 +996,118 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
 }
 
 export function InstagramMobileBottomNav({ currentTab, onSelect, viewingProfileUserId, onSelectProfile }: InstagramMobileNavProps) {
-  const { lowStockItemsCount, unreadMessagesCount, currentUser } = useInventory();
+  const { lowStockItemsCount, unreadMessagesCount, currentUser, theme } = useInventory();
   const isFuncionarioB = currentUser?.role === 'FUNCIONARIO_B';
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#120c08]/95 border-t border-white/10 px-2 py-1.5 flex items-center justify-around backdrop-blur-2xl shadow-2xl">
-      {/* 1. Início */}
-      <button
-        onClick={() => {
-          onSelect('menu');
-          if (onSelectProfile) onSelectProfile(null);
-        }}
-        className={cn(
-          "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer active:scale-90",
-          currentTab === 'menu' ? "text-[#ebdcb9]" : "text-stone-400 hover:text-white"
-        )}
-      >
-        <Home size={22} strokeWidth={currentTab === 'menu' ? 2.5 : 1.8} />
-        <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Início</span>
-      </button>
+    <nav className={cn(
+      "md:hidden fixed bottom-0 left-0 right-0 z-50 border-t px-2 py-1.5 flex items-center justify-around backdrop-blur-2xl shadow-2xl transition-colors duration-500",
+      theme === 'dark' ? "bg-[#120c08]/95 border-white/10" : "bg-white/95 border-black/5"
+    )}>
+        {/* 1. Início */}
+        <button
+          onClick={() => {
+            onSelect('menu');
+            if (onSelectProfile) onSelectProfile(null);
+          }}
+          className={cn(
+            "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer active:scale-90",
+            currentTab === 'menu' ? "text-[#ebdcb9]" : (theme === 'dark' ? "text-stone-400 hover:text-white" : "text-stone-500 hover:text-black")
+          )}
+        >
+          <Home size={22} strokeWidth={currentTab === 'menu' ? 2.5 : 1.8} />
+          <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Início</span>
+        </button>
 
-      {/* 2. Publi (+) */}
-      <button
-        onClick={() => onSelect('publi')}
-        className={cn(
-          "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer active:scale-90",
-          currentTab === 'publi' ? "text-[#ebdcb9]" : "text-stone-400 hover:text-white"
-        )}
-      >
-        <div className={cn(
-          "w-6 h-6 rounded-full flex items-center justify-center border transition-all",
-          currentTab === 'publi' ? "border-[#ebdcb9] bg-[#ebdcb9]/20 text-[#ebdcb9]" : "border-stone-500 text-stone-400"
-        )}>
-          <Plus size={16} strokeWidth={2.5} />
-        </div>
-        <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Publi</span>
-      </button>
+        {/* 2. Publi (+) */}
+        <button
+          onClick={() => onSelect('publi')}
+          className={cn(
+            "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer active:scale-90",
+            currentTab === 'publi' ? "text-[#ebdcb9]" : (theme === 'dark' ? "text-stone-400 hover:text-white" : "text-stone-500 hover:text-black")
+          )}
+        >
+          <div className={cn(
+            "w-6 h-6 rounded-full flex items-center justify-center border transition-all",
+            currentTab === 'publi' 
+              ? "border-[#ebdcb9] bg-[#ebdcb9]/20 text-[#ebdcb9]" 
+              : (theme === 'dark' ? "border-stone-500 text-stone-400" : "border-stone-400 text-stone-500")
+          )}>
+            <Plus size={16} strokeWidth={2.5} />
+          </div>
+          <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Publi</span>
+        </button>
 
-      {/* 3. Biquínis */}
-      <button
-        onClick={() => onSelect('bikinis')}
-        className={cn(
-          "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all relative cursor-pointer active:scale-90",
-          currentTab === 'bikinis' ? "text-[#ebdcb9]" : "text-stone-400 hover:text-white"
-        )}
-      >
-        <Tag size={22} strokeWidth={currentTab === 'bikinis' ? 2.5 : 1.8} />
-        <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Biquínis</span>
-        {lowStockItemsCount > 0 && (
-          <span className="absolute top-1 right-3 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#120c08]" />
-        )}
-      </button>
+        {/* 3. Biquínis */}
+        <button
+          onClick={() => onSelect('bikinis')}
+          className={cn(
+            "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all relative cursor-pointer active:scale-90",
+            currentTab === 'bikinis' ? "text-[#ebdcb9]" : (theme === 'dark' ? "text-stone-400 hover:text-white" : "text-stone-500 hover:text-black")
+          )}
+        >
+          <Tag size={22} strokeWidth={currentTab === 'bikinis' ? 2.5 : 1.8} />
+          <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Biquínis</span>
+          {lowStockItemsCount > 0 && (
+            <span className={cn(
+              "absolute top-1 right-3 w-2 h-2 rounded-full bg-rose-500 ring-2",
+              theme === 'dark' ? "ring-[#120c08]" : "ring-white"
+            )} />
+          )}
+        </button>
 
-      {/* 4. Insumos */}
-      <button
-        onClick={() => onSelect('threads')}
-        className={cn(
-          "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer active:scale-90",
-          currentTab === 'threads' ? "text-[#ebdcb9]" : "text-stone-400 hover:text-white"
-        )}
-      >
-        <Scissors size={22} strokeWidth={currentTab === 'threads' ? 2.5 : 1.8} />
-        <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Insumos</span>
-      </button>
+        {/* 4. Insumos */}
+        <button
+          onClick={() => onSelect('threads')}
+          className={cn(
+            "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer active:scale-90",
+            currentTab === 'threads' ? "text-[#ebdcb9]" : (theme === 'dark' ? "text-stone-400 hover:text-white" : "text-stone-500 hover:text-black")
+          )}
+        >
+          <Scissors size={22} strokeWidth={currentTab === 'threads' ? 2.5 : 1.8} />
+          <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Insumos</span>
+        </button>
 
-      {/* 5. Chat */}
-      <button
-        onClick={() => onSelect('chat')}
-        className={cn(
-          "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all relative cursor-pointer active:scale-90",
-          currentTab === 'chat' ? "text-[#ebdcb9]" : "text-stone-400 hover:text-white"
-        )}
-      >
-        <MessageSquare size={22} strokeWidth={currentTab === 'chat' ? 2.5 : 1.8} />
-        <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Chat</span>
-        {unreadMessagesCount > 0 && (
-          <span className="absolute top-0.5 right-2 bg-rose-500 text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
-            {unreadMessagesCount}
-          </span>
-        )}
-      </button>
+        {/* 5. Chat */}
+        <button
+          onClick={() => onSelect('chat')}
+          className={cn(
+            "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all relative cursor-pointer active:scale-90",
+            currentTab === 'chat' ? "text-[#ebdcb9]" : (theme === 'dark' ? "text-stone-400 hover:text-white" : "text-stone-500 hover:text-black")
+          )}
+        >
+          <MessageSquare size={22} strokeWidth={currentTab === 'chat' ? 2.5 : 1.8} />
+          <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Chat</span>
+          {unreadMessagesCount > 0 && (
+            <span className="absolute top-0.5 right-2 bg-rose-500 text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
+              {unreadMessagesCount}
+            </span>
+          )}
+        </button>
 
-      {/* 6. Perfil */}
-      <button
-        onClick={() => onSelect('profile')}
-        className={cn(
-          "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer active:scale-90",
-          currentTab === 'profile' ? "text-[#ebdcb9]" : "text-stone-400 hover:text-white"
-        )}
-      >
-        <div className={cn(
-          "w-6 h-6 rounded-full overflow-hidden border transition-all p-[1px]",
-          currentTab === 'profile' ? "border-[#ebdcb9] ring-2 ring-[#ebdcb9]/30" : "border-stone-500"
-        )}>
-          <img 
-            src={currentUser?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"} 
-            alt="Perfil" 
-            className="w-full h-full object-cover rounded-full" 
-            referrerPolicy="no-referrer"
-          />
-        </div>
-        <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Perfil</span>
-      </button>
-    </nav>
+        {/* 6. Perfil */}
+        <button
+          onClick={() => onSelect('profile')}
+          className={cn(
+            "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer active:scale-90",
+            currentTab === 'profile' ? "text-[#ebdcb9]" : (theme === 'dark' ? "text-stone-400 hover:text-white" : "text-stone-500 hover:text-black")
+          )}
+        >
+          <div className={cn(
+            "w-6 h-6 rounded-full overflow-hidden border transition-all p-[1px]",
+            currentTab === 'profile' 
+              ? "border-[#ebdcb9] ring-2 ring-[#ebdcb9]/30" 
+              : (theme === 'dark' ? "border-stone-500" : "border-stone-300")
+          )}>
+            <img 
+              src={currentUser?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"} 
+              alt="Perfil" 
+              className="w-full h-full object-cover rounded-full" 
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Perfil</span>
+        </button>
+      </nav>
   );
 }

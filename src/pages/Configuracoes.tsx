@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useInventory } from '../context/InventoryContext';
+import { cn } from '../lib/utils';
 import { Shield, Key, Eye, EyeOff, UserPlus, Trash2, RefreshCw, AlertTriangle, Image, Check, LogOut, Upload, Edit2, UserCheck, Sparkles } from 'lucide-react';
 import { UserRole } from '../types';
 
@@ -13,14 +14,8 @@ const AVATARS = [
 ];
 
 export function Configuracoes() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const { users, currentUser, addUser, removeUser, resetAllStockToZero, logout } = useInventory();
+  const { users, currentUser, addUser, removeUser, resetAllStockToZero, logout, theme, isMobile } = useInventory();
+  const isLight = theme === 'light';
   
   // Access control
   const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
@@ -111,18 +106,18 @@ export function Configuracoes() {
       return;
     }
 
-    const activeTargetId = isLiderOrAdmOrMestre ? (editingUserId || undefined) : currentUser?.id;
+    const activeTargetId = (isLiderOrAdmOrMestre || isMobile) ? (editingUserId || undefined) : currentUser?.id;
     const existingTarget = users.find(u => u.id === activeTargetId);
 
-    const cleanName = isLiderOrAdmOrMestre
+    const cleanName = (isLiderOrAdmOrMestre || isMobile)
       ? newName.trim()
       : (existingTarget?.name || currentUser?.name || 'Usuário');
 
-    const targetRole = isLiderOrAdmOrMestre
+    const targetRole = (isLiderOrAdmOrMestre || isMobile)
       ? newRole
       : (existingTarget?.role || currentUser?.role || 'FUNCIONARIO_A');
 
-    if (isLiderOrAdmOrMestre && !cleanName) {
+    if ((isLiderOrAdmOrMestre || isMobile) && !cleanName) {
       setUserError('Por favor, preencha o nome completo do usuário.');
       return;
     }
@@ -194,24 +189,45 @@ export function Configuracoes() {
   });
 
   return (
-    <div className="relative md:rounded-[2.5rem] overflow-hidden md:border md:border-[#ebdcb9]/15 bg-[#130d08]/75 backdrop-blur-xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] text-white p-4 md:p-8 space-y-6 md:space-y-8 min-h-full">
+    <div className={cn(
+      "relative md:rounded-[2.5rem] overflow-hidden md:border backdrop-blur-xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] p-4 md:p-8 space-y-6 md:space-y-8 min-h-full transition-colors duration-300",
+      isLight ? "bg-white border-slate-200 text-black shadow-slate-200/50" : "bg-[#130d08]/75 border-[#ebdcb9]/15 text-white"
+    )}>
       
       {/* Ocean twilight ambiance background */}
-      <div 
-        className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center tracking-normal opacity-[0.05] mix-blend-overlay pointer-events-none"
-      />
-      <div className="absolute top-0 right-1/4 w-[400px] h-[350px] bg-[#ebdcb9]/5 blur-[130px] rounded-full pointer-events-none -translate-y-20" />
+      {!isLight && (
+        <div 
+          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center tracking-normal opacity-[0.05] mix-blend-overlay pointer-events-none"
+        />
+      )}
+      <div className={cn(
+        "absolute top-0 right-1/4 w-[400px] h-[350px] blur-[130px] rounded-full pointer-events-none -translate-y-20",
+        isLight ? "bg-blue-100/30" : "bg-[#ebdcb9]/5"
+      )} />
 
       {/* Header Banner */}
-      <div className="relative bg-gradient-to-r from-[#ebdcb9]/10 via-[#c5a880]/5 to-black/40 rounded-[2.2rem] border border-white/5 p-6 md:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 backdrop-blur-xl shrink-0">
+      <div className={cn(
+        "relative rounded-[2.2rem] border p-6 md:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 backdrop-blur-xl shrink-0 transition-all",
+        isLight 
+          ? "bg-gradient-to-r from-amber-50 to-blue-50 border-slate-100" 
+          : "bg-gradient-to-r from-[#ebdcb9]/10 via-[#c5a880]/5 to-black/40 border-white/5"
+      )}>
         <div>
-          <span className="text-[10px] font-black tracking-[0.25em] text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-2.5 py-1 rounded-full border border-[#ebdcb9]/20 shadow-sm inline-flex items-center gap-1.5 leading-none">
+          <span className={cn(
+            "text-[10px] font-black tracking-[0.25em] uppercase px-2.5 py-1 rounded-full border shadow-sm inline-flex items-center gap-1.5 leading-none",
+            isLight 
+              ? "text-amber-700 bg-amber-50 border-amber-200" 
+              : "text-[#ebdcb9] bg-[#ebdcb9]/10 border-[#ebdcb9]/20"
+          )}>
             {isLiderOrAdmOrMestre ? '🛡️ SISTEMA DE PERMISSÕES & GESTÃO' : '👤 PERFIL DE USUÁRIO'}
           </span>
-          <h2 className="text-3xl font-serif text-[#fbf8f2] tracking-wide mt-2.5">
+          <h2 className={cn(
+            "text-3xl font-serif tracking-wide mt-2.5",
+            isLight ? "text-slate-900" : "text-[#fbf8f2]"
+          )}>
             Painel de Configurações
           </h2>
-          <p className="text-slate-400 text-xs mt-1.5">
+          <p className={cn("text-xs mt-1.5", isLight ? "text-slate-600" : "text-slate-400")}>
             {isLiderOrAdmOrMestre 
               ? 'Gerenciador de acessos, perfis, senhas e integridade do banco de dados.'
               : 'Altere sua foto de perfil, login de acesso e senha de segurança.'}
@@ -234,12 +250,15 @@ export function Configuracoes() {
                   {currentUser.role}
                 </span>
               )}
-              <p className="text-sm font-bold text-white mt-0.5">{currentUser.name}</p>
+              <p className={cn("text-sm font-bold mt-0.5", isLight ? "text-slate-900" : "text-white")}>{currentUser.name}</p>
               <p className="text-[11px] text-slate-400 font-mono">@{currentUser.username}</p>
             </div>
             <button
               onClick={() => logout()}
-              className="text-slate-400 hover:text-rose-400 p-2 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
+              className={cn(
+                "p-2 rounded-lg transition-colors cursor-pointer",
+                isLight ? "text-slate-500 hover:text-rose-600 hover:bg-rose-50" : "text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+              )}
               title="Sair da Conta"
             >
               <LogOut className="w-5 h-5" />
@@ -252,9 +271,15 @@ export function Configuracoes() {
       <div className={`grid grid-cols-1 ${effectiveShowAdminSections ? 'lg:grid-cols-3' : 'max-w-2xl mx-auto'} gap-8`}>
         
         {/* User Settings Form */}
-        <div className={`${effectiveShowAdminSections ? 'lg:col-span-1' : 'w-full'} rounded-[2.2rem] border border-[#ebdcb9]/15 bg-black/20 p-6 backdrop-blur-xl relative flex flex-col justify-between`}>
+        <div className={cn(
+          `${effectiveShowAdminSections ? 'lg:col-span-1' : 'w-full'} rounded-[2.2rem] border p-6 backdrop-blur-xl relative flex flex-col justify-between transition-all duration-300`,
+          isLight ? "bg-slate-50 border-slate-200 shadow-slate-200/50" : "border-[#ebdcb9]/15 bg-black/20"
+        )}>
           <div>
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2 border-b border-white/5 pb-3">
+            <h3 className={cn(
+              "text-lg font-bold mb-4 flex items-center gap-2 border-b pb-3",
+              isLight ? "text-slate-900 border-slate-200" : "text-white border-white/5"
+            )}>
               <UserPlus className="w-5 h-5 text-purple-400 animate-pulse" />
               {(!effectiveShowAdminSections || isEditingSelf)
                 ? 'Editar Meu Perfil' 
@@ -263,19 +288,19 @@ export function Configuracoes() {
 
             <form onSubmit={handleSaveUser} className="space-y-4">
               {userError && (
-                <div className="bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs p-3 rounded-xl">
+                <div className="bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-300 text-xs p-3 rounded-xl">
                   {userError}
                 </div>
               )}
               {userSuccess && (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs p-3 rounded-xl flex items-center gap-2">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-300 text-xs p-3 rounded-xl flex items-center gap-2">
                   <Check size={16} className="text-emerald-400 shrink-0" />
                   {userSuccess}
                 </div>
               )}
 
-              {/* Nome Completo - SOMENTE visível para Líder e ADM (e Mestre) */}
-              {isLiderOrAdmOrMestre && (
+              {/* Nome Completo - Visível para Líder/ADM ou qualquer um no mobile */}
+              {(isLiderOrAdmOrMestre || isMobile) && (
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Nome Completo</label>
                   <input
@@ -283,7 +308,12 @@ export function Configuracoes() {
                     placeholder="Ex: Ana Souza"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="w-full bg-slate-950/70 border border-white/10 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                    className={cn(
+                      "w-full border rounded-xl px-3 py-2.5 text-xs focus:ring-1 focus:ring-purple-500/10 focus:outline-none transition-all",
+                      isLight 
+                        ? "bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400" 
+                        : "bg-slate-950/70 border-white/10 text-white placeholder-slate-600 focus:border-purple-500/40"
+                    )}
                   />
                 </div>
               )}
@@ -296,7 +326,12 @@ export function Configuracoes() {
                   placeholder="Ex: ana.souza"
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
-                  className="w-full bg-slate-950/70 border border-white/10 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                  className={cn(
+                    "w-full border rounded-xl px-3 py-2.5 text-xs focus:ring-1 focus:ring-purple-500/10 focus:outline-none transition-all",
+                    isLight 
+                      ? "bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400" 
+                      : "bg-slate-950/70 border-white/10 text-white placeholder-slate-600 focus:border-purple-500/40"
+                  )}
                 />
               </div>
 
@@ -308,12 +343,17 @@ export function Configuracoes() {
                   placeholder="Insira a nova senha"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full bg-slate-950/70 border border-white/10 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none transition-all"
+                  className={cn(
+                    "w-full border rounded-xl px-3 py-2.5 text-xs focus:ring-1 focus:ring-purple-500/10 focus:outline-none transition-all",
+                    isLight 
+                      ? "bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400" 
+                      : "bg-slate-950/70 border-white/10 text-white placeholder-slate-600 focus:border-purple-500/40"
+                  )}
                 />
               </div>
 
-              {/* Função / Nível de Acesso - Visível para todos no mobile, mas editável apenas por ADM/Mestre */}
-              {(isLiderOrAdmOrMestre || isMobile) && (
+              {/* Função / Nível de Acesso - Visível para ADM/Mestre, ou se não for mobile para Líderes */}
+              {(isAdmOrMestre || (!isMobile && isLiderOrAdmOrMestre)) && (
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Função / Nível de Acesso</label>
                   <select
@@ -338,8 +378,8 @@ export function Configuracoes() {
                 </label>
 
                 {/* Active Photo Preview */}
-                <div className="flex items-center gap-3.5 bg-slate-950/40 border border-white/5 rounded-2xl p-3 mb-3.5">
-                  <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-purple-500/30 bg-slate-950/80 shrink-0">
+                <div className={cn("flex items-center gap-3.5 border rounded-2xl p-3 mb-3.5", isLight ? "bg-slate-100 border-slate-200" : "bg-slate-950/40 border-white/5")}>
+                  <div className={cn("relative w-12 h-12 rounded-xl overflow-hidden border bg-slate-950/80 shrink-0", isLight ? "border-slate-200" : "border-purple-500/30")}>
                     <img 
                       src={customAvatarUrl || newAvatar} 
                       alt="Pré-visualização" 
@@ -361,7 +401,10 @@ export function Configuracoes() {
                   <div>
                     <label 
                       htmlFor="avatar-upload-file"
-                      className="flex items-center justify-center gap-2 w-full bg-slate-950 hover:bg-slate-900 border border-purple-500/20 hover:border-purple-500/40 text-purple-300 hover:text-white font-bold text-[11px] py-2.5 px-3 rounded-xl cursor-pointer transition-all uppercase tracking-wider"
+                      className={cn(
+                        "flex items-center justify-center gap-2 w-full border font-bold text-[11px] py-2.5 px-3 rounded-xl cursor-pointer transition-all uppercase tracking-wider",
+                        isLight ? "bg-slate-900 text-white border-slate-800" : "bg-slate-950 hover:bg-slate-900 border-purple-500/20 hover:border-purple-500/40 text-purple-300 hover:text-white"
+                      )}
                     >
                       <Upload size={14} className="animate-bounce" style={{ animationDuration: '3s' }} />
                       Importar do Dispositivo
@@ -420,7 +463,12 @@ export function Configuracoes() {
                           setNewAvatar('');
                         }
                       }}
-                      className="w-full bg-slate-950/70 border border-white/5 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-[11px] text-white placeholder-slate-600 focus:outline-none transition-all"
+                      className={cn(
+                        "w-full border rounded-xl px-3 py-2.5 text-[11px] focus:ring-1 focus:ring-purple-500/10 focus:outline-none transition-all",
+                        isLight 
+                          ? "bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400" 
+                          : "bg-slate-950/70 border border-white/5 text-white placeholder-slate-600 focus:border-purple-500/40"
+                      )}
                     />
                   </div>
                 </div>
@@ -473,8 +521,14 @@ export function Configuracoes() {
           <div className="lg:col-span-2 space-y-6">
 
             {/* Registered Users List */}
-            <div className="rounded-[2.2rem] border border-white/10 bg-slate-900/40 p-6 backdrop-blur-xl relative">
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center justify-between border-b border-white/5 pb-3">
+            <div className={cn(
+              "rounded-[2.2rem] border p-6 backdrop-blur-xl relative transition-all duration-300",
+              isLight ? "bg-slate-50 border-slate-200 shadow-slate-200/50" : "bg-slate-900/40 border-white/10"
+            )}>
+              <h3 className={cn(
+                "text-lg font-bold mb-4 flex items-center justify-between border-b pb-3",
+                isLight ? "text-slate-900 border-slate-200" : "text-white border-white/5"
+              )}>
                 <span className="flex items-center gap-2">
                   <Shield className="w-5 h-5 text-purple-400" />
                   Usuários Registrados
@@ -494,19 +548,22 @@ export function Configuracoes() {
                   return (
                     <div 
                       key={u.id}
-                      className="p-4 rounded-2xl bg-white/[0.015] border border-white/5 hover:border-purple-500/20 transition-all duration-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                      className={cn(
+                        "p-4 rounded-2xl border transition-all duration-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4",
+                        isLight ? "bg-white border-slate-100 hover:border-purple-300" : "bg-white/[0.015] border-white/5 hover:border-purple-500/20"
+                      )}
                     >
                       <div className="flex items-center gap-4">
                         <img 
                           src={u.avatarUrl || AVATARS[0]} 
                           alt={u.name} 
-                          className="w-12 h-12 rounded-xl object-cover border border-white/10"
+                          className={cn("w-12 h-12 rounded-xl object-cover border", isLight ? "border-slate-200" : "border-white/10")}
                           referrerPolicy="no-referrer"
                         />
                         
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-bold text-white truncate max-w-[150px]">{u.name}</p>
+                            <p className={cn("font-bold truncate max-w-[150px]", isLight ? "text-slate-900" : "text-white")}>{u.name}</p>
                           </div>
                           
                           <p className="text-[11px] text-slate-400 font-medium">
@@ -514,7 +571,7 @@ export function Configuracoes() {
                           </p>
 
                           {/* Password view */}
-                          <div className="flex items-center gap-2 mt-1 bg-[#09090b] border border-white/5 rounded-lg px-2 py-1 w-fit">
+                          <div className={cn("flex items-center gap-2 mt-1 border rounded-lg px-2 py-1 w-fit", isLight ? "bg-slate-100 border-slate-200" : "bg-[#09090b] border-white/5")}>
                             <Key size={10} className="text-slate-500 shrink-0" />
                             <span className="text-[10px] text-slate-400 font-mono select-all">
                               {showPass ? u.password : '••••••••'}

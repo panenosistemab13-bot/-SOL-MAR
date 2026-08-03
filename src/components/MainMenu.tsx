@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Camera, X, LogOut, MoreVertical, CalendarCheck, ShoppingCart, Edit3, Trash2, Settings } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Camera, X, LogOut, MoreVertical, CalendarCheck, ShoppingCart, Edit3, Trash2, Settings, Sun, Moon } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useInventory } from '../context/InventoryContext';
 import { InstagramStoriesRow, UserProfileGalleryModal } from './InstagramMobileNav';
@@ -24,7 +24,7 @@ export function MainMenu({
   viewingProfileUserId?: string | null;
   onSelectProfile?: (id: string | null) => void;
 }) {
-  const { galleryPosts, addGalleryPost, likeGalleryPost, deleteGalleryPost, currentUser, users, addPostComment, deletePostComment, editPostComment, editGalleryPost, pinGalleryPost, logout } = useInventory();
+  const { galleryPosts, addGalleryPost, likeGalleryPost, deleteGalleryPost, currentUser, users, addPostComment, deletePostComment, editPostComment, editGalleryPost, pinGalleryPost, logout, theme, setTheme, isMobile } = useInventory();
   
   const [newPostImageUrl, setNewPostImageUrl] = useState('');
   const [newPostCaption, setNewPostCaption] = useState('');
@@ -84,18 +84,30 @@ export function MainMenu({
 
   return (
     <div 
-      className="min-h-screen flex flex-col font-sans relative text-white bg-[#1a130c] pb-24 md:pb-0"
+      className={cn(
+        "min-h-screen flex flex-col font-sans relative pb-24 md:pb-0 transition-colors duration-500",
+        theme === 'dark' ? "text-white bg-[#1a130c]" : "text-[#3d2723] bg-[#fbf8f2]"
+      )}
     >
-      <div className="absolute inset-0 bg-black/90 md:bg-black/80 z-0 pointer-events-none" />
+      <div className={cn(
+        "absolute inset-0 z-0 pointer-events-none transition-opacity duration-500",
+        theme === 'dark' ? "bg-black/90 md:bg-black/80 opacity-100" : "bg-white/50 opacity-0"
+      )} />
       
       <div className="relative z-10 flex flex-col w-full max-w-md mx-auto h-full">
         {/* Inline Post Creator */}
         {showPostCreator && (
           <div className="px-4 py-3">
-            <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
+            <div className={cn(
+              "w-full border rounded-2xl p-4 flex flex-col gap-3 shadow-lg transition-colors duration-500",
+              theme === 'dark' ? "bg-white/5 border-white/10" : "bg-white border-black/5"
+            )}>
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#f09433] to-[#bc1888] flex items-center justify-center p-[2px] shrink-0 mt-0.5">
-                  <img src={currentUser?.avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover bg-black" />
+                  <img src={currentUser?.avatarUrl} alt="Avatar" className={cn(
+                    "w-full h-full rounded-full object-cover transition-colors duration-500",
+                    theme === 'dark' ? "bg-black" : "bg-white"
+                  )} />
                 </div>
                 
                 <div className="flex-1 flex flex-col gap-2">
@@ -104,13 +116,19 @@ export function MainMenu({
                       placeholder="Escreva algo..."
                       value={newPostCaption}
                       onChange={e => setNewPostCaption(e.target.value)}
-                      className="bg-transparent text-sm text-white outline-none w-full placeholder:text-white/50 resize-none min-h-[40px]"
+                      className={cn(
+                        "bg-transparent text-sm outline-none w-full resize-none min-h-[40px] transition-colors duration-500",
+                        theme === 'dark' ? "text-white placeholder:text-white/50" : "text-[#3d2723] placeholder:text-[#3d2723]/50"
+                      )}
                       autoFocus
                     />
                   ) : (
                     <div 
                       onClick={() => setShowCaptionInput(true)} 
-                      className="text-sm text-white/50 cursor-pointer pt-1.5"
+                      className={cn(
+                        "text-sm cursor-pointer pt-1.5 transition-colors duration-500",
+                        theme === 'dark' ? "text-white/50" : "text-[#3d2723]/50"
+                      )}
                     >
                       O que você quer compartilhar hoje?
                     </div>
@@ -130,12 +148,18 @@ export function MainMenu({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-white/10">
+              <div className={cn(
+                "flex items-center justify-between pt-3 border-t transition-colors duration-500",
+                theme === 'dark' ? "border-white/10" : "border-black/10"
+              )}>
                 <div className="flex items-center gap-4">
                   {!hideCameraMobile && (
                     <button 
                       onClick={() => fileInputRef.current?.click()}
-                      className="text-white/70 hover:text-white transition-colors"
+                      className={cn(
+                        "transition-colors",
+                        theme === 'dark' ? "text-white/70 hover:text-white" : "text-[#3d2723]/70 hover:text-[#3d2723]"
+                      )}
                       title="Adicionar imagem"
                     >
                       <Camera size={22} />
@@ -174,19 +198,34 @@ export function MainMenu({
         <div className="flex flex-col gap-6 pb-6">
           {onlyMyPosts && (
             <div className="px-4 pt-2">
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-lg relative">
+              <div className={cn(
+                "border rounded-2xl p-4 flex items-center justify-between shadow-lg relative transition-colors duration-500",
+                theme === 'dark' ? "bg-white/5 border-white/10" : "bg-white border-black/10"
+              )}>
                 <div className="flex items-center gap-4">
-                  <img src={currentUser?.avatarUrl} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-[#ebdcb9] bg-black" />
+                  <img src={currentUser?.avatarUrl} alt="Avatar" className={cn(
+                    "w-16 h-16 rounded-full object-cover border-2 transition-colors duration-500",
+                    theme === 'dark' ? "border-[#ebdcb9] bg-black" : "border-black/20 bg-white"
+                  )} />
                   <div>
-                    <h2 className="text-base font-bold text-white">{currentUser?.name || currentUser?.username}</h2>
-                    <p className="text-xs text-white/60">Suas publicações ({displayedPosts.length})</p>
+                    <h2 className={cn(
+                      "text-base font-bold transition-colors duration-500",
+                      theme === 'dark' ? "text-white" : "text-[#3d2723]"
+                    )}>{currentUser?.name || currentUser?.username}</h2>
+                    <p className={cn(
+                      "text-xs transition-colors duration-500",
+                      theme === 'dark' ? "text-white/60" : "text-[#3d2723]/60"
+                    )}>Suas publicações ({displayedPosts.length})</p>
                   </div>
                 </div>
 
                 <div className="relative">
                   <button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="p-2 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                    className={cn(
+                      "p-2 rounded-xl transition-all cursor-pointer",
+                      theme === 'dark' ? "text-white/70 hover:text-white bg-white/5 hover:bg-white/10" : "text-[#3d2723]/70 hover:text-[#3d2723] bg-black/5 hover:bg-black/10"
+                    )}
                     title="Opções do perfil"
                   >
                     <MoreVertical size={20} />
@@ -195,7 +234,51 @@ export function MainMenu({
                   {showProfileMenu && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
-                      <div className="absolute right-0 mt-2 w-48 bg-[#1f1610] border border-white/15 rounded-xl shadow-2xl z-50 py-1.5 flex flex-col">
+                      <div className={cn(
+                        "absolute right-0 mt-2 w-48 border rounded-xl shadow-2xl z-50 py-1.5 flex flex-col transition-colors duration-500",
+                        theme === 'dark' ? "bg-[#1f1610] border-white/15" : "bg-white border-black/10"
+                      )}>
+                        <button
+                          onClick={() => {
+                            setShowProfileMenu(false);
+                            onSelect('configuracoes');
+                          }}
+                          className={cn(
+                            "flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-colors",
+                            theme === 'dark' ? "text-white hover:bg-white/10" : "text-[#3d2723] hover:bg-black/5"
+                          )}
+                        >
+                          <Settings size={16} className="text-[#ebdcb9]" />
+                          Configurações
+                        </button>
+                        <div className={cn("h-px my-1", theme === 'dark' ? "bg-white/10" : "bg-black/10")} />
+                        
+                        {isMobile && (
+                          <button
+                            onClick={() => {
+                              setTheme(theme === 'dark' ? 'light' : 'dark');
+                              setShowProfileMenu(false);
+                            }}
+                            className={cn(
+                              "flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-colors",
+                              theme === 'dark' ? "text-white hover:bg-white/10" : "text-[#3d2723] hover:bg-black/5"
+                            )}
+                          >
+                            {theme === 'dark' ? (
+                              <>
+                                <Sun size={16} className="text-[#ebdcb9]" />
+                                Tema Claro
+                              </>
+                            ) : (
+                              <>
+                                <Moon size={16} className="text-[#ebdcb9]" />
+                                Tema Escuro
+                              </>
+                            )}
+                          </button>
+                        )}
+
+                        <div className={cn("h-px my-1", theme === 'dark' ? "bg-white/10" : "bg-black/10")} />
                         {isAdmOrMestre && (
                           <>
                             <button
@@ -203,7 +286,10 @@ export function MainMenu({
                                 setShowProfileMenu(false);
                                 onSelect('attendance');
                               }}
-                              className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white hover:bg-white/10 text-left transition-colors"
+                              className={cn(
+                                "flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-colors",
+                                theme === 'dark' ? "text-white hover:bg-white/10" : "text-[#3d2723] hover:bg-black/5"
+                              )}
                             >
                               <CalendarCheck size={16} className="text-[#ebdcb9]" />
                               Presença
@@ -213,22 +299,15 @@ export function MainMenu({
                                 setShowProfileMenu(false);
                                 onSelect('sales');
                               }}
-                              className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white hover:bg-white/10 text-left transition-colors"
+                              className={cn(
+                                "flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-colors",
+                                theme === 'dark' ? "text-white hover:bg-white/10" : "text-[#3d2723] hover:bg-black/5"
+                              )}
                             >
                               <ShoppingCart size={16} className="text-[#ebdcb9]" />
                               Vendas
                             </button>
-                            <button
-                              onClick={() => {
-                                setShowProfileMenu(false);
-                                onSelect('configuracoes');
-                              }}
-                              className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white hover:bg-white/10 text-left transition-colors"
-                            >
-                              <Settings size={16} className="text-[#ebdcb9]" />
-                              Configurações
-                            </button>
-                            <div className="h-px bg-white/10 my-1" />
+                            <div className={cn("h-px my-1", theme === 'dark' ? "bg-white/10" : "bg-black/10")} />
                           </>
                         )}
                         <button
@@ -236,7 +315,10 @@ export function MainMenu({
                             setShowProfileMenu(false);
                             logout();
                           }}
-                          className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-rose-400 hover:bg-rose-500/10 text-left transition-colors font-semibold"
+                          className={cn(
+                            "flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-colors font-semibold",
+                            theme === 'dark' ? "text-rose-400 hover:bg-rose-500/10" : "text-rose-600 hover:bg-rose-500/5"
+                          )}
                         >
                           <LogOut size={16} />
                           Sair da conta
@@ -250,7 +332,10 @@ export function MainMenu({
           )}
 
           {displayedPosts.length === 0 ? (
-            <div className="text-center py-20 text-white/50 flex flex-col items-center">
+            <div className={cn(
+              "text-center py-20 flex flex-col items-center transition-colors duration-500",
+              theme === 'dark' ? "text-white/50" : "text-[#3d2723]/50"
+            )}>
               <Camera size={48} className="mb-4 opacity-20" />
               <p>{onlyMyPosts ? 'Você ainda não fez nenhuma publicação.' : 'Nenhuma publicação ainda.'}</p>
               <p className="text-xs">Compartilhe momentos no mural!</p>
@@ -268,7 +353,10 @@ export function MainMenu({
               const postUser = users.find(u => u.id === post.userId);
               
               return (
-                <div key={post.id} className="w-full bg-black/40 border-y border-white/10 md:border md:rounded-2xl flex flex-col">
+                <div key={post.id} className={cn(
+                  "w-full border-y md:border md:rounded-2xl flex flex-col transition-colors duration-500",
+                  theme === 'dark' ? "bg-black/40 border-white/10" : "bg-white border-black/5"
+                )}>
                   {/* Post Header */}
                   <div className="flex items-center justify-between p-3 relative">
                     <div 
@@ -281,11 +369,17 @@ export function MainMenu({
                         <img 
                           src={postUser?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"}
                           alt="User"
-                          className="w-full h-full object-cover rounded-full bg-black"
+                          className={cn(
+                            "w-full h-full object-cover rounded-full transition-colors duration-500",
+                            theme === 'dark' ? "bg-black" : "bg-white"
+                          )}
                         />
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-bold md:font-semibold text-sm text-white flex items-center gap-2">
+                        <span className={cn(
+                          "font-bold md:font-semibold text-sm flex items-center gap-2 transition-colors duration-500",
+                          theme === 'dark' ? "text-white" : "text-[#3d2723]"
+                        )}>
                           {postUser?.name || postUser?.username || 'Usuário'}
                           {post.isPinned && <span className="text-[10px] text-[#c5a880] bg-[#c5a880]/10 px-1.5 py-0.5 rounded">Fixado</span>}
                         </span>
@@ -295,7 +389,10 @@ export function MainMenu({
                       <div className="relative">
                         <button 
                           onClick={() => setActiveMenuId(activeMenuId === post.id ? null : post.id)}
-                          className="text-white/50 hover:text-white p-1"
+                          className={cn(
+                            "p-1 transition-colors duration-500",
+                            theme === 'dark' ? "text-white/50 hover:text-white" : "text-[#3d2723]/50 hover:text-[#3d2723]"
+                          )}
                         >
                           <MoreHorizontal size={20} />
                         </button>
@@ -303,14 +400,20 @@ export function MainMenu({
                         {activeMenuId === post.id && (
                           <>
                             <div className="fixed inset-0 z-40" onClick={() => setActiveMenuId(null)} />
-                            <div className="absolute right-0 mt-2 w-48 bg-[#1a1412] border border-white/10 rounded-xl shadow-xl z-50 overflow-hidden">
+                            <div className={cn(
+                              "absolute right-0 mt-2 w-48 border rounded-xl shadow-xl z-50 overflow-hidden transition-colors duration-500",
+                              theme === 'dark' ? "bg-[#1a1412] border-white/10" : "bg-white border-black/10"
+                            )}>
                               <button
                                 onClick={() => {
                                   setEditingPostId(post.id);
                                   setEditCaption(post.caption);
                                   setActiveMenuId(null);
                                 }}
-                                className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/5 transition-colors"
+                                className={cn(
+                                  "w-full text-left px-4 py-3 text-sm transition-colors",
+                                  theme === 'dark' ? "text-white hover:bg-white/5" : "text-[#3d2723] hover:bg-black/5"
+                                )}
                               >
                                 Editar publicação
                               </button>
@@ -319,11 +422,14 @@ export function MainMenu({
                                   pinGalleryPost(post.id);
                                   setActiveMenuId(null);
                                 }}
-                                className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/5 transition-colors"
+                                className={cn(
+                                  "w-full text-left px-4 py-3 text-sm transition-colors",
+                                  theme === 'dark' ? "text-white hover:bg-white/5" : "text-[#3d2723] hover:bg-black/5"
+                                )}
                               >
                                 {post.isPinned ? 'Desfixar do topo' : 'Fixar no topo'}
                               </button>
-                              <div className="h-px bg-white/10 w-full" />
+                              <div className={cn("h-px w-full", theme === 'dark' ? "bg-white/10" : "bg-black/10")} />
                               <button
                                 onClick={() => {
                                   deleteGalleryPost(post.id);
@@ -373,7 +479,10 @@ export function MainMenu({
                   {/* Post Details */}
                   <div className="px-3 pb-4 space-y-1">
                     <p 
-                      className="text-sm font-semibold cursor-pointer hover:underline text-white/95"
+                      className={cn(
+                        "text-sm font-semibold cursor-pointer hover:underline transition-colors duration-500",
+                        theme === 'dark' ? "text-white/95" : "text-[#3d2723]/95"
+                      )}
                       onClick={() => setShowLikesModalForPostId(post.id)}
                     >
                       {(post.likes || []).length} curtidas
@@ -384,13 +493,19 @@ export function MainMenu({
                           <textarea
                             value={editCaption}
                             onChange={(e) => setEditCaption(e.target.value)}
-                            className="bg-white/10 text-sm text-white w-full rounded-lg p-2 outline-none resize-none min-h-[60px]"
+                            className={cn(
+                              "text-sm w-full rounded-lg p-2 outline-none resize-none min-h-[60px] transition-colors duration-500",
+                              theme === 'dark' ? "bg-white/10 text-white" : "bg-black/5 text-[#3d2723]"
+                            )}
                             autoFocus
                           />
                           <div className="flex justify-end gap-2">
                             <button
                               onClick={() => setEditingPostId(null)}
-                              className="text-xs text-white/50 px-3 py-1.5"
+                              className={cn(
+                                "text-xs px-3 py-1.5 transition-colors duration-500",
+                                theme === 'dark' ? "text-white/50" : "text-[#3d2723]/50"
+                              )}
                             >
                               Cancelar
                             </button>
@@ -408,17 +523,29 @@ export function MainMenu({
                       ) : (
                         post.imageUrl ? (
                           <>
-                            <span className="font-bold md:font-semibold mr-2">{postUser?.name || postUser?.username || 'Usuário'}</span>
-                            <span className="text-white/90 whitespace-pre-wrap break-words">{post.caption}</span>
+                            <span className={cn(
+                              "font-bold md:font-semibold mr-2 transition-colors duration-500",
+                              theme === 'dark' ? "text-white" : "text-[#3d2723]"
+                            )}>{postUser?.name || postUser?.username || 'Usuário'}</span>
+                            <span className={cn(
+                              "whitespace-pre-wrap break-words transition-colors duration-500",
+                              theme === 'dark' ? "text-white/90" : "text-[#3d2723]/90"
+                            )}>{post.caption}</span>
                           </>
                         ) : (
                           <div className="mt-1 mb-3">
-                            <span className="text-white text-base md:text-lg font-medium whitespace-pre-wrap break-words leading-relaxed">{post.caption}</span>
+                            <span className={cn(
+                              "text-base md:text-lg font-medium whitespace-pre-wrap break-words leading-relaxed transition-colors duration-500",
+                              theme === 'dark' ? "text-white" : "text-[#3d2723]"
+                            )}>{post.caption}</span>
                           </div>
                         )
                       )}
                     </div>
-                    <p className="text-[10px] text-white/50 uppercase tracking-wide mt-1 mb-2">
+                    <p className={cn(
+                      "text-[10px] uppercase tracking-wide mt-1 mb-2 transition-colors duration-500",
+                      theme === 'dark' ? "text-white/50" : "text-[#3d2723]/50"
+                    )}>
                       {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date(post.createdAt))}
                     </p>
 
