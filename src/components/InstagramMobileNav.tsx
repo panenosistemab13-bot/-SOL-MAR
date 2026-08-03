@@ -440,7 +440,7 @@ export function InstagramMobileBottomNav({ currentTab, onSelect }: InstagramMobi
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#120c08]/95 border-t border-white/10 px-2 py-1.5 flex items-center justify-around backdrop-blur-2xl shadow-2xl">
-      {/* 1. Home / Menu */}
+      {/* 1. Início */}
       <button
         onClick={() => onSelect('menu')}
         className={cn(
@@ -452,7 +452,24 @@ export function InstagramMobileBottomNav({ currentTab, onSelect }: InstagramMobi
         <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Início</span>
       </button>
 
-      {/* 2. Biquínis */}
+      {/* 2. Publi (+) */}
+      <button
+        onClick={() => onSelect('publi')}
+        className={cn(
+          "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer active:scale-90",
+          currentTab === 'publi' ? "text-[#ebdcb9]" : "text-stone-400 hover:text-white"
+        )}
+      >
+        <div className={cn(
+          "w-6 h-6 rounded-full flex items-center justify-center border transition-all",
+          currentTab === 'publi' ? "border-[#ebdcb9] bg-[#ebdcb9]/20 text-[#ebdcb9]" : "border-stone-500 text-stone-400"
+        )}>
+          <Plus size={16} strokeWidth={2.5} />
+        </div>
+        <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Publi</span>
+      </button>
+
+      {/* 3. Biquínis */}
       <button
         onClick={() => onSelect('bikinis')}
         className={cn(
@@ -467,7 +484,7 @@ export function InstagramMobileBottomNav({ currentTab, onSelect }: InstagramMobi
         )}
       </button>
 
-      {/* 3. Insumos */}
+      {/* 4. Insumos */}
       <button
         onClick={() => onSelect('threads')}
         className={cn(
@@ -479,19 +496,7 @@ export function InstagramMobileBottomNav({ currentTab, onSelect }: InstagramMobi
         <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Insumos</span>
       </button>
 
-      {/* 4. Vendas */}
-      <button
-        onClick={() => onSelect('sales')}
-        className={cn(
-          "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer active:scale-90",
-          currentTab === 'sales' ? "text-[#ebdcb9]" : "text-stone-400 hover:text-white"
-        )}
-      >
-        <ShoppingCart size={22} strokeWidth={currentTab === 'sales' ? 2.5 : 1.8} />
-        <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Vendas</span>
-      </button>
-
-      {/* 5. Mural (Chat) */}
+      {/* 5. Chat */}
       <button
         onClick={() => onSelect('chat')}
         className={cn(
@@ -500,7 +505,7 @@ export function InstagramMobileBottomNav({ currentTab, onSelect }: InstagramMobi
         )}
       >
         <MessageSquare size={22} strokeWidth={currentTab === 'chat' ? 2.5 : 1.8} />
-        <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Mural</span>
+        <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Chat</span>
         {unreadMessagesCount > 0 && (
           <span className="absolute top-0.5 right-2 bg-rose-500 text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
             {unreadMessagesCount}
@@ -508,7 +513,7 @@ export function InstagramMobileBottomNav({ currentTab, onSelect }: InstagramMobi
         )}
       </button>
 
-      {/* 6. Perfil / Minhas Publicações */}
+      {/* 6. Perfil */}
       <button
         onClick={() => onSelect('profile')}
         className={cn(

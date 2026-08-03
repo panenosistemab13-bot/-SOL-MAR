@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Camera, X, LogOut } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Camera, X, LogOut, MoreVertical, CalendarCheck, ShoppingCart } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useInventory } from '../context/InventoryContext';
 import { InstagramStoriesRow } from './InstagramMobileNav';
@@ -7,7 +7,19 @@ import { InstagramStoriesRow } from './InstagramMobileNav';
 // @ts-ignore
 import backgroundImage from '../assets/images/sol_mar_bg_1781047598977.png';
 
-export function MainMenu({ onSelect, onlyMyPosts = false }: { onSelect: (tab: string) => void; onlyMyPosts?: boolean }) {
+export function MainMenu({ 
+  onSelect, 
+  onlyMyPosts = false, 
+  showPostCreator = false,
+  autoOpenGallery = false,
+  hideCameraMobile = false
+}: { 
+  onSelect: (tab: string) => void; 
+  onlyMyPosts?: boolean; 
+  showPostCreator?: boolean;
+  autoOpenGallery?: boolean;
+  hideCameraMobile?: boolean;
+}) {
   const { galleryPosts, addGalleryPost, likeGalleryPost, deleteGalleryPost, currentUser, users, addPostComment, editGalleryPost, pinGalleryPost, logout } = useInventory();
   
   const [newPostImageUrl, setNewPostImageUrl] = useState('');
@@ -17,7 +29,19 @@ export function MainMenu({ onSelect, onlyMyPosts = false }: { onSelect: (tab: st
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editCaption, setEditCaption] = useState('');
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (autoOpenGallery && fileInputRef.current) {
+      const timer = setTimeout(() => {
+        fileInputRef.current?.click();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [autoOpenGallery]);
+
+  const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
 
   const handlePost = () => {
     if (!newPostImageUrl && !newPostCaption.trim()) return;
@@ -54,87 +78,91 @@ export function MainMenu({ onSelect, onlyMyPosts = false }: { onSelect: (tab: st
       
       <div className="relative z-10 flex flex-col w-full max-w-md mx-auto h-full">
         {/* Inline Post Creator */}
-        <div className="px-4 py-3">
-          <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#f09433] to-[#bc1888] flex items-center justify-center p-[2px] shrink-0 mt-0.5">
-                <img src={currentUser?.avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover bg-black" />
-              </div>
-              
-              <div className="flex-1 flex flex-col gap-2">
-                {showCaptionInput ? (
-                  <textarea
-                    placeholder="Escreva algo..."
-                    value={newPostCaption}
-                    onChange={e => setNewPostCaption(e.target.value)}
-                    className="bg-transparent text-sm text-white outline-none w-full placeholder:text-white/50 resize-none min-h-[40px]"
-                    autoFocus
-                  />
-                ) : (
-                  <div 
-                    onClick={() => setShowCaptionInput(true)} 
-                    className="text-sm text-white/50 cursor-pointer pt-1.5"
-                  >
-                    O que você quer compartilhar hoje?
-                  </div>
-                )}
+        {showPostCreator && (
+          <div className="px-4 py-3">
+            <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-3 shadow-lg">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#f09433] to-[#bc1888] flex items-center justify-center p-[2px] shrink-0 mt-0.5">
+                  <img src={currentUser?.avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover bg-black" />
+                </div>
                 
-                {newPostImageUrl && (
-                  <div className="relative w-full aspect-square md:aspect-video rounded-xl overflow-hidden mt-2 bg-black/50">
-                    <img src={newPostImageUrl} className="w-full h-full object-cover" />
-                    <button 
-                      onClick={() => setNewPostImageUrl('')} 
-                      className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full hover:bg-black"
+                <div className="flex-1 flex flex-col gap-2">
+                  {showCaptionInput ? (
+                    <textarea
+                      placeholder="Escreva algo..."
+                      value={newPostCaption}
+                      onChange={e => setNewPostCaption(e.target.value)}
+                      className="bg-transparent text-sm text-white outline-none w-full placeholder:text-white/50 resize-none min-h-[40px]"
+                      autoFocus
+                    />
+                  ) : (
+                    <div 
+                      onClick={() => setShowCaptionInput(true)} 
+                      className="text-sm text-white/50 cursor-pointer pt-1.5"
                     >
-                      <X size={16} />
-                    </button>
-                  </div>
-                )}
+                      O que você quer compartilhar hoje?
+                    </div>
+                  )}
+                  
+                  {newPostImageUrl && (
+                    <div className="relative w-full aspect-square md:aspect-video rounded-xl overflow-hidden mt-2 bg-black/50">
+                      <img src={newPostImageUrl} className="w-full h-full object-cover" />
+                      <button 
+                        onClick={() => setNewPostImageUrl('')} 
+                        className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full hover:bg-black"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-white/10">
-              <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-white/70 hover:text-white transition-colors"
-                  title="Adicionar imagem"
-                >
-                  <Camera size={22} />
-                </button>
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  ref={fileInputRef}
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
+              <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                <div className="flex items-center gap-4">
+                  {!hideCameraMobile && (
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-white/70 hover:text-white transition-colors"
+                      title="Adicionar imagem"
+                    >
+                      <Camera size={22} />
+                    </button>
+                  )}
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                  
+                  <button 
+                    onClick={() => setShowCaptionInput(true)} 
+                    className={cn("transition-colors font-serif italic text-xl font-bold leading-none", showCaptionInput ? "text-white" : "text-white/70 hover:text-white")}
+                    title="Adicionar texto"
+                  >
+                    T
+                  </button>
+                </div>
                 
                 <button 
-                  onClick={() => setShowCaptionInput(true)} 
-                  className={cn("transition-colors font-serif italic text-xl font-bold leading-none", showCaptionInput ? "text-white" : "text-white/70 hover:text-white")}
-                  title="Adicionar texto"
+                  onClick={handlePost}
+                  disabled={!newPostImageUrl && !newPostCaption.trim()}
+                  className="bg-[#c5a880] text-[#3d2723] px-4 py-1.5 rounded-full text-xs font-bold disabled:opacity-50 transition-opacity"
                 >
-                  T
+                  Publicar
                 </button>
               </div>
-              
-              <button 
-                onClick={handlePost}
-                disabled={!newPostImageUrl && !newPostCaption.trim()}
-                className="bg-[#c5a880] text-[#3d2723] px-4 py-1.5 rounded-full text-xs font-bold disabled:opacity-50 transition-opacity"
-              >
-                Publicar
-              </button>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Gallery Feed */}
         <div className="flex flex-col gap-6 pb-6">
           {onlyMyPosts && (
             <div className="px-4 pt-2">
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-lg">
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-lg relative">
                 <div className="flex items-center gap-4">
                   <img src={currentUser?.avatarUrl} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-[#ebdcb9] bg-black" />
                   <div>
@@ -142,14 +170,59 @@ export function MainMenu({ onSelect, onlyMyPosts = false }: { onSelect: (tab: st
                     <p className="text-xs text-white/60">Suas publicações ({displayedPosts.length})</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => logout()}
-                  className="flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-95"
-                  title="Sair da conta"
-                >
-                  <LogOut size={16} />
-                  <span className="hidden sm:inline">Sair</span>
-                </button>
+
+                <div className="relative">
+                  <button
+                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                    className="p-2 text-white/70 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                    title="Opções do perfil"
+                  >
+                    <MoreVertical size={20} />
+                  </button>
+
+                  {showProfileMenu && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
+                      <div className="absolute right-0 mt-2 w-48 bg-[#1f1610] border border-white/15 rounded-xl shadow-2xl z-50 py-1.5 flex flex-col">
+                        {isAdmOrMestre && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setShowProfileMenu(false);
+                                onSelect('attendance');
+                              }}
+                              className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white hover:bg-white/10 text-left transition-colors"
+                            >
+                              <CalendarCheck size={16} className="text-[#ebdcb9]" />
+                              Presença
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowProfileMenu(false);
+                                onSelect('sales');
+                              }}
+                              className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white hover:bg-white/10 text-left transition-colors"
+                            >
+                              <ShoppingCart size={16} className="text-[#ebdcb9]" />
+                              Vendas
+                            </button>
+                            <div className="h-px bg-white/10 my-1" />
+                          </>
+                        )}
+                        <button
+                          onClick={() => {
+                            setShowProfileMenu(false);
+                            logout();
+                          }}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-rose-400 hover:bg-rose-500/10 text-left transition-colors font-semibold"
+                        >
+                          <LogOut size={16} />
+                          Sair da conta
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}
