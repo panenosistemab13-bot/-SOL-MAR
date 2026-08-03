@@ -58,9 +58,17 @@ export function MainMenu({
   const isMestre = currentUser?.role === 'MESTRE';
 
   const handlePost = () => {
+    console.log('handlePost clicked', { hasImage: !!newPostImageUrl, captionLength: newPostCaption.trim().length, currentUser: !!currentUser });
     if (!newPostImageUrl && !newPostCaption.trim()) return;
+    
+    if (!currentUser) {
+      console.error('handlePost: Falha ao publicar - currentUser é nulo.');
+      alert('Erro ao identificar usuário. Tente fazer login novamente.');
+      return;
+    }
+    
     addGalleryPost({
-      userId: currentUser!.id,
+      userId: currentUser.id,
       imageUrl: newPostImageUrl,
       caption: newPostCaption.trim(),
     });
@@ -503,8 +511,10 @@ export function MainMenu({
                               <div className={cn("h-px w-full", theme === 'dark' ? "bg-white/10" : "bg-black/10")} />
                               <button
                                 onClick={() => {
-                                  deleteGalleryPost(post.id);
-                                  setActiveMenuId(null);
+                                  if (window.confirm('Apagar publicação?')) {
+                                    deleteGalleryPost(post.id);
+                                    setActiveMenuId(null);
+                                  }
                                 }}
                                 className="w-full text-left px-4 py-3 text-sm text-rose-500 hover:bg-rose-500/10 transition-colors"
                               >

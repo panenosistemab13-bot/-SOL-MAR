@@ -755,6 +755,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
 
   const addGalleryPost = async (postData: Omit<GalleryPost, 'id' | 'createdAt' | 'likes'>) => {
     if (!currentUser) return;
+    console.log('addGalleryPost called', postData);
 
     if (postData.caption) {
       const safety = await moderateContent(postData.caption);
@@ -772,7 +773,12 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     };
     const updated = [newPost, ...galleryPosts];
     setGalleryPosts(updated);
-    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost sync notice:', err?.message));
+    try {
+      await set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated));
+      console.log('addGalleryPost saved successfully');
+    } catch (err: any) {
+      console.error('addGalleryPost error:', err?.message);
+    }
   };
 
   const addPostComment = async (postId: string, text: string) => {

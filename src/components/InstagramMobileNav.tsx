@@ -1117,11 +1117,13 @@ export function InstagramStoriesRow({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      deleteStory(currentViewingGroup.userStories[activeStoryIndex].id);
-                      if (currentViewingGroup.userStories.length === 1) {
-                        setViewingUserId(null);
-                      } else {
-                        handleNextStory();
+                      if (confirm('Tem certeza que deseja apagar este story?')) {
+                        deleteStory(currentViewingGroup.userStories[activeStoryIndex].id);
+                        if (currentViewingGroup.userStories.length === 1) {
+                          setViewingUserId(null);
+                        } else {
+                          handleNextStory();
+                        }
                       }
                     }}
                     className="p-2 text-white hover:bg-white/20 rounded-full transition-all active:scale-90 cursor-pointer"
