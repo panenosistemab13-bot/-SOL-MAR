@@ -29,6 +29,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface InstagramMobileNavProps {
   currentTab: string;
   onSelect: (tab: string) => void;
+  viewingProfileUserId?: string | null;
+  onSelectProfile?: (userId: string | null) => void;
 }
 
 export function UserProfileGalleryModal({ userId, onClose }: { userId: string; onClose: () => void }) {
@@ -280,10 +282,13 @@ export function MobileNotificationsModal({ onClose, onSelectUser }: { onClose: (
   );
 }
 
-export function InstagramMobileHeader({ currentTab, onSelect }: InstagramMobileNavProps) {
+export function InstagramMobileHeader({ currentTab, onSelect, viewingProfileUserId, onSelectProfile }: InstagramMobileNavProps) {
   const { lowStockItemsCount, unreadMessagesCount, currentUser, galleryPosts, users } = useInventory();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
+  const [internalViewingProfileUserId, setInternalViewingProfileUserId] = useState<string | null>(null);
+
+  const effectiveProfileUserId = viewingProfileUserId !== undefined ? viewingProfileUserId : internalViewingProfileUserId;
+  const setEffectiveProfileUserId = onSelectProfile || setInternalViewingProfileUserId;
 
   const lastCleared = currentUser?.lastNotificationsClear ? new Date(currentUser.lastNotificationsClear).getTime() : 0;
   const recentPostsCount = galleryPosts?.filter(p => 
@@ -350,15 +355,8 @@ export function InstagramMobileHeader({ currentTab, onSelect }: InstagramMobileN
           onClose={() => setShowNotifications(false)} 
           onSelectUser={(userId) => {
             setShowNotifications(false);
-            setViewingProfileUserId(userId);
+            setEffectiveProfileUserId(userId);
           }}
-        />
-      )}
-
-      {viewingProfileUserId && (
-        <UserProfileGalleryModal 
-          userId={viewingProfileUserId} 
-          onClose={() => setViewingProfileUserId(null)} 
         />
       )}
     </>
@@ -455,7 +453,7 @@ export function AudioRecorder({ onRecordingComplete }: { onRecordingComplete: (b
   );
 }
 
-export function InstagramStoriesRow() {
+export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: { viewingProfileUserId?: string | null, onSelectProfile?: (id: string | null) => void }) {
   const { users, stories, currentUser, addStory, deleteStory } = useInventory();
   
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
@@ -463,8 +461,11 @@ export function InstagramStoriesRow() {
   const [newStoryType, setNewStoryType] = useState<'image' | 'text' | 'audio'>('text');
   const [newStoryContent, setNewStoryContent] = useState('');
   
-  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
+  const [internalViewingProfileUserId, setInternalViewingProfileUserId] = useState<string | null>(null);
   const [activeStoryIndex, setActiveStoryIndex] = useState(0);
+
+  const effectiveProfileUserId = viewingProfileUserId !== undefined ? viewingProfileUserId : internalViewingProfileUserId;
+  const setEffectiveProfileUserId = onSelectProfile || setInternalViewingProfileUserId;
 
   // Group stories by user
   const storiesByUser = users.filter(u => u.username !== 'jeff' && u.name.toLowerCase() !== 'jefferson').map(user => {
@@ -579,7 +580,7 @@ export function InstagramStoriesRow() {
                       setViewingUserId(user.id);
                       setActiveStoryIndex(0);
                     } else {
-                      setViewingProfileUserId(user.id);
+                      setEffectiveProfileUserId(user.id);
                     }
                   }
                 }}
@@ -831,18 +832,11 @@ export function InstagramStoriesRow() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {viewingProfileUserId && (
-        <UserProfileGalleryModal 
-          userId={viewingProfileUserId} 
-          onClose={() => setViewingProfileUserId(null)} 
-        />
-      )}
     </>
   );
 }
 
-export function InstagramMobileBottomNav({ currentTab, onSelect }: InstagramMobileNavProps) {
+export function InstagramMobileBottomNav({ currentTab, onSelect, viewingProfileUserId, onSelectProfile }: InstagramMobileNavProps) {
   const { lowStockItemsCount, unreadMessagesCount, currentUser } = useInventory();
   const isFuncionarioB = currentUser?.role === 'FUNCIONARIO_B';
 
@@ -850,7 +844,10 @@ export function InstagramMobileBottomNav({ currentTab, onSelect }: InstagramMobi
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#120c08]/95 border-t border-white/10 px-2 py-1.5 flex items-center justify-around backdrop-blur-2xl shadow-2xl">
       {/* 1. Início */}
       <button
-        onClick={() => onSelect('menu')}
+        onClick={() => {
+          onSelect('menu');
+          if (onSelectProfile) onSelectProfile(null);
+        }}
         className={cn(
           "flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer active:scale-90",
           currentTab === 'menu' ? "text-[#ebdcb9]" : "text-stone-400 hover:text-white"

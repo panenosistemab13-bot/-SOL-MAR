@@ -13,11 +13,23 @@ const AVATARS = [
 ];
 
 export function Configuracoes() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const { users, currentUser, addUser, removeUser, resetAllStockToZero, logout } = useInventory();
   
   // Access control
   const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
   const isLiderOrAdmOrMestre = isAdmOrMestre || currentUser?.role === 'LIDER';
+
+  // Mobile specific visibility rule: on mobile, non-admins only see "Edit My Profile"
+  const shouldShowAdminSections = isLiderOrAdmOrMestre && !isMobile;
+  // Master/ADM override for mobile: they still need access to admin tools if they are the boss
+  const effectiveShowAdminSections = isMobile ? isAdmOrMestre : isLiderOrAdmOrMestre;
 
   // States for user form
   const [newUsername, setNewUsername] = useState('');
@@ -40,7 +52,7 @@ export function Configuracoes() {
   const isEditingSelf = editingUserId === currentUser?.id;
   const targetUserObj = users.find(u => u.id === editingUserId);
   const isEditingMestre = targetUserObj ? (targetUserObj.role === 'MESTRE' || targetUserObj.username.toLowerCase() === 'jeff' || targetUserObj.id === 'user_jeff') : false;
-  const canEditRoleField = isLiderOrAdmOrMestre && !isEditingMestre;
+  const canEditRoleField = isAdmOrMestre && !isEditingMestre;
 
   // Initialize or update form values for editing
   useEffect(() => {
@@ -237,16 +249,16 @@ export function Configuracoes() {
       </div>
 
       {/* Main Grid View */}
-      <div className={`grid grid-cols-1 ${isLiderOrAdmOrMestre ? 'lg:grid-cols-3' : 'max-w-2xl mx-auto'} gap-8`}>
+      <div className={`grid grid-cols-1 ${effectiveShowAdminSections ? 'lg:grid-cols-3' : 'max-w-2xl mx-auto'} gap-8`}>
         
         {/* User Settings Form */}
-        <div className={`${isLiderOrAdmOrMestre ? 'lg:col-span-1' : 'w-full'} rounded-[2.2rem] border border-[#ebdcb9]/15 bg-black/20 p-6 backdrop-blur-xl relative flex flex-col justify-between`}>
+        <div className={`${effectiveShowAdminSections ? 'lg:col-span-1' : 'w-full'} rounded-[2.2rem] border border-[#ebdcb9]/15 bg-black/20 p-6 backdrop-blur-xl relative flex flex-col justify-between`}>
           <div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2 border-b border-white/5 pb-3">
               <UserPlus className="w-5 h-5 text-purple-400 animate-pulse" />
-              {!isLiderOrAdmOrMestre 
-                ? 'Editar Minha Conta' 
-                : (editingUserId ? (isEditingSelf ? 'Editar Meu Perfil' : 'Editar Usuário') : 'Adicionar Usuário')}
+              {(!effectiveShowAdminSections || isEditingSelf)
+                ? 'Editar Meu Perfil' 
+                : (editingUserId ? 'Editar Usuário' : 'Adicionar Usuário')}
             </h3>
 
             <form onSubmit={handleSaveUser} className="space-y-4">
@@ -300,8 +312,8 @@ export function Configuracoes() {
                 />
               </div>
 
-              {/* Função / Nível de Acesso - SOMENTE visível para Líder e ADM (e Mestre) */}
-              {isLiderOrAdmOrMestre && (
+              {/* Função / Nível de Acesso - Visível para todos no mobile, mas editável apenas por ADM/Mestre */}
+              {(isLiderOrAdmOrMestre || isMobile) && (
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Função / Nível de Acesso</label>
                   <select
@@ -310,6 +322,7 @@ export function Configuracoes() {
                     disabled={!canEditRoleField}
                     className="w-full bg-slate-950 border border-white/10 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-xs text-slate-300 focus:outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
+                    <option value="MESTRE">Mestre</option>
                     <option value="ADM">Administrador (ADM)</option>
                     <option value="LIDER">Líder de Equipe</option>
                     <option value="FUNCIONARIO_A">Funcionário A</option>
@@ -455,8 +468,8 @@ export function Configuracoes() {
           </div>
         </div>
 
-        {/* Right column: Registered Users List & Admin Tools (ONLY for Líder, ADM and Mestre) */}
-        {isLiderOrAdmOrMestre && (
+        {/* Right column: Registered Users List & Admin Tools */}
+        {effectiveShowAdminSections && (
           <div className="lg:col-span-2 space-y-6">
 
             {/* Registered Users List */}

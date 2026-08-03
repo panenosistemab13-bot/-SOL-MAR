@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Camera, X, LogOut, MoreVertical, CalendarCheck, ShoppingCart, Edit3, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Camera, X, LogOut, MoreVertical, CalendarCheck, ShoppingCart, Edit3, Trash2, Settings } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useInventory } from '../context/InventoryContext';
 import { InstagramStoriesRow, UserProfileGalleryModal } from './InstagramMobileNav';
@@ -12,13 +12,17 @@ export function MainMenu({
   onlyMyPosts = false, 
   showPostCreator = false,
   autoOpenGallery = false,
-  hideCameraMobile = false
+  hideCameraMobile = false,
+  viewingProfileUserId: propProfileId,
+  onSelectProfile
 }: { 
   onSelect: (tab: string) => void; 
   onlyMyPosts?: boolean; 
   showPostCreator?: boolean;
   autoOpenGallery?: boolean;
   hideCameraMobile?: boolean;
+  viewingProfileUserId?: string | null;
+  onSelectProfile?: (id: string | null) => void;
 }) {
   const { galleryPosts, addGalleryPost, likeGalleryPost, deleteGalleryPost, currentUser, users, addPostComment, deletePostComment, editPostComment, editGalleryPost, pinGalleryPost, logout } = useInventory();
   
@@ -30,8 +34,12 @@ export function MainMenu({
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editCaption, setEditCaption] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
+  
+  const [internalViewingProfileUserId, setInternalViewingProfileUserId] = useState<string | null>(null);
   const [showLikesModalForPostId, setShowLikesModalForPostId] = useState<string | null>(null);
+  
+  const viewingProfileUserId = propProfileId !== undefined ? propProfileId : internalViewingProfileUserId;
+  const setViewingProfileUserId = onSelectProfile || setInternalViewingProfileUserId;
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentText, setEditCommentText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -209,6 +217,16 @@ export function MainMenu({
                             >
                               <ShoppingCart size={16} className="text-[#ebdcb9]" />
                               Vendas
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowProfileMenu(false);
+                                onSelect('configuracoes');
+                              }}
+                              className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-white hover:bg-white/10 text-left transition-colors"
+                            >
+                              <Settings size={16} className="text-[#ebdcb9]" />
+                              Configurações
                             </button>
                             <div className="h-px bg-white/10 my-1" />
                           </>
@@ -533,10 +551,12 @@ export function MainMenu({
       </div>
 
       {viewingProfileUserId && (
-        <UserProfileGalleryModal 
-          userId={viewingProfileUserId} 
-          onClose={() => setViewingProfileUserId(null)} 
-        />
+        <div className="hidden md:block">
+          <UserProfileGalleryModal 
+            userId={viewingProfileUserId} 
+            onClose={() => setViewingProfileUserId(null)} 
+          />
+        </div>
       )}
 
       {showLikesModalForPostId && (

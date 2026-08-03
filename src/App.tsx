@@ -14,7 +14,7 @@ import { PwaInstaller } from './components/PwaInstaller';
 import { GlobalPinnedAlerts } from './components/GlobalPinnedAlerts';
 import { LayoutDashboard, Tag, Package, Scissors, ShoppingCart, Settings, LogOut, Sparkles, MessageSquare, CalendarCheck } from 'lucide-react';
 import { Attendance } from './pages/Attendance';
-import { InstagramMobileHeader, InstagramStoriesRow, InstagramMobileBottomNav } from './components/InstagramMobileNav';
+import { InstagramMobileHeader, InstagramStoriesRow, InstagramMobileBottomNav, UserProfileGalleryModal } from './components/InstagramMobileNav';
 
 // @ts-ignore
 import backgroundImage from './assets/images/sol_mar_bg_1781047598977.png';
@@ -121,6 +121,8 @@ function AppContent() {
 
   // Early return logic removed
 
+  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
+
   return (
     <div 
       className="min-h-screen flex text-[#fbf8f2] font-sans selection:bg-[#ebdcb9]/35 selection:text-[#3d2723] bg-[#1a130c] bg-cover bg-center bg-no-repeat relative overflow-hidden pb-16 md:pb-0"
@@ -129,12 +131,22 @@ function AppContent() {
       <div className="absolute inset-0 bg-gradient-to-b from-black/85 via-black/45 to-black/90 z-0 pointer-events-none" />
       
       {/* INSTAGRAM MOBILE TOP HEADER & STORIES ROW */}
-      <InstagramMobileHeader currentTab={currentTab} onSelect={setCurrentTab} />
+      <InstagramMobileHeader 
+        currentTab={currentTab} 
+        onSelect={setCurrentTab} 
+        viewingProfileUserId={viewingProfileUserId}
+        onSelectProfile={setViewingProfileUserId}
+      />
 
       <main className="flex-1 flex flex-col h-screen overflow-hidden bg-transparent relative z-10 pt-13 md:pt-0">
-        <div className="w-full md:hidden z-20">
-          <InstagramStoriesRow />
-        </div>
+        {currentTab === 'menu' && (
+          <div className="w-full md:hidden z-20">
+            <InstagramStoriesRow 
+              viewingProfileUserId={viewingProfileUserId}
+              onSelectProfile={setViewingProfileUserId}
+            />
+          </div>
+        )}
 
         {/* DESKTOP HEADER */}
         {currentTab !== 'menu' && (
@@ -199,7 +211,13 @@ function AppContent() {
             {currentTab === 'menu' && (
               <>
                 <div className="md:hidden">
-                  <MainMenu onSelect={setCurrentTab} showPostCreator={true} hideCameraMobile={true} />
+                  <MainMenu 
+                    onSelect={setCurrentTab} 
+                    showPostCreator={true} 
+                    hideCameraMobile={true} 
+                    viewingProfileUserId={viewingProfileUserId}
+                    onSelectProfile={setViewingProfileUserId}
+                  />
                 </div>
                 <div className="hidden md:block h-full">
                   <DesktopHome onSelect={setCurrentTab} />
@@ -219,7 +237,22 @@ function AppContent() {
       </main>
 
       {/* INSTAGRAM MOBILE BOTTOM NAVIGATION BAR */}
-      <InstagramMobileBottomNav currentTab={currentTab} onSelect={setCurrentTab} />
+      <InstagramMobileBottomNav 
+        currentTab={currentTab} 
+        onSelect={setCurrentTab} 
+        viewingProfileUserId={viewingProfileUserId}
+        onSelectProfile={setViewingProfileUserId}
+      />
+
+      {/* GLOBAL PROFILE MODAL FOR MOBILE */}
+      {viewingProfileUserId && (
+        <div className="md:hidden">
+          <UserProfileGalleryModal 
+            userId={viewingProfileUserId} 
+            onClose={() => setViewingProfileUserId(null)} 
+          />
+        </div>
+      )}
     </div>
   );
 }
