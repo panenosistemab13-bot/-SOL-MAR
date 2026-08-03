@@ -407,7 +407,7 @@ export function Bikinis() {
               </div>
 
               {/* Visual Capsules Grid to Adjust Stocks (Grouped by Color) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3 md:gap-6">
                 {groupedByColor.length === 0 ? (
                   <div className="col-span-full py-16 text-center text-slate-500 text-xs uppercase tracking-wider font-bold">
                     Nenhuma variação corresponde ao filtro
@@ -420,7 +420,7 @@ export function Bikinis() {
                       <div 
                         key={colorName}
                         className={cn(
-                          "border rounded-[2.5rem] p-5 space-y-4 shadow-xl relative overflow-hidden group/color-card",
+                          "border rounded-xl p-2 space-y-2 shadow-sm relative overflow-hidden group/color-card",
                           isLight ? "bg-white border-slate-100 shadow-slate-200/50" : "border-[#ebdcb9]/10 bg-black/30"
                         )}
                       >
@@ -432,41 +432,39 @@ export function Bikinis() {
                         
                         {/* Color Info Header */}
                         <div className={cn(
-                          "flex items-center justify-between pb-3 border-b relative z-10 select-none",
+                          "flex items-center justify-between pb-1.5 border-b relative z-10 select-none",
                           isLight ? "border-slate-50" : "border-white/5"
                         )}>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5">
                             <div 
-                              className="w-6 h-6 rounded-full border border-white/20 shadow-lg relative" 
+                              className="w-5 h-5 rounded-full border border-white/20 shadow-lg relative" 
                               style={{ 
                                 backgroundColor: group.colorHex,
                                 boxShadow: `0 0 12px ${group.colorHex}65, inset 0 1px 1px rgba(255,255,255,0.4)`
                               }} 
                             />
                             <div>
-                              <h4 className={cn("text-sm font-black tracking-wider uppercase", isLight ? "text-slate-800" : "text-slate-100")}>{colorName}</h4>
-                              <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Cor ativa</p>
+                              <h4 className={cn("text-[11px] font-black tracking-wider uppercase truncate max-w-[70px]", isLight ? "text-slate-800" : "text-slate-100")}>{colorName}</h4>
                             </div>
                           </div>
                           
                           <div className={cn(
-                            "border px-2.5 py-1 rounded-xl text-right",
+                            "border px-1.5 py-0.5 rounded-lg text-right",
                             isLight ? "bg-slate-50 border-slate-100" : "bg-white/5 border-white/5"
                           )}>
-                            <span className="text-[10px] text-stone-400 font-mono tracking-wider uppercase">Total: </span>
-                            <span className={cn("text-xs font-black font-mono", isLight ? "text-slate-900" : "text-[#ebdcb9]")}>{colorGroupTotalStock} u</span>
+                            <span className={cn("text-[10px] font-black font-mono", isLight ? "text-slate-900" : "text-[#ebdcb9]")}>{colorGroupTotalStock} u</span>
                           </div>
                         </div>
 
                         {/* Sizes Grid inside this Color Group */}
-                        <div className="grid grid-cols-3 gap-2.5 relative z-10">
+                        <div className="grid grid-cols-3 gap-1 relative z-10">
                           {group.items.map(v => {
                             const isCritical = v.stock <= v.minStockAlert;
                             return (
                               <div 
                                 key={v.id} 
                                 className={cn(
-                                  "p-3 rounded-2xl border flex flex-col justify-between gap-2.5 hover:bg-opacity-80 transition-all relative overflow-hidden",
+                                  "p-1.5 rounded-lg border flex flex-col justify-between gap-0.5 hover:bg-opacity-80 transition-all relative overflow-hidden",
                                   isCritical 
                                     ? (isLight ? "border-rose-200 bg-rose-50" : "border-rose-500/20 bg-rose-500/[0.02]")
                                     : (isLight ? "bg-slate-50 border-slate-100 hover:border-amber-200" : "bg-white/[0.015] border-white/5 hover:border-sky-500/20 hover:bg-white/[0.03]")
@@ -490,7 +488,7 @@ export function Bikinis() {
                                 </div>
 
                                 {/* Stock Count (Manual Input) */}
-                                <div className="text-center py-1 relative z-10 w-full">
+                                <div className="text-center relative z-10 w-full">
                                   <input
                                     type="number"
                                     value={v.stock === 0 ? '' : v.stock}
@@ -501,7 +499,8 @@ export function Bikinis() {
                                     onWheel={(e) => (e.target as HTMLElement).blur()}
                                     placeholder="0"
                                     className={cn(
-                                      "w-full text-center py-1.5 border rounded-xl font-mono text-xl font-black select-text focus:outline-none focus:ring-0 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                                      "w-full bg-transparent text-center text-[11px] font-black outline-none py-0.5",
+                                      "border rounded-xl font-mono text-xl font-black select-text focus:outline-none focus:ring-0 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
                                       isLight 
                                         ? "bg-white border-slate-200 text-slate-900 focus:border-amber-400" 
                                         : "bg-white/5 hover:bg-white/10 focus:bg-slate-950/90 border-white/5 focus:border-pink-500/40 text-white focus:text-pink-300"

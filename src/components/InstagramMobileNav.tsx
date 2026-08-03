@@ -619,7 +619,7 @@ export function InstagramStoriesRow({
   onSelectProfile?: (id: string | null) => void;
   onStoryModeChange?: (active: boolean) => void;
 }) {
-  const { users, stories, currentUser, addStory, deleteStory, clearAllStories, theme } = useInventory();
+  const { users, stories, currentUser, addStory, deleteStory, clearAllStories, clearNotifications, theme } = useInventory(); // Force rebuild
   
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [isAddingStory, setIsAddingStory] = useState(false);

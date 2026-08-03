@@ -78,18 +78,37 @@ export function Configuracoes() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      setUserError('A imagem selecionada é muito grande. Escolha uma foto com menos de 2MB.');
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = (event) => {
-      const result = event.target?.result;
-      if (typeof result === 'string') {
-        setCustomAvatarUrl(result);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 300;
+        const MAX_HEIGHT = 300;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setCustomAvatarUrl(dataUrl);
         setNewAvatar('');
-      }
+      };
+      img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
