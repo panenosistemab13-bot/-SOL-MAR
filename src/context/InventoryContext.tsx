@@ -48,6 +48,9 @@ interface InventoryContextType {
   deletePostComment: (postId: string, commentId: string) => void;
   editPostComment: (postId: string, commentId: string, text: string) => Promise<void>;
   clearNotifications: () => void;
+  clearAllGalleryPosts: () => void;
+  restoreAllGalleryPosts: () => void;
+  galleryPostsBackup: GalleryPost[];
   isReadOnly: boolean;
   theme: 'dark' | 'light';
   isMobile: boolean;
@@ -191,10 +194,14 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [users, setUsers] = useState<UserProfileClient[]>(DEFAULT_USERS);
+  const [users, setUsers] = useState<UserProfileClient[]>(() => {
+    const saved = localStorage.getItem('sol_mar_users');
+    return saved ? JSON.parse(saved) : DEFAULT_USERS;
+  });
   const [logs, setLogs] = useState<ActionLog[]>([]);
   const [stories, setStories] = useState<UserStory[]>([]);
   const [galleryPosts, setGalleryPosts] = useState<GalleryPost[]>([]);
+  const [galleryPostsBackup, setGalleryPostsBackup] = useState<GalleryPost[]>([]);
 
   const [currentUser, setCurrentUser] = useState<UserProfileClient | null>(() => {
     const saved = localStorage.getItem('sol_mar_currentUser');
@@ -326,35 +333,34 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
           if (jeffIndex !== -1 && (
             loadedUsers[jeffIndex].password !== '#trescafe28' || 
             loadedUsers[jeffIndex].username !== 'Jeff' ||
-            loadedUsers[jeffIndex].avatarUrl === 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80' || 
-            !loadedUsers[jeffIndex].avatarUrl?.includes('Whats-App')
+            !loadedUsers[jeffIndex].avatarUrl
           )) {
             const updatedUsers = [...loadedUsers];
             updatedUsers[jeffIndex] = {
               ...updatedUsers[jeffIndex],
               username: 'Jeff',
               password: '#trescafe28',
-              avatarUrl: 'https://i.postimg.cc/dVfY4TLn/Whats-App-Image-2026-06-06-at-02-34-52.jpg'
+              avatarUrl: loadedUsers[jeffIndex].avatarUrl || 'https://i.postimg.cc/dVfY4TLn/Whats-App-Image-2026-06-06-at-02-34-52.jpg'
             };
             set(ref(rtdb, 'inventory/users'), updatedUsers).catch(err => console.warn('Users sync notice:', err?.message));
             setUsers(updatedUsers);
+            localStorage.setItem('sol_mar_users', JSON.stringify(updatedUsers));
           } else {
             setUsers(loadedUsers);
+            localStorage.setItem('sol_mar_users', JSON.stringify(loadedUsers));
           }
           // If our current user was updated, keep it in sync
-          if (currentUser) {
-            const fresh = (data.users as UserProfileClient[]).find(u => u.id === currentUser.id);
+          setCurrentUser(prevUser => {
+            if (!prevUser) return null;
+            const fresh = (data.users as UserProfileClient[]).find(u => u.id === prevUser.id || u.username.toLowerCase() === prevUser.username.toLowerCase());
             if (fresh) {
-              if (JSON.stringify(fresh) !== JSON.stringify(currentUser)) {
-                setCurrentUser(fresh);
-                localStorage.setItem('sol_mar_currentUser', JSON.stringify(fresh));
-              }
+              localStorage.setItem('sol_mar_currentUser', JSON.stringify(fresh));
+              return fresh;
             } else {
-              // Deleted
-              setCurrentUser(null);
               localStorage.removeItem('sol_mar_currentUser');
+              return null;
             }
-          }
+          });
         } else {
           set(ref(rtdb, 'inventory/users'), DEFAULT_USERS).catch(err => console.warn('Default users sync notice:', err?.message));
         }
@@ -373,6 +379,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         }
         setStories(activeStories);
         setGalleryPosts(data.galleryPosts || []);
+        setGalleryPostsBackup(data.galleryPostsBackup || []);
       } else {
         // Uninitialized cloud database
         const initialData = {
@@ -484,6 +491,13 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       createdUser
     ];
     setUsers(updated);
+    localStorage.setItem('sol_mar_users', JSON.stringify(updated));
+
+    if (currentUser && (createdUser.id === currentUser.id || createdUser.username.toLowerCase() === currentUser.username.toLowerCase())) {
+      setCurrentUser(createdUser);
+      localStorage.setItem('sol_mar_currentUser', JSON.stringify(createdUser));
+    }
+
     set(ref(rtdb, 'inventory/users'), cleanData(updated)).catch(err => console.warn('User sync notice:', err?.message));
     pushLog(`${newUser.id ? 'Editou' : 'Criou/atualizou'} usuário: ${createdUser.name} (${createdUser.role})`);
   };
@@ -897,16 +911,40 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     set(ref(rtdb, 'inventory/users'), cleanData(updatedUsers)).catch(err => console.warn('Clear notifications notice:', err?.message));
   };
 
+  const clearAllGalleryPosts = () => {
+    if (currentUser?.role !== 'MESTRE') return;
+    if (galleryPosts.length === 0) return;
+
+    const backup = [...galleryPosts];
+    setGalleryPostsBackup(backup);
+    setGalleryPosts([]);
+
+    set(ref(rtdb, 'inventory/galleryPosts'), []).catch(err => console.warn('Clear posts notice:', err?.message));
+    set(ref(rtdb, 'inventory/galleryPostsBackup'), cleanData(backup)).catch(err => console.warn('Backup posts notice:', err?.message));
+  };
+
+  const restoreAllGalleryPosts = () => {
+    if (currentUser?.role !== 'MESTRE') return;
+    if (galleryPostsBackup.length === 0) return;
+
+    const restored = [...galleryPostsBackup];
+    setGalleryPosts(restored);
+    setGalleryPostsBackup([]);
+
+    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(restored)).catch(err => console.warn('Restore posts notice:', err?.message));
+    set(ref(rtdb, 'inventory/galleryPostsBackup'), []).catch(err => console.warn('Clear backup posts notice:', err?.message));
+  };
+
   const lowStockItemsCount = bikinis.filter(b => b.stock <= b.minStockAlert).length +
                              threads.filter(t => t.stock <= t.minStockAlert).length;
 
   return (
     <InventoryContext.Provider value={{
-      bikinis, threads, sales, users, logs, stories, galleryPosts, currentUser,
+      bikinis, threads, sales, users, logs, stories, galleryPosts, galleryPostsBackup, currentUser,
       addBikini, addBikiniModel, updateBikiniStock, setBikiniStock, updateBikiniDividedStock, removeBikini, removeBikiniModel,
       addThread, updateThreadStock, setThreadStock, updateThreadColorCode, removeThread,
       registerSale, resetAllStockToZero, lowStockItemsCount, unreadMessagesCount, groupUnreadCounts,
-      login, logout, addUser, removeUser, addStory, deleteStory, addGalleryPost, likeGalleryPost, deleteGalleryPost, editGalleryPost, pinGalleryPost, addPostComment, deletePostComment, editPostComment, clearNotifications, isReadOnly,
+      login, logout, addUser, removeUser, addStory, deleteStory, addGalleryPost, likeGalleryPost, deleteGalleryPost, editGalleryPost, pinGalleryPost, addPostComment, deletePostComment, editPostComment, clearNotifications, clearAllGalleryPosts, restoreAllGalleryPosts, isReadOnly,
       theme, setTheme, isMobile
     }}>
       {children}

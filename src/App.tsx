@@ -28,6 +28,7 @@ function AppContent() {
   const [activeChat, setActiveChatState] = useState<string | null>(null);
   const [hasActiveChat, setHasActiveChat] = useState(false);
   const [viewingProfileUserId, setViewingProfileUserIdState] = useState<string | null>(null);
+  const [isStoryActive, setIsStoryActive] = useState(false);
 
   const isNavigatingFromPopState = React.useRef(false);
 
@@ -225,19 +226,25 @@ function AppContent() {
       )} />
       
       {/* INSTAGRAM MOBILE TOP HEADER & STORIES ROW */}
-      <InstagramMobileHeader 
-        currentTab={currentTab} 
-        onSelect={setCurrentTab} 
-        viewingProfileUserId={viewingProfileUserId}
-        onSelectProfile={setViewingProfileUserId}
-      />
+      {!isStoryActive && (
+        <InstagramMobileHeader 
+          currentTab={currentTab} 
+          onSelect={setCurrentTab} 
+          viewingProfileUserId={viewingProfileUserId}
+          onSelectProfile={setViewingProfileUserId}
+        />
+      )}
 
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-transparent relative z-10 pt-13 md:pt-0">
+      <main className={cn(
+        "flex-1 flex flex-col h-screen overflow-hidden bg-transparent relative z-10 md:pt-0",
+        isStoryActive ? "pt-0" : "pt-13"
+      )}>
         {currentTab === 'menu' && (
           <div className="w-full md:hidden z-20">
             <InstagramStoriesRow 
               viewingProfileUserId={viewingProfileUserId}
               onSelectProfile={setViewingProfileUserId}
+              onStoryModeChange={setIsStoryActive}
             />
           </div>
         )}
@@ -347,7 +354,7 @@ function AppContent() {
       </main>
 
       {/* INSTAGRAM MOBILE BOTTOM NAVIGATION BAR */}
-      {(currentTab !== 'chat' || !hasActiveChat) && (
+      {!isStoryActive && (currentTab !== 'chat' || !hasActiveChat) && (
         <InstagramMobileBottomNav 
           currentTab={currentTab} 
           onSelect={(tab) => {

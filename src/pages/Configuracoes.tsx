@@ -53,7 +53,7 @@ export function Configuracoes() {
   // Initialize or update form values for editing
   useEffect(() => {
     if (currentUser) {
-      if (!isLiderOrAdmOrMestre || !editingUserId) {
+      if (!isLiderOrAdmOrMestre || !editingUserId || editingUserId === currentUser.id) {
         setEditingUserId(currentUser.id);
         setNewUsername(currentUser.username);
         setNewName(currentUser.name);
@@ -63,12 +63,12 @@ export function Configuracoes() {
           setNewAvatar(currentUser.avatarUrl);
           setCustomAvatarUrl('');
         } else {
-          setCustomAvatarUrl(currentUser.avatarUrl);
+          setCustomAvatarUrl(currentUser.avatarUrl || '');
           setNewAvatar('');
         }
       }
     }
-  }, [currentUser, isLiderOrAdmOrMestre]);
+  }, [currentUser?.id, currentUser?.avatarUrl, currentUser?.name, currentUser?.username, currentUser?.password, currentUser?.role, isLiderOrAdmOrMestre]);
 
   const togglePassVisibility = (id: string) => {
     setShowPassMap(prev => ({ ...prev, [id]: !prev[id] }));

@@ -22,7 +22,10 @@ import {
   Mic,
   Square,
   PlusSquare,
-  ChevronLeft
+  ChevronLeft,
+  ChevronRight,
+  Pause,
+  Play
 } from 'lucide-react';
 import { useInventory } from '../context/InventoryContext';
 import { cn } from '../lib/utils';
@@ -600,16 +603,32 @@ export function AudioRecorder({ onRecordingComplete }: { onRecordingComplete: (b
   );
 }
 
-export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: { viewingProfileUserId?: string | null, onSelectProfile?: (id: string | null) => void }) {
+export function InstagramStoriesRow({ 
+  viewingProfileUserId, 
+  onSelectProfile,
+  onStoryModeChange 
+}: { 
+  viewingProfileUserId?: string | null; 
+  onSelectProfile?: (id: string | null) => void;
+  onStoryModeChange?: (active: boolean) => void;
+}) {
   const { users, stories, currentUser, addStory, deleteStory, theme } = useInventory();
   
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [isAddingStory, setIsAddingStory] = useState(false);
   const [newStoryType, setNewStoryType] = useState<'image' | 'text' | 'audio'>('text');
   const [newStoryContent, setNewStoryContent] = useState('');
+  const [textBgGradient, setTextBgGradient] = useState('from-amber-600 via-rose-600 to-purple-800');
   
   const [internalViewingProfileUserId, setInternalViewingProfileUserId] = useState<string | null>(null);
   const [activeStoryIndex, setActiveStoryIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    onStoryModeChange?.(isAddingStory || Boolean(viewingUserId));
+  }, [isAddingStory, viewingUserId, onStoryModeChange]);
 
   const effectiveProfileUserId = viewingProfileUserId !== undefined ? viewingProfileUserId : internalViewingProfileUserId;
   const setEffectiveProfileUserId = onSelectProfile || setInternalViewingProfileUserId;
@@ -644,30 +663,65 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
 
   const currentViewingGroup = storiesByUser.find(g => g.user.id === viewingUserId);
 
+  // Reset progress and pause state when switching user or story
   useEffect(() => {
-    if (viewingUserId && currentViewingGroup && currentViewingGroup.userStories.length > 0) {
-      const currentStory = currentViewingGroup.userStories[activeStoryIndex];
-      const duration = currentStory?.type === 'audio' ? 30000 : 5000;
+    setProgress(0);
+    setIsPaused(false);
+  }, [viewingUserId, activeStoryIndex]);
 
-      const timer = setTimeout(() => {
-        if (activeStoryIndex < currentViewingGroup.userStories.length - 1) {
-          setActiveStoryIndex(activeStoryIndex + 1);
-        } else {
-          // Go to next user
-          const currentIndex = storiesByUser.findIndex(g => g.user.id === viewingUserId);
-          if (currentIndex < storiesByUser.length - 1 && storiesByUser[currentIndex + 1].userStories.length > 0) {
-            setViewingUserId(storiesByUser[currentIndex + 1].user.id);
-            setActiveStoryIndex(0);
-          } else {
-            setViewingUserId(null);
-          }
-        }
-      }, duration);
-      return () => clearTimeout(timer);
+  // Audio element sync with play/pause
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isPaused) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play().catch(() => {});
+      }
     }
-  }, [viewingUserId, activeStoryIndex, currentViewingGroup, storiesByUser]);
+  }, [isPaused, viewingUserId, activeStoryIndex]);
+
+  // Auto transition timer & progress bar update
+  useEffect(() => {
+    if (!viewingUserId || !currentViewingGroup || currentViewingGroup.userStories.length === 0 || isPaused) {
+      return;
+    }
+
+    const currentStory = currentViewingGroup.userStories[activeStoryIndex];
+    if (!currentStory) return;
+
+    const duration = currentStory.type === 'audio' ? 30000 : 5000;
+    const intervalTime = 50;
+    const step = (intervalTime / duration) * 100;
+
+    const timer = setInterval(() => {
+      setProgress(prev => {
+        if (prev + step >= 100) {
+          clearInterval(timer);
+          if (activeStoryIndex < currentViewingGroup.userStories.length - 1) {
+            setActiveStoryIndex(prevIdx => prevIdx + 1);
+          } else {
+            // Go to next user with stories
+            const currentIndex = storiesByUser.findIndex(g => g.user.id === viewingUserId);
+            if (currentIndex < storiesByUser.length - 1 && storiesByUser[currentIndex + 1].userStories.length > 0) {
+              setViewingUserId(storiesByUser[currentIndex + 1].user.id);
+              setActiveStoryIndex(0);
+            } else {
+              // No more users, return to inicio
+              setViewingUserId(null);
+            }
+          }
+          return 100;
+        }
+        return prev + step;
+      });
+    }, intervalTime);
+
+    return () => clearInterval(timer);
+  }, [viewingUserId, activeStoryIndex, currentViewingGroup, storiesByUser, isPaused]);
 
   const handleNextStory = () => {
+    setIsPaused(false);
+    setProgress(0);
     if (!currentViewingGroup) return;
     if (activeStoryIndex < currentViewingGroup.userStories.length - 1) {
       setActiveStoryIndex(activeStoryIndex + 1);
@@ -683,6 +737,8 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
   };
 
   const handlePrevStory = () => {
+    setIsPaused(false);
+    setProgress(0);
     if (!currentViewingGroup) return;
     if (activeStoryIndex > 0) {
       setActiveStoryIndex(activeStoryIndex - 1);
@@ -717,12 +773,8 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
 
                   if (isCurrentUser) {
                     if (hasStories) {
-                      if (window.confirm('Ver stories ou adicionar novo? \nClique OK para Ver, Cancelar para Adicionar.')) {
-                        setViewingUserId(user.id);
-                        setActiveStoryIndex(0);
-                      } else {
-                        setIsAddingStory(true);
-                      }
+                      setViewingUserId(user.id);
+                      setActiveStoryIndex(0);
                     } else {
                       setIsAddingStory(true);
                     }
@@ -793,97 +845,109 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
-            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col"
+            className="fixed inset-0 z-[100] bg-black flex flex-col justify-between overflow-hidden"
           >
-            <div className="flex items-center justify-between p-4 border-b border-white/10">
-              <button onClick={() => setIsAddingStory(false)} className="p-2 text-white/70 hover:text-white">
-                <X size={24} />
-              </button>
-              <h3 className="text-white font-bold">Novo Story</h3>
+            {/* TOP HEADER */}
+            <div className="flex items-center justify-between p-4 border-b border-white/10 z-20 bg-black/50 backdrop-blur-md">
               <button 
-                onClick={handleAddStory}
-                disabled={!newStoryContent.trim()}
-                className="px-4 py-1.5 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full text-white font-bold text-sm disabled:opacity-50"
+                onClick={() => {
+                  setIsAddingStory(false);
+                  setNewStoryContent('');
+                }} 
+                className="p-2 text-white/80 hover:text-white rounded-full bg-white/10 hover:bg-white/20 transition-all active:scale-90 cursor-pointer"
               >
-                Postar
+                <X size={22} />
               </button>
-            </div>
-            <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6">
-              <div className="flex bg-white/5 rounded-full p-1 gap-1">
-                <button 
-                  onClick={() => setNewStoryType('text')}
-                  className={cn("px-4 py-2 rounded-full flex items-center gap-1.5 text-xs transition-all", newStoryType === 'text' ? 'bg-white/20 text-white' : 'text-white/50')}
-                >
-                  <Type size={14} /> Texto
-                </button>
-                <button 
-                  onClick={() => setNewStoryType('image')}
-                  className={cn("px-4 py-2 rounded-full flex items-center gap-1.5 text-xs transition-all", newStoryType === 'image' ? 'bg-white/20 text-white' : 'text-white/50')}
-                >
-                  <Camera size={14} /> Imagem
-                </button>
-                <button 
-                  onClick={() => setNewStoryType('audio')}
-                  className={cn("px-4 py-2 rounded-full flex items-center gap-1.5 text-xs transition-all", newStoryType === 'audio' ? 'bg-white/20 text-white' : 'text-white/50')}
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                    <line x1="12" x2="12" y1="19" y2="22" />
-                  </svg> Áudio
-                </button>
-              </div>
+
+              <h3 className="text-white font-extrabold text-sm tracking-wide uppercase">Novo Story</h3>
 
               {newStoryType === 'text' ? (
-                <textarea
-                  autoFocus
-                  value={newStoryContent}
-                  onChange={e => setNewStoryContent(e.target.value)}
-                  placeholder="O que está acontecendo?"
-                  className="w-full max-w-sm h-48 bg-transparent text-center text-3xl font-bold text-white placeholder:text-white/20 outline-none resize-none"
-                />
+                <button 
+                  type="button"
+                  onClick={() => {
+                    const gradients = [
+                      'from-amber-600 via-rose-600 to-purple-800',
+                      'from-blue-600 via-indigo-600 to-purple-900',
+                      'from-[#f09433] via-[#dc2743] to-[#bc1888]',
+                      'from-emerald-600 via-teal-700 to-cyan-900',
+                      'from-stone-900 via-zinc-900 to-black'
+                    ];
+                    const nextIdx = (gradients.indexOf(textBgGradient) + 1) % gradients.length;
+                    setTextBgGradient(gradients[nextIdx]);
+                  }}
+                  className="p-2 text-white rounded-full bg-white/10 hover:bg-white/20 transition-all active:scale-90 flex items-center justify-center cursor-pointer"
+                  title="Mudar cor de fundo"
+                >
+                  <div className={cn("w-5 h-5 rounded-full bg-gradient-to-tr border border-white/50 shadow-sm", textBgGradient)} />
+                </button>
+              ) : (
+                <div className="w-9 h-9" />
+              )}
+            </div>
+            {/* CANVAS / EDITOR CONTENT */}
+            <div className="flex-1 flex flex-col items-center justify-center p-4 pb-28 relative overflow-y-auto">
+              {newStoryType === 'text' ? (
+                <div className={cn("absolute inset-0 bg-gradient-to-br transition-all duration-700 z-0 flex items-center justify-center p-6", textBgGradient)}>
+                  <textarea
+                    autoFocus
+                    value={newStoryContent}
+                    onChange={e => setNewStoryContent(e.target.value)}
+                    placeholder="Digite seu story..."
+                    className="w-full max-w-sm h-64 bg-transparent text-center text-3xl sm:text-4xl font-extrabold text-white placeholder:text-white/40 outline-none resize-none drop-shadow-lg z-10 px-4"
+                  />
+                </div>
               ) : newStoryType === 'image' ? (
-                <div className="w-full max-w-sm space-y-4">
-                  <div className="relative w-full">
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setNewStoryContent(reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    />
-                    <div className="w-full bg-white/5 hover:bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white text-center flex items-center justify-center gap-2">
-                      <Camera size={18} />
-                      <span>Selecionar da Galeria</span>
+                <div className="w-full max-w-xs sm:max-w-sm flex flex-col items-center justify-center gap-4 z-10 my-auto">
+                  {!newStoryContent ? (
+                    <div className="relative w-full aspect-[9/16] max-h-[60vh] bg-stone-900/90 border-2 border-dashed border-white/20 rounded-3xl flex flex-col items-center justify-center p-6 text-center gap-3 hover:border-white/40 transition-all cursor-pointer group shadow-2xl">
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setNewStoryContent(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                      />
+                      <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center text-white group-hover:scale-110 transition-transform shadow-lg">
+                        <Camera size={32} />
+                      </div>
+                      <div>
+                        <p className="text-white font-extrabold text-sm">Escolher Foto</p>
+                        <p className="text-white/50 text-xs mt-1">Toque para selecionar da galeria</p>
+                      </div>
                     </div>
-                  </div>
-                  {newStoryContent && (
-                    <img src={newStoryContent} alt="Preview" className="w-full aspect-[9/16] object-cover rounded-2xl border border-white/10" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                  ) : (
+                    <div className="relative w-full aspect-[9/16] max-h-[60vh] rounded-3xl overflow-hidden border border-white/20 shadow-2xl group bg-black">
+                      <img src={newStoryContent} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => setNewStoryContent('')}
+                        className="absolute top-3 right-3 p-2.5 bg-black/70 hover:bg-black/90 text-white rounded-full backdrop-blur-md transition-all active:scale-90 cursor-pointer border border-white/20"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
                   )}
                 </div>
               ) : (
-                <div className="w-full max-w-sm space-y-6 flex flex-col items-center">
+                <div className="w-full max-w-sm flex flex-col items-center justify-center gap-6 z-10 p-4 my-auto">
                   <AudioRecorder onRecordingComplete={(base64) => setNewStoryContent(base64)} />
                   
                   {newStoryContent && newStoryContent.startsWith('data:audio') && (
-                    <div className="w-full p-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl border border-white/10 flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
-                      <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
-                        <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                        </svg>
+                    <div className="w-full p-5 bg-gradient-to-br from-indigo-600/90 to-purple-800/90 backdrop-blur-xl rounded-3xl border border-white/20 flex flex-col items-center gap-3 shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+                      <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-white shadow-inner">
+                        <Mic size={28} />
                       </div>
                       <audio controls src={newStoryContent} className="w-full h-10" />
                       <button 
                         onClick={() => setNewStoryContent('')}
-                        className="text-xs text-white/60 hover:text-white underline"
+                        className="text-xs text-white/70 hover:text-white underline font-semibold mt-1 cursor-pointer"
                       >
                         Remover e gravar novo
                       </button>
@@ -891,12 +955,94 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
                   )}
 
                   {!newStoryContent && (
-                    <p className="text-white/40 text-center text-xs px-8 leading-relaxed">
-                      Toque no microfone para começar a gravar sua mensagem de voz.
+                    <p className="text-white/50 text-center text-xs font-medium px-6 leading-relaxed">
+                      Toque no microfone para gravar uma mensagem de voz para o seu story.
                     </p>
                   )}
                 </div>
               )}
+            </div>
+
+            {/* ATTACHED BOTTOM TAB BAR (REPLACES APP BOTTOM NAVIGATION IN STORY MODE) */}
+            <div className="fixed bottom-0 inset-x-0 z-[120] pb-6 pt-4 px-3 sm:px-6 bg-gradient-to-t from-black via-black/95 to-transparent flex items-center justify-between gap-2 border-t border-white/10 backdrop-blur-2xl">
+              {/* PILL SELECTOR (Texto | Imagem | Áudio) - MATCHES ATTACHMENT */}
+              <div className="bg-[#18181b]/95 border border-white/15 p-1 rounded-full flex items-center gap-1 shadow-2xl backdrop-blur-2xl">
+                {/* 1. Texto */}
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setNewStoryType('text');
+                    setNewStoryContent('');
+                  }}
+                  className={cn(
+                    "px-3.5 sm:px-4 py-2 rounded-full font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer active:scale-95 select-none",
+                    newStoryType === 'text' 
+                      ? "bg-[#3f3f46] text-white shadow-md ring-1 ring-white/20" 
+                      : "text-stone-300 hover:text-white"
+                  )}
+                >
+                  <span className="font-serif font-black text-sm leading-none">T</span>
+                  <span>Texto</span>
+                </button>
+
+                {/* 2. Imagem */}
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setNewStoryType('image');
+                    setNewStoryContent('');
+                  }}
+                  className={cn(
+                    "px-3.5 sm:px-4 py-2 rounded-full font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer active:scale-95 select-none",
+                    newStoryType === 'image' 
+                      ? "bg-[#3f3f46] text-white shadow-md ring-1 ring-white/20" 
+                      : "text-stone-300 hover:text-white"
+                  )}
+                >
+                  <Camera size={15} />
+                  <span>Imagem</span>
+                </button>
+
+                {/* 3. Áudio */}
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setNewStoryType('audio');
+                    setNewStoryContent('');
+                  }}
+                  className={cn(
+                    "px-3.5 sm:px-4 py-2 rounded-full font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer active:scale-95 select-none",
+                    newStoryType === 'audio' 
+                      ? "bg-[#3f3f46] text-white shadow-md ring-1 ring-white/20" 
+                      : "text-stone-300 hover:text-white"
+                  )}
+                >
+                  <Mic size={15} />
+                  <span>Áudio</span>
+                </button>
+              </div>
+
+              {/* INSTAGRAM / WHATSAPP 'SEU STORY' PUBLISH BUTTON */}
+              <button
+                type="button"
+                onClick={handleAddStory}
+                disabled={!newStoryContent.trim()}
+                className={cn(
+                  "flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-full font-black text-xs transition-all shadow-2xl active:scale-95 cursor-pointer shrink-0 border select-none",
+                  newStoryContent.trim()
+                    ? "bg-white text-black border-white hover:bg-stone-100 shadow-white/20 active:scale-95"
+                    : "bg-white/10 text-white/40 border-white/10 cursor-not-allowed opacity-50"
+                )}
+              >
+                <img 
+                  src={currentUser?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"} 
+                  alt="Avatar" 
+                  className="w-5 h-5 rounded-full object-cover border border-black/20 shrink-0"
+                  referrerPolicy="no-referrer"
+                />
+                <span className="hidden xs:inline sm:inline tracking-tight">Seu story</span>
+                <ChevronRight size={16} className="text-black/80 shrink-0" />
+              </button>
             </div>
           </motion.div>
         )}
@@ -912,11 +1058,11 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
             <div className="absolute top-0 inset-x-0 p-4 flex gap-1 z-20">
               {currentViewingGroup.userStories.map((_, idx) => (
                 <div key={idx} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: idx < activeStoryIndex ? '100%' : '0%' }}
-                    animate={{ width: idx === activeStoryIndex ? '100%' : idx < activeStoryIndex ? '100%' : '0%' }}
-                    transition={{ duration: idx === activeStoryIndex ? (currentViewingGroup.userStories[idx].type === 'audio' ? 30 : 5) : 0, ease: 'linear' }}
-                    className="h-full bg-white"
+                  <div 
+                    style={{ 
+                      width: idx < activeStoryIndex ? '100%' : idx === activeStoryIndex ? `${progress}%` : '0%' 
+                    }}
+                    className="h-full bg-white transition-all duration-75 ease-linear"
                   />
                 </div>
               ))}
@@ -930,8 +1076,22 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
                 <span className="text-white/60 text-xs">{new Date(currentViewingGroup.userStories[activeStoryIndex]?.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
               <div className="flex items-center gap-2">
+                {/* Pause / Play button */}
+                <button 
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsPaused(prev => !prev);
+                  }}
+                  className="p-2 text-white hover:bg-white/20 rounded-full transition-all active:scale-90 cursor-pointer"
+                  title={isPaused ? "Continuar story" : "Pausar story"}
+                >
+                  {isPaused ? <Play size={20} className="fill-white" /> : <Pause size={20} />}
+                </button>
+
                 {currentViewingGroup.user.id === currentUser?.id && (
                   <button 
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       deleteStory(currentViewingGroup.userStories[activeStoryIndex].id);
@@ -941,12 +1101,18 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
                         handleNextStory();
                       }
                     }}
-                    className="p-2 text-white hover:bg-white/20 rounded-full"
+                    className="p-2 text-white hover:bg-white/20 rounded-full transition-all active:scale-90 cursor-pointer"
+                    title="Excluir story"
                   >
                     <Trash2 size={20} />
                   </button>
                 )}
-                <button onClick={() => setViewingUserId(null)} className="p-2 text-white hover:bg-white/20 rounded-full">
+                <button 
+                  type="button"
+                  onClick={() => setViewingUserId(null)} 
+                  className="p-2 text-white hover:bg-white/20 rounded-full transition-all active:scale-90 cursor-pointer"
+                  title="Fechar"
+                >
                   <X size={24} />
                 </button>
               </div>
@@ -970,6 +1136,7 @@ export function InstagramStoriesRow({ viewingProfileUserId, onSelectProfile }: {
                     </svg>
                   </div>
                   <audio 
+                    ref={audioRef}
                     autoPlay 
                     src={currentViewingGroup.userStories[activeStoryIndex].content} 
                     className="w-full max-w-sm" 

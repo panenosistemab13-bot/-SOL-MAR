@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Camera, X, LogOut, MoreVertical, CalendarCheck, ShoppingCart, Edit3, Trash2, Settings, Sun, Moon } from 'lucide-react';
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Camera, X, LogOut, MoreVertical, CalendarCheck, ShoppingCart, Edit3, Trash2, Settings, Sun, Moon, RotateCcw, ShieldAlert } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useInventory } from '../context/InventoryContext';
 import { InstagramStoriesRow, UserProfileGalleryModal } from './InstagramMobileNav';
@@ -24,7 +24,7 @@ export function MainMenu({
   viewingProfileUserId?: string | null;
   onSelectProfile?: (id: string | null) => void;
 }) {
-  const { galleryPosts, addGalleryPost, likeGalleryPost, deleteGalleryPost, currentUser, users, addPostComment, deletePostComment, editPostComment, editGalleryPost, pinGalleryPost, logout, theme, setTheme, isMobile } = useInventory();
+  const { galleryPosts, galleryPostsBackup, clearAllGalleryPosts, restoreAllGalleryPosts, addGalleryPost, likeGalleryPost, deleteGalleryPost, currentUser, users, addPostComment, deletePostComment, editPostComment, editGalleryPost, pinGalleryPost, logout, theme, setTheme, isMobile } = useInventory();
   
   const [newPostImageUrl, setNewPostImageUrl] = useState('');
   const [newPostCaption, setNewPostCaption] = useState('');
@@ -34,6 +34,7 @@ export function MainMenu({
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editCaption, setEditCaption] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [confirmClearModalOpen, setConfirmClearModalOpen] = useState(false);
   
   const [internalViewingProfileUserId, setInternalViewingProfileUserId] = useState<string | null>(null);
   const [showLikesModalForPostId, setShowLikesModalForPostId] = useState<string | null>(null);
@@ -54,6 +55,7 @@ export function MainMenu({
   }, [autoOpenGallery]);
 
   const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
+  const isMestre = currentUser?.role === 'MESTRE';
 
   const handlePost = () => {
     if (!newPostImageUrl && !newPostCaption.trim()) return;
@@ -196,6 +198,59 @@ export function MainMenu({
 
         {/* Gallery Feed */}
         <div className="flex flex-col gap-6 pb-6">
+          {/* Mestre Controls for Clearing / Restoring Posts */}
+          {isMestre && !onlyMyPosts && (
+            <div className="px-4 pt-2">
+              <div className={cn(
+                "border rounded-2xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md transition-colors duration-500",
+                theme === 'dark' ? "bg-stone-900/80 border-amber-500/20" : "bg-amber-50/80 border-amber-200"
+              )}>
+                <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                    <ShieldAlert size={18} />
+                  </div>
+                  <div>
+                    <p className={cn(
+                      "text-xs font-black uppercase tracking-wider",
+                      theme === 'dark' ? "text-amber-200" : "text-amber-900"
+                    )}>
+                      Painel do Mestre
+                    </p>
+                    <p className="text-[10px] text-stone-400 font-medium">
+                      Gerenciamento de publicações
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  {galleryPosts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmClearModalOpen(true)}
+                      className="flex items-center justify-center gap-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 w-full sm:w-auto"
+                      title="Limpar todas as publicações de todos os usuários"
+                    >
+                      <Trash2 size={14} />
+                      <span>Limpar todas as publicações ({galleryPosts.length})</span>
+                    </button>
+                  )}
+
+                  {galleryPostsBackup.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => restoreAllGalleryPosts()}
+                      className="flex items-center justify-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-xl text-xs font-black transition-all shadow-md cursor-pointer active:scale-95 w-full sm:w-auto animate-pulse"
+                      title="Restaurar todas as publicações apagadas anteriormente"
+                    >
+                      <RotateCcw size={14} />
+                      <span>Voltar com tudo ({galleryPostsBackup.length})</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {onlyMyPosts && (
             <div className="px-4 pt-2">
               <div className={cn(
@@ -333,12 +388,28 @@ export function MainMenu({
 
           {displayedPosts.length === 0 ? (
             <div className={cn(
-              "text-center py-20 flex flex-col items-center transition-colors duration-500",
+              "text-center py-16 px-4 flex flex-col items-center justify-center gap-3 transition-colors duration-500",
               theme === 'dark' ? "text-white/50" : "text-[#3d2723]/50"
             )}>
-              <Camera size={48} className="mb-4 opacity-20" />
-              <p>{onlyMyPosts ? 'Você ainda não fez nenhuma publicação.' : 'Nenhuma publicação ainda.'}</p>
+              <Camera size={48} className="mb-2 opacity-20" />
+              <p className="font-semibold text-sm">{onlyMyPosts ? 'Você ainda não fez nenhuma publicação.' : 'Nenhuma publicação ainda.'}</p>
               <p className="text-xs">Compartilhe momentos no mural!</p>
+
+              {isMestre && !onlyMyPosts && galleryPostsBackup.length > 0 && (
+                <div className="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col items-center gap-2.5 max-w-sm w-full animate-in fade-in zoom-in-95 duration-200">
+                  <p className="text-xs text-amber-300 font-bold">
+                    As publicações foram apagadas.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => restoreAllGalleryPosts()}
+                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-900 hover:from-amber-300 hover:to-amber-400 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg cursor-pointer active:scale-95"
+                  >
+                    <RotateCcw size={16} />
+                    <span>Voltar com tudo ({galleryPostsBackup.length})</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             [...displayedPosts].sort((a, b) => {
@@ -715,6 +786,57 @@ export function MainMenu({
               {(!galleryPosts.find(p => p.id === showLikesModalForPostId)?.likes || galleryPosts.find(p => p.id === showLikesModalForPostId)?.likes?.length === 0) && (
                 <div className="text-center py-8 text-white/50 text-sm">Nenhuma curtida ainda.</div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM CLEAR ALL POSTS MODAL FOR MESTRE */}
+      {confirmClearModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className={cn(
+            "border rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative animate-in zoom-in-95 duration-200",
+            theme === 'dark' ? "bg-[#1c140d] border-rose-500/30 text-white" : "bg-white border-rose-200 text-stone-900"
+          )}>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 size={24} />
+              </div>
+              <div>
+                <h3 className="text-base font-black uppercase tracking-tight text-rose-400">Limpar Mural?</h3>
+                <p className="text-xs text-stone-400 font-medium">Ação exclusiva do Mestre</p>
+              </div>
+            </div>
+
+            <p className="text-xs leading-relaxed opacity-90">
+              Você tem certeza de que deseja apagar <strong>todas as {galleryPosts.length} publicações</strong> adicionadas por todos os usuários?
+            </p>
+            
+            <p className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl font-medium">
+              💡 Você poderá usar a opção <strong>"Voltar com tudo"</strong> para restaurar todas as publicações a qualquer momento.
+            </p>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmClearModalOpen(false)}
+                className={cn(
+                  "flex-1 py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                  theme === 'dark' ? "bg-white/5 border-white/10 text-stone-300 hover:bg-white/10" : "bg-stone-100 border-stone-200 text-stone-700 hover:bg-stone-200"
+                )}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearAllGalleryPosts();
+                  setConfirmClearModalOpen(false);
+                }}
+                className="flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-lg cursor-pointer active:scale-95"
+              >
+                Limpar Tudo
+              </button>
             </div>
           </div>
         </div>
