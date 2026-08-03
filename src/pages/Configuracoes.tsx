@@ -18,7 +18,8 @@ export function Configuracoes() {
   const isLight = theme === 'light';
   
   // Access control
-  const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
+  const isMestreCurrentUser = currentUser?.role === 'MESTRE' || currentUser?.username?.toLowerCase() === 'mestre' || currentUser?.username?.toLowerCase() === 'jeff';
+  const isAdmOrMestre = isMestreCurrentUser || currentUser?.role === 'ADM';
   const isLiderOrAdmOrMestre = isAdmOrMestre || currentUser?.role === 'LIDER';
 
   // Mobile specific visibility rule: on mobile, non-admins only see "Edit My Profile"
@@ -113,9 +114,13 @@ export function Configuracoes() {
       ? newName.trim()
       : (existingTarget?.name || currentUser?.name || 'Usuário');
 
-    const targetRole = (isLiderOrAdmOrMestre || isMobile)
+    let targetRole = (isLiderOrAdmOrMestre || isMobile)
       ? newRole
       : (existingTarget?.role || currentUser?.role || 'FUNCIONARIO_A');
+
+    if (targetRole === 'MESTRE' && !isMestreCurrentUser) {
+      targetRole = existingTarget?.role && existingTarget.role !== 'MESTRE' ? existingTarget.role : 'ADM';
+    }
 
     if ((isLiderOrAdmOrMestre || isMobile) && !cleanName) {
       setUserError('Por favor, preencha o nome completo do usuário.');
@@ -362,7 +367,7 @@ export function Configuracoes() {
                     disabled={!canEditRoleField}
                     className="w-full bg-slate-950 border border-white/10 focus:border-purple-500/40 focus:ring-1 focus:ring-purple-500/10 rounded-xl px-3 py-2.5 text-xs text-slate-300 focus:outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="MESTRE">Mestre</option>
+                    {isMestreCurrentUser && <option value="MESTRE">Mestre</option>}
                     <option value="ADM">Administrador (ADM)</option>
                     <option value="LIDER">Líder de Equipe</option>
                     <option value="FUNCIONARIO_A">Funcionário A</option>

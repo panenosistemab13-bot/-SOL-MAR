@@ -429,7 +429,10 @@ export function InstagramMobileHeader({ currentTab, onSelect, viewingProfileUser
       )}>
         {/* Brand Logo in Instagram-style Serif */}
         <button 
-          onClick={() => onSelect('menu')} 
+          onClick={() => {
+            onSelect('menu');
+            if (onSelectProfile) onSelectProfile(null);
+          }} 
           className="flex items-center gap-2 cursor-pointer active:scale-95 transition-transform"
         >
           <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] p-[1.5px] flex items-center justify-center">
@@ -485,10 +488,10 @@ export function InstagramMobileHeader({ currentTab, onSelect, viewingProfileUser
             <Send size={21} className="rotate-[-20deg]" />
             {unreadMessagesCount > 0 && (
               <span className={cn(
-                "absolute -top-0.5 -right-0.5 bg-gradient-to-tr from-[#ec4899] to-[#dc2743] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-lg border",
+                "absolute -top-1 -right-1 bg-gradient-to-tr from-[#ec4899] to-[#dc2743] text-white text-[9px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-lg border",
                 theme === 'dark' ? "border-[#120c08]" : "border-white"
               )}>
-                {unreadMessagesCount}
+                {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
               </span>
             )}
           </button>
@@ -1079,8 +1082,8 @@ export function InstagramMobileBottomNav({ currentTab, onSelect, viewingProfileU
           <MessageSquare size={22} strokeWidth={currentTab === 'chat' ? 2.5 : 1.8} />
           <span className="text-[9px] font-semibold mt-0.5 tracking-tight">Chat</span>
           {unreadMessagesCount > 0 && (
-            <span className="absolute top-0.5 right-2 bg-rose-500 text-white text-[8px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
-              {unreadMessagesCount}
+            <span className="absolute top-0.5 right-1.5 bg-rose-500 text-white text-[9px] font-black min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-md shadow-rose-500/50 animate-pulse">
+              {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
             </span>
           )}
         </button>

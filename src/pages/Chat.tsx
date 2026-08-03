@@ -17,6 +17,7 @@ import {
   Video, 
   Phone, 
   Info, 
+  Flag,
   Image as ImageIcon, 
   Mic, 
   Smile, 
@@ -60,7 +61,7 @@ export function Chat({
   activeChat?: string | null;
   onSelectActiveChat?: (chatId: string | null) => void;
 }) {
-  const { currentUser, isReadOnly, users, theme } = useInventory();
+  const { currentUser, isReadOnly, users, theme, groupUnreadCounts } = useInventory();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -100,7 +101,8 @@ export function Chat({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
+  const isMestre = currentUser?.role === 'MESTRE' || currentUser?.username?.toLowerCase() === 'mestre';
+  const isAdmOrMestre = isMestre || currentUser?.role === 'ADM';
   const isWriter = isAdmOrMestre || currentUser?.role === 'LIDER';
 
   // Chat Definitions - Unified Groups
@@ -112,7 +114,8 @@ export function Chat({
       lastMsg: 'Avisos oficiais da gerência', 
       time: 'Grupo',
       isGroup: true,
-      unread: false,
+      unreadCount: groupUnreadCounts?.['mural'] || 0,
+      unread: (groupUnreadCounts?.['mural'] || 0) > 0,
       restricted: true // Only Admins can send
     },
     { 
@@ -122,7 +125,8 @@ export function Chat({
       lastMsg: 'Espaço para diversão!', 
       time: 'Grupo',
       isGroup: true,
-      unread: false,
+      unreadCount: groupUnreadCounts?.['resenha'] || 0,
+      unread: (groupUnreadCounts?.['resenha'] || 0) > 0,
       restricted: false
     },
   ];
@@ -319,14 +323,31 @@ export function Chat({
     }).catch(err => console.error("Erro ao fixar/desafixar comunicado:", err));
   };
 
-  const handleClearAll = () => {
-    if (isReadOnly || !activeChat) return;
-    const canDelete = currentUser?.role === 'MESTRE';
-    if (!canDelete) return;
+  const handleClearChatMessages = (chatId?: string) => {
+    if (isReadOnly || !isMestre) return;
+    const target = chatId || activeChat;
+    if (!target) return;
 
-    if (window.confirm(`Deseja realmente apagar TODAS as mensagens de ${activeChat}? Esta ação é irreversível.`)) {
-      const chatRef = ref(rtdb, `chat/groups/${activeChat}/messages`);
-      set(chatRef, null).catch(err => console.error("Erro ao apagar mensagens:", err));
+    const chatName = dms.find(d => d.id === target)?.name || target;
+    if (window.confirm(`[MESTRE] Deseja realmente apagar TODAS as mensagens de "${chatName}"? Esta ação não pode ser desfeita.`)) {
+      const chatRef = ref(rtdb, `chat/groups/${target}/messages`);
+      set(chatRef, null)
+        .then(() => setMessages([]))
+        .catch(err => console.error("Erro ao apagar mensagens:", err));
+    }
+  };
+
+  const handleClearAllEntireSystemChats = () => {
+    if (isReadOnly || !isMestre) return;
+
+    if (window.confirm("[MESTRE] Deseja realmente apagar TODAS as conversas de TODOS os chats do aplicativo? Esta ação é irreversível e apagará o histórico completo.")) {
+      const allChatsRef = ref(rtdb, `chat/groups`);
+      set(allChatsRef, null)
+        .then(() => {
+          setMessages([]);
+          alert("Todas as conversas foram apagadas com sucesso!");
+        })
+        .catch(err => console.error("Erro ao apagar todas as conversas:", err));
     }
   };
 
@@ -369,7 +390,17 @@ export function Chat({
                 )}>{currentUser?.username || 'mensagens'}</h1>
                 <ChevronLeft className={cn("-rotate-90", theme === 'light' ? "text-slate-400" : "text-white/60")} size={16} />
               </div>
-              <div className="flex items-center gap-6 lg:hidden">
+              <div className="flex items-center gap-3 lg:hidden">
+                {isMestre && (
+                  <button
+                    onClick={handleClearAllEntireSystemChats}
+                    title="Apagar todas as conversas do sistema"
+                    className="flex items-center gap-1 text-[11px] font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 px-2.5 py-1 rounded-full transition-all cursor-pointer"
+                  >
+                    <Trash size={14} />
+                    <span>Apagar tudo</span>
+                  </button>
+                )}
                 <Video size={24} className={theme === 'light' ? "text-black" : "text-white"} />
                 <Edit3 size={22} className={theme === 'light' ? "text-black" : "text-white"} />
               </div>
@@ -439,12 +470,21 @@ export function Chat({
 
             {/* Messages List */}
             <div className="flex-1 overflow-y-auto px-4 pb-20 md:pb-4">
-              <div className="flex items-center justify-between px-2 mb-2 lg:hidden">
+              <div className="flex items-center justify-between px-2 mb-2">
                 <h2 className={cn(
                   "text-sm font-bold",
                   theme === 'light' ? "text-black" : "text-white"
                 )}>Mensagens</h2>
-                <button className="hidden md:inline-block text-sky-500 text-xs font-semibold">Solicitações</button>
+                {isMestre && (
+                  <button 
+                    onClick={handleClearAllEntireSystemChats}
+                    title="Apagar todas as conversas do aplicativo"
+                    className="flex items-center gap-1.5 text-xs font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1 rounded-full transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Trash size={13} />
+                    <span>Apagar todas as conversas</span>
+                  </button>
+                )}
               </div>
               
               <div className="space-y-1">
@@ -486,7 +526,11 @@ export function Chat({
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {dm.unread && <div className="w-2 h-2 bg-sky-500 rounded-full shadow-sm shadow-sky-500/50" />}
+                      {dm.unreadCount > 0 && (
+                        <div className="min-w-[20px] h-5 px-1.5 bg-rose-500 text-white font-black text-[11px] rounded-full flex items-center justify-center shadow-md shadow-rose-500/40 animate-pulse">
+                          {dm.unreadCount > 99 ? '99+' : dm.unreadCount}
+                        </div>
+                      )}
                       <Camera size={20} className={cn(
                         "transition-colors",
                         theme === 'light' 
@@ -513,10 +557,10 @@ export function Chat({
           >
             {/* Header Chat (IG Mobile Style) */}
             <div className={cn(
-              "flex items-center justify-between px-3 py-2 border-b z-20 transition-colors duration-500",
-              theme === 'dark' ? "bg-black border-white/10 text-white" : "bg-white border-slate-200 text-black"
+              "chat-header flex items-center justify-between px-4 py-3 border-b z-20 transition-colors duration-300",
+              theme === 'dark' ? "bg-black border-white/10 text-white" : "bg-white border-slate-200 text-[#262626]"
             )}>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-3 min-w-0">
                 <button 
                   onClick={() => {
                     if (window.history.state && window.history.state.activeChat) {
@@ -525,30 +569,33 @@ export function Chat({
                       setActiveChat(null);
                     }
                   }}
-                  className="p-2 -ml-2 active:scale-90 transition-transform cursor-pointer"
+                  className="p-1 -ml-1 active:scale-90 transition-transform cursor-pointer shrink-0"
                 >
-                  <ChevronLeft size={28} />
+                  <ChevronLeft size={22} className={theme === 'dark' ? "text-white" : "text-[#262626]"} />
                 </button>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-white/10 overflow-hidden border border-white/10 shadow-sm">
-                    <img src={dms.find(d => d.id === activeChat)?.avatar} alt="" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[15px] font-bold leading-none tracking-tight">
-                      {dms.find(d => d.id === activeChat)?.name.replace('📢', '').replace('🏖️', '').trim()}
-                    </span>
-                    <span className={cn(
-                      "text-[12px] font-medium mt-1 leading-none",
-                      theme === 'dark' ? "text-white/40" : "text-slate-400"
-                    )}>
-                      {activeChat === 'mural' ? 'Informativo Oficial' : 'Ativo(a) agora'}
-                    </span>
-                  </div>
-                </div>
+                <img 
+                  src={dms.find(d => d.id === activeChat)?.avatar} 
+                  alt="Avatar" 
+                  className="w-8 h-8 rounded-full object-cover shrink-0 border border-white/10" 
+                />
+                <span className="font-semibold text-[15px] tracking-tight truncate text-[#262626] dark:text-white">
+                  {dms.find(d => d.id === activeChat)?.name.replace('📢', '').replace('🏖️', '').trim()}
+                </span>
               </div>
-              <div className="flex items-center gap-5 pr-1 lg:hidden">
-                <Phone size={22} className="cursor-pointer active:scale-90 transition-transform" />
-                <Video size={24} className="cursor-pointer active:scale-90 transition-transform" />
+
+              <div className="flex items-center gap-3.5 shrink-0 text-[#262626] dark:text-white">
+                {isMestre && (
+                  <button 
+                    onClick={() => handleClearChatMessages()}
+                    className="flex items-center gap-1.5 text-xs font-bold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 rounded-full transition-all active:scale-90 cursor-pointer"
+                    title="Apagar todas as mensagens desta conversa"
+                  >
+                    <Trash size={14} />
+                  </button>
+                )}
+                <Video size={20} className="cursor-pointer active:scale-90 transition-transform" />
+                <Flag size={18} className="cursor-pointer active:scale-90 transition-transform" />
+                <Info size={20} className="cursor-pointer active:scale-90 transition-transform" />
               </div>
             </div>
             {/* Chat Body */}
@@ -723,32 +770,44 @@ export function Chat({
                   }
 
                   // MOBILE / INSTAGRAM STYLE
+                  const isSenderMestre = msg.senderName?.toLowerCase() === 'mestre' 
+                    || users.find(u => u.id === msg.senderId)?.role === 'MESTRE' 
+                    || users.find(u => u.id === msg.senderId)?.username?.toLowerCase() === 'mestre';
+
+                  const msgDate = new Date(msg.timestamp);
+                  const dateStr = msgDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                  const timeStr = msgDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                  const senderUser = users.find(u => u.id === msg.senderId);
+                  const avatarUrl = msg.senderAvatar || senderUser?.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256';
+
                   return (
                     <div 
                       key={msg.id} 
                       className={cn(
-                        "flex flex-col max-w-[85%] mb-1",
+                        "flex flex-col max-w-[85%] mb-3",
                         isMine ? "self-end items-end" : "self-start items-start"
                       )}
                     >
-                      {!isMine && showAvatar && (
+                      {!isMine && (
                         <span className={cn(
                           "text-[10px] mb-1 ml-1 font-bold transition-colors duration-500",
-                          theme === 'dark' ? "text-white/40" : "text-black/40"
+                          theme === 'dark' ? "text-white/60" : "text-black/60"
                         )}>{msg.senderName}</span>
                       )}
                       
-                      <div className="flex items-end gap-2 w-full">
-                        {!isMine && (
-                          <div className="w-7 h-7 shrink-0 rounded-full overflow-hidden bg-white/5 mb-0.5">
-                            {showAvatar && <img src={msg.senderAvatar} alt="" className="w-full h-full object-cover" />}
+                      <div className="flex items-end gap-1.5 w-full">
+                        {/* Avatar for incoming messages (except Mestre) */}
+                        {!isMine && !isSenderMestre && (
+                          <div className="w-6 h-6 shrink-0 rounded-full overflow-hidden bg-white/10 mb-0.5 border border-white/10 shadow-sm">
+                            <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
                           </div>
                         )}
                         
-                        <div className="relative group flex-1">
+                        <div className="relative group flex-1 min-w-0">
                           <div 
                             className={cn(
-                              "px-4 py-2.5 rounded-[22px] text-[15px] leading-tight whitespace-pre-wrap break-words inline-block min-w-[30px]",
+                              "px-3.5 py-2 rounded-[20px] text-[14px] leading-tight whitespace-pre-wrap break-words inline-block min-w-[30px]",
                               isMine 
                                 ? (theme === 'dark' ? "bg-[#3797f0] text-white rounded-br-[4px]" : "bg-[#3797f0] text-white rounded-br-[4px]")
                                 : (theme === 'dark' ? "bg-[#262626] text-white rounded-bl-[4px]" : "bg-[#efefef] text-black rounded-bl-[4px]")
@@ -820,6 +879,24 @@ export function Chat({
                             </motion.div>
                           )}
                         </div>
+
+                        {/* Avatar for outgoing messages (except Mestre) */}
+                        {isMine && !isSenderMestre && (
+                          <div className="w-6 h-6 shrink-0 rounded-full overflow-hidden bg-white/10 mb-0.5 border border-white/10 shadow-sm">
+                            <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Date and Time below the message */}
+                      <div className={cn(
+                        "text-[9px] mt-1 font-medium tracking-tight opacity-60 flex items-center gap-1 px-1",
+                        isMine ? "justify-end text-right" : "justify-start text-left",
+                        theme === 'dark' ? "text-slate-400" : "text-slate-600"
+                      )}>
+                        <span>{dateStr}</span>
+                        <span>•</span>
+                        <span>{timeStr}</span>
                       </div>
                     </div>
                   );
@@ -829,12 +906,12 @@ export function Chat({
             </div>
 
             {/* Footer Input */}
-            <div className={cn(
-              "p-3 transition-colors duration-500",
-              theme === 'dark' ? "bg-black border-t border-white/5" : "bg-white border-t border-slate-100"
+            <footer className={cn(
+              "chat-input-container p-3 transition-colors duration-300",
+              theme === 'dark' ? "bg-black border-t border-white/10" : "bg-white border-t border-slate-100"
             )}>
               {canSendMessages ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {!isMobile && activeChat === 'mural' && (
                     <div className={cn(
                       "flex items-center gap-4 px-4 py-2 border-b transition-colors",
@@ -897,8 +974,8 @@ export function Chat({
                   <form 
                     onSubmit={handleSendMessage}
                     className={cn(
-                      "flex items-center gap-2 rounded-full px-1.5 py-1.5 transition-colors duration-500",
-                      theme === 'dark' ? "bg-[#262626]" : "bg-[#f2f2f2]"
+                      "input-bar flex items-center gap-2 rounded-full px-2 py-1.5 transition-colors duration-300",
+                      theme === 'dark' ? "bg-[#262626]" : "bg-[#f5f5f5]"
                     )}
                   >
                     <input 
@@ -913,33 +990,33 @@ export function Chat({
                     <button 
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-8 h-8 rounded-full bg-[#3797f0] flex items-center justify-center shrink-0 active:scale-90 transition-transform ml-1 shadow-sm"
+                      className="cam-btn w-7 h-7 rounded-full bg-[#0084ff] flex items-center justify-center shrink-0 active:scale-90 transition-transform text-white shadow-sm"
                     >
-                      <Camera size={18} className="text-white" />
+                      <Camera size={14} />
                     </button>
                     
                     <input 
                       type="text" 
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder={activeChat === 'mural' ? "Aviso importante..." : "Mensagem..."} 
+                      placeholder={activeChat === 'mural' ? "Aviso importante..." : "Message..."} 
                       className={cn(
-                        "flex-1 bg-transparent text-[15px] outline-none px-3 py-1 transition-colors duration-500",
-                        theme === 'dark' ? "text-white placeholder:text-white/40" : "text-black placeholder:text-slate-400"
+                        "flex-1 bg-transparent text-[14px] outline-none px-2 py-0.5 transition-colors duration-300",
+                        theme === 'dark' ? "text-white placeholder:text-white/40" : "text-[#262626] placeholder:text-slate-400"
                       )}
                       disabled={isRecording}
                     />
 
-                    <div className="flex items-center gap-3 pr-2.5 mr-0.5">
+                    <div className="input-actions flex items-center gap-3 pr-2 text-[#262626] dark:text-white">
                       {newMessage.trim() ? (
                         <button 
                           type="submit"
-                          className="text-[#3797f0] font-bold text-[15px] px-2 cursor-pointer active:scale-95 transition-transform"
+                          className="text-[#0084ff] font-bold text-[14px] px-1 cursor-pointer active:scale-95 transition-transform"
                         >
                           Enviar
                         </button>
                       ) : (
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                           <button 
                             type="button"
                             onMouseDown={startRecording}
@@ -947,30 +1024,30 @@ export function Chat({
                             onMouseUp={stopRecording}
                             onTouchEnd={stopRecording}
                             className={cn(
-                              "transition-all active:scale-90",
-                              isRecording ? "text-rose-500 scale-125" : (theme === 'dark' ? "text-white/80 hover:text-white" : "text-slate-600 hover:text-black")
+                              "transition-all active:scale-90 cursor-pointer",
+                              isRecording ? "text-rose-500 scale-125" : (theme === 'dark' ? "text-white/80 hover:text-white" : "text-[#262626] hover:text-black")
                             )}
                           >
-                            <Mic size={22} />
+                            <Mic size={18} />
                           </button>
                           <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
                             className={cn(
-                              "transition-all active:scale-90",
-                              theme === 'dark' ? "text-white/80 hover:text-white" : "text-slate-600 hover:text-black"
+                              "transition-all active:scale-90 cursor-pointer",
+                              theme === 'dark' ? "text-white/80 hover:text-white" : "text-[#262626] hover:text-black"
                             )}
                           >
-                            <ImageIcon size={22} />
+                            <ImageIcon size={18} />
                           </button>
                           <button
                             type="button"
                             className={cn(
-                              "transition-all active:scale-90",
-                              theme === 'dark' ? "text-white/80 hover:text-white" : "text-slate-600 hover:text-black"
+                              "transition-all active:scale-90 cursor-pointer",
+                              theme === 'dark' ? "text-white/80 hover:text-white" : "text-[#262626] hover:text-black"
                             )}
                           >
-                            <Smile size={22} />
+                            <Smile size={18} />
                           </button>
                         </div>
                       )}
@@ -979,13 +1056,13 @@ export function Chat({
                 </div>
               ) : (
                 <div className={cn(
-                  "py-4 text-center text-xs font-bold uppercase tracking-widest",
+                  "py-3 text-center text-xs font-bold uppercase tracking-widest",
                   theme === 'dark' ? "text-white/20" : "text-slate-300"
                 )}>
                   Somente leitura neste grupo
                 </div>
               )}
-            </div>
+            </footer>
           </motion.div>
         )}
       </AnimatePresence>

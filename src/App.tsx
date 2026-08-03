@@ -94,7 +94,11 @@ function AppContent() {
   }, []);
 
   const setCurrentTab = React.useCallback((tab: string) => {
-    navigateTo(tab, null, viewingProfileUserId);
+    if (tab === 'menu') {
+      navigateTo('menu', null, null);
+    } else {
+      navigateTo(tab, null, viewingProfileUserId);
+    }
   }, [navigateTo, viewingProfileUserId]);
 
   const setViewingProfileUserId = React.useCallback((userId: string | null) => {

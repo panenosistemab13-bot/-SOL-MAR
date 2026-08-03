@@ -30,6 +30,7 @@ interface InventoryContextType {
   resetAllStockToZero: () => void;
   lowStockItemsCount: number;
   unreadMessagesCount: number;
+  groupUnreadCounts: Record<string, number>;
 
   // New Authentication & User Management operations
   login: (username: string, password: string) => boolean;
@@ -58,6 +59,57 @@ const InventoryContext = createContext<InventoryContextType | undefined>(undefin
 function cleanData<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj)) as T;
 }
+
+let globalAudioCtx: AudioContext | null = null;
+
+const getGlobalAudioContext = () => {
+  if (!globalAudioCtx && typeof window !== 'undefined') {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioContextClass) {
+      globalAudioCtx = new AudioContextClass();
+    }
+  }
+  if (globalAudioCtx && globalAudioCtx.state === 'suspended') {
+    globalAudioCtx.resume().catch(() => {});
+  }
+  return globalAudioCtx;
+};
+
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    getGlobalAudioContext();
+    window.removeEventListener('touchstart', unlockAudio);
+    window.removeEventListener('click', unlockAudio);
+  };
+  window.addEventListener('touchstart', unlockAudio, { once: true });
+  window.addEventListener('click', unlockAudio, { once: true });
+}
+
+export const playMobileMessageSound = () => {
+  try {
+    const ctx = getGlobalAudioContext();
+    if (!ctx) return;
+    
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
+    osc.frequency.setValueAtTime(987.77, ctx.currentTime + 0.08); // B5
+    
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.28);
+  } catch (e) {
+    console.error("Audio playback error:", e);
+  }
+};
 
 
 const MODELS = [
@@ -152,6 +204,9 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const isReadOnly = currentUser?.role === 'FUNCIONARIO_B';
 
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
+  const [groupUnreadCounts, setGroupUnreadCounts] = useState<Record<string, number>>({});
+  const isInitialLoadRef = React.useRef(true);
+  const prevUnreadMsgIdsRef = React.useRef<Set<string>>(new Set());
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -191,30 +246,69 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!currentUser) {
       setUnreadMessagesCount(0);
+      setGroupUnreadCounts({});
+      prevUnreadMsgIdsRef.current = new Set();
+      isInitialLoadRef.current = true;
       return;
     }
 
-    const messagesRef = ref(rtdb, 'chat/messages');
-    const unsubscribe = onValue(messagesRef, (snapshot) => {
+    const groupsRef = ref(rtdb, 'chat/groups');
+    const unsubscribe = onValue(groupsRef, (snapshot) => {
       if (snapshot.exists()) {
-        const data = snapshot.val();
-        let unread = 0;
-        Object.values(data).forEach((msg: any) => {
-          const views = msg.views || {};
-          if (!views[currentUser.username]) {
-            unread++;
+        const groupsData = snapshot.val();
+        let totalUnread = 0;
+        const countsByGroup: Record<string, number> = {};
+        const currentUnreadIds = new Set<string>();
+
+        Object.entries(groupsData).forEach(([groupId, groupObj]: [string, any]) => {
+          let groupUnread = 0;
+          const messages = groupObj?.messages;
+          if (messages) {
+            Object.entries(messages).forEach(([msgId, msg]: [string, any]) => {
+              const isMine = msg.senderId === currentUser.id || msg.senderName === currentUser.name;
+              const views = msg.views || {};
+              const viewed = Boolean(views[currentUser.username]);
+
+              if (!isMine && !viewed) {
+                groupUnread++;
+                totalUnread++;
+                currentUnreadIds.add(`${groupId}_${msgId}`);
+              }
+            });
+          }
+          countsByGroup[groupId] = groupUnread;
+        });
+
+        // Detect if new unread incoming message arrived
+        let hasNewIncoming = false;
+        currentUnreadIds.forEach((id) => {
+          if (!prevUnreadMsgIdsRef.current.has(id)) {
+            hasNewIncoming = true;
           }
         });
-        setUnreadMessagesCount(unread);
+
+        if (!isInitialLoadRef.current && hasNewIncoming && isMobile) {
+          playMobileMessageSound();
+        }
+
+        prevUnreadMsgIdsRef.current = currentUnreadIds;
+        isInitialLoadRef.current = false;
+
+        setUnreadMessagesCount(totalUnread);
+        setGroupUnreadCounts(countsByGroup);
       } else {
         setUnreadMessagesCount(0);
+        setGroupUnreadCounts({});
+        prevUnreadMsgIdsRef.current = new Set();
+        isInitialLoadRef.current = false;
       }
     }, () => {
       setUnreadMessagesCount(0);
+      setGroupUnreadCounts({});
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, isMobile]);
 
   // Sync with Realtime Database
   useEffect(() => {
@@ -811,7 +905,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       bikinis, threads, sales, users, logs, stories, galleryPosts, currentUser,
       addBikini, addBikiniModel, updateBikiniStock, setBikiniStock, updateBikiniDividedStock, removeBikini, removeBikiniModel,
       addThread, updateThreadStock, setThreadStock, updateThreadColorCode, removeThread,
-      registerSale, resetAllStockToZero, lowStockItemsCount, unreadMessagesCount,
+      registerSale, resetAllStockToZero, lowStockItemsCount, unreadMessagesCount, groupUnreadCounts,
       login, logout, addUser, removeUser, addStory, deleteStory, addGalleryPost, likeGalleryPost, deleteGalleryPost, editGalleryPost, pinGalleryPost, addPostComment, deletePostComment, editPostComment, clearNotifications, isReadOnly,
       theme, setTheme, isMobile
     }}>
