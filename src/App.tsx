@@ -24,8 +24,92 @@ function AppContent() {
   const { lowStockItemsCount, unreadMessagesCount, currentUser, logout, theme } = useInventory(); 
   
   const [isStandalone, setIsStandalone] = useState(false);
-  const [currentTab, setCurrentTab] = useState('menu');
-  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
+  const [currentTab, setCurrentTabState] = useState('menu');
+  const [activeChat, setActiveChatState] = useState<string | null>(null);
+  const [hasActiveChat, setHasActiveChat] = useState(false);
+  const [viewingProfileUserId, setViewingProfileUserIdState] = useState<string | null>(null);
+
+  const isNavigatingFromPopState = React.useRef(false);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const initialState = {
+      tab: currentTab,
+      activeChat: activeChat,
+      profileUserId: viewingProfileUserId
+    };
+
+    if (!window.history.state) {
+      window.history.replaceState(initialState, '');
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      isNavigatingFromPopState.current = true;
+      const state = event.state;
+      if (state) {
+        setCurrentTabState(state.tab || 'menu');
+        setActiveChatState(state.activeChat || null);
+        setViewingProfileUserIdState(state.profileUserId || null);
+      } else {
+        setCurrentTabState('menu');
+        setActiveChatState(null);
+        setViewingProfileUserIdState(null);
+      }
+      setTimeout(() => {
+        isNavigatingFromPopState.current = false;
+      }, 50);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  const navigateTo = React.useCallback((
+    newTab: string, 
+    newActiveChat: string | null = null, 
+    newProfileUserId: string | null = null
+  ) => {
+    if (isNavigatingFromPopState.current) return;
+
+    const currentState = window.history.state;
+    const isDifferent = !currentState || 
+      currentState.tab !== newTab || 
+      currentState.activeChat !== newActiveChat || 
+      currentState.profileUserId !== newProfileUserId;
+
+    if (isDifferent) {
+      window.history.pushState({
+        tab: newTab,
+        activeChat: newActiveChat,
+        profileUserId: newProfileUserId
+      }, '');
+    }
+
+    setCurrentTabState(newTab);
+    setActiveChatState(newActiveChat);
+    setViewingProfileUserIdState(newProfileUserId);
+  }, []);
+
+  const setCurrentTab = React.useCallback((tab: string) => {
+    navigateTo(tab, null, viewingProfileUserId);
+  }, [navigateTo, viewingProfileUserId]);
+
+  const setViewingProfileUserId = React.useCallback((userId: string | null) => {
+    navigateTo(currentTab, activeChat, userId);
+  }, [navigateTo, currentTab, activeChat]);
+
+  const setActiveChat = React.useCallback((chatId: string | null) => {
+    navigateTo('chat', chatId, viewingProfileUserId);
+  }, [navigateTo, viewingProfileUserId]);
+
+  React.useEffect(() => {
+    if (currentTab !== 'chat') {
+      setHasActiveChat(false);
+    }
+  }, [currentTab]);
 
   const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
 
@@ -242,7 +326,20 @@ function AppContent() {
             {currentTab === 'bikinis' && <Bikinis />}
             {currentTab === 'threads' && <Threads />}
             {currentTab === 'sales' && <Sales />}
-            {currentTab === 'chat' && <Chat onBack={() => setCurrentTab('menu')} />}
+            {currentTab === 'chat' && (
+              <Chat 
+                onBack={() => {
+                  if (window.history.state && (window.history.state.tab === 'chat' || window.history.state.activeChat)) {
+                    window.history.back();
+                  } else {
+                    setCurrentTab('menu');
+                  }
+                }} 
+                activeChat={activeChat}
+                onSelectActiveChat={setActiveChat}
+                onActiveChatChange={setHasActiveChat}
+              />
+            )}
             {currentTab === 'attendance' && isAdmOrMestre && <Attendance />}
             {currentTab === 'configuracoes' && <Configuracoes />}
           </div>
@@ -250,10 +347,13 @@ function AppContent() {
       </main>
 
       {/* INSTAGRAM MOBILE BOTTOM NAVIGATION BAR */}
-      {currentTab !== 'chat' && (
+      {(currentTab !== 'chat' || !hasActiveChat) && (
         <InstagramMobileBottomNav 
           currentTab={currentTab} 
-          onSelect={setCurrentTab} 
+          onSelect={(tab) => {
+            setCurrentTab(tab);
+            setHasActiveChat(false);
+          }} 
           viewingProfileUserId={viewingProfileUserId}
           onSelectProfile={setViewingProfileUserId}
         />

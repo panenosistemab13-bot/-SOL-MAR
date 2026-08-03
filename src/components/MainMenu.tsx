@@ -463,15 +463,15 @@ export function MainMenu({
                     <div className="flex items-center gap-4">
                       <button 
                         onClick={() => likeGalleryPost(post.id)}
-                        className={cn("transition-transform active:scale-75", hasLiked ? "text-rose-500 fill-rose-500" : "text-white hover:text-gray-300")}
+                        className={cn("transition-transform active:scale-75", hasLiked ? "text-rose-500 fill-rose-500" : (theme === 'dark' ? "text-white hover:text-gray-300" : "text-black hover:text-gray-700"))}
                       >
                         <Heart size={24} className={hasLiked ? "fill-rose-500" : ""} />
                       </button>
-                      <button className="text-white hover:text-gray-300 transition-transform active:scale-75">
+                      <button className={cn("transition-transform active:scale-75", theme === 'dark' ? "text-white hover:text-gray-300" : "text-black hover:text-gray-700")}>
                         <MessageCircle size={24} />
                       </button>
                     </div>
-                    <button className="text-white hover:text-gray-300 transition-transform active:scale-75">
+                    <button className={cn("transition-transform active:scale-75", theme === 'dark' ? "text-white hover:text-gray-300" : "text-black hover:text-gray-700")}>
                       <Bookmark size={24} />
                     </button>
                   </div>

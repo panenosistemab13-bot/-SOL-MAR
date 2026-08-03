@@ -137,13 +137,13 @@ export function UserProfileGalleryModal({ userId, onClose }: { userId: string; o
                         size={26} 
                         className={cn(
                           "transition-colors",
-                          postLikes.includes(currentUser?.id || '') ? "text-red-500 fill-red-500" : (theme === 'dark' ? "text-white" : "text-[#3d2723]")
+                          postLikes.includes(currentUser?.id || '') ? "text-red-500 fill-red-500" : (theme === 'dark' ? "text-white" : "text-black")
                         )} 
                       />
-                      <MessageCircle size={26} className={cn(theme === 'dark' ? "text-white" : "text-[#3d2723]")} />
-                      <Send size={24} className={cn("-rotate-12", theme === 'dark' ? "text-white" : "text-[#3d2723]")} />
+                      <MessageCircle size={26} className={cn(theme === 'dark' ? "text-white" : "text-black")} />
+                      <Send size={24} className={cn("-rotate-12", theme === 'dark' ? "text-white" : "text-black")} />
                     </div>
-                    <Bookmark size={26} className={cn(theme === 'dark' ? "text-white" : "text-[#3d2723]")} />
+                    <Bookmark size={26} className={cn(theme === 'dark' ? "text-white" : "text-black")} />
                   </div>
 
                   {/* Likes Count */}
@@ -460,7 +460,7 @@ export function InstagramMobileHeader({ currentTab, onSelect, viewingProfileUser
             onClick={() => setShowNotifications(true)}
             className={cn(
               "relative p-1.5 rounded-full active:scale-90 transition-all cursor-pointer",
-              theme === 'dark' ? "text-slate-300 hover:text-white" : "text-[#3d2723]/60 hover:text-[#3d2723]"
+              theme === 'dark' ? "text-white" : "text-black"
             )}
             title="Notificações"
           >
@@ -478,7 +478,7 @@ export function InstagramMobileHeader({ currentTab, onSelect, viewingProfileUser
             onClick={() => onSelect('chat')}
             className={cn(
               "relative p-1.5 rounded-full active:scale-90 transition-all cursor-pointer",
-              theme === 'dark' ? "text-slate-300 hover:text-white" : "text-[#3d2723]/60 hover:text-[#3d2723]"
+              theme === 'dark' ? "text-white" : "text-black"
             )}
             title="Mural de Mensagens"
           >
@@ -1001,7 +1001,7 @@ export function InstagramMobileBottomNav({ currentTab, onSelect, viewingProfileU
 
   return (
     <nav className={cn(
-      "md:hidden fixed bottom-0 left-0 right-0 z-50 border-t px-2 py-1.5 flex items-center justify-around backdrop-blur-2xl shadow-2xl transition-colors duration-500",
+      "md:hidden fixed bottom-0 left-0 right-0 z-[70] border-t px-2 py-1.5 flex items-center justify-around backdrop-blur-2xl shadow-2xl transition-colors duration-500",
       theme === 'dark' ? "bg-[#120c08]/95 border-white/10" : "bg-white/95 border-black/5"
     )}>
         {/* 1. Início */}

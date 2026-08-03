@@ -49,18 +49,41 @@ interface ChatMessage {
 
 import { moderateContent } from '../lib/ai';
 
-export function Chat({ onBack }: { onBack?: () => void }) {
+export function Chat({ 
+  onBack, 
+  onActiveChatChange,
+  activeChat: propActiveChat,
+  onSelectActiveChat
+}: { 
+  onBack?: () => void; 
+  onActiveChatChange?: (hasActiveChat: boolean) => void;
+  activeChat?: string | null;
+  onSelectActiveChat?: (chatId: string | null) => void;
+}) {
   const { currentUser, isReadOnly, users, theme } = useInventory();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [activeChat, setActiveChat] = useState<string | null>(null);
+  const [internalActiveChat, setInternalActiveChat] = useState<string | null>(null);
+
+  const activeChat = propActiveChat !== undefined ? propActiveChat : internalActiveChat;
+  const setActiveChat = (id: string | null) => {
+    if (onSelectActiveChat) {
+      onSelectActiveChat(id);
+    } else {
+      setInternalActiveChat(id);
+    }
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [mediaBlob, setMediaBlob] = useState<Blob | null>(null);
   const [showViewDetails, setShowViewDetails] = useState<string | null>(null);
+
+  useEffect(() => {
+    onActiveChatChange?.(!!activeChat);
+  }, [activeChat, onActiveChatChange]);
   
   // Administrative states
   const [urgency, setUrgency] = useState<'comum' | 'urgente' | 'crítico'>('comum');
@@ -392,7 +415,13 @@ export function Chat({ onBack }: { onBack?: () => void }) {
                   theme === 'light' ? "text-slate-500" : "text-white/60"
                 )}>Sua nota</span>
               </div>
-              {users?.slice(0, 5).filter(u => u.id !== currentUser?.id).map(user => (
+              {users?.filter(u => 
+                u.id !== currentUser?.id && 
+                u.role !== 'MESTRE' && 
+                u.username?.toLowerCase() !== 'mestre' && 
+                u.name?.toLowerCase() !== 'mestre' &&
+                u.username?.toLowerCase() !== 'jeff'
+              ).slice(0, 5).map(user => (
                 <div key={user.id} className="flex flex-col items-center gap-1.5 shrink-0">
                   <div className={cn(
                     "w-16 h-16 rounded-full border-2 p-0.5",
@@ -415,7 +444,7 @@ export function Chat({ onBack }: { onBack?: () => void }) {
                   "text-sm font-bold",
                   theme === 'light' ? "text-black" : "text-white"
                 )}>Mensagens</h2>
-                <button className="text-sky-500 text-xs font-semibold lg:hidden">Solicitações</button>
+                <button className="hidden md:inline-block text-sky-500 text-xs font-semibold">Solicitações</button>
               </div>
               
               <div className="space-y-1">
@@ -489,7 +518,13 @@ export function Chat({ onBack }: { onBack?: () => void }) {
             )}>
               <div className="flex items-center gap-1">
                 <button 
-                  onClick={() => setActiveChat(null)}
+                  onClick={() => {
+                    if (window.history.state && window.history.state.activeChat) {
+                      window.history.back();
+                    } else {
+                      setActiveChat(null);
+                    }
+                  }}
                   className="p-2 -ml-2 active:scale-90 transition-transform cursor-pointer"
                 >
                   <ChevronLeft size={28} />
