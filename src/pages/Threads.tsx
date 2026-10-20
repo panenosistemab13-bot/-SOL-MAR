@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useInventory } from '../context/InventoryContext';
 import { 
   Plus, 
@@ -10,1064 +10,476 @@ import {
   Sparkles, 
   Anchor, 
   Compass, 
+  Wind, 
   LifeBuoy, 
-  Trash2,
-  PackagePlus,
-  Check,
-  X,
-  Layers,
-  SlidersHorizontal
+  Droplet, 
+  Palette, 
+  Flame, 
+  TrendingUp, 
+  Layers
 } from 'lucide-react';
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  BarChart, 
+  Bar, 
+  Cell 
+} from 'recharts';
 import { cn } from '../lib/utils';
 import { Thread } from '../types';
 
-const PRESET_COLORS = [
-  { name: 'Amarelo', hex: '#FACC15' },
-  { name: 'Vermelho Borgonha', hex: '#800020' },
-  { name: 'Preto', hex: '#000000' },
-  { name: 'Rosa Bebê', hex: '#FBCFE8' },
-  { name: 'Rosa Pink', hex: '#EC4899' },
-  { name: 'Azul Claro', hex: '#93C5FD' },
-  { name: 'Azul Marinho', hex: '#1E3A8A' },
-  { name: 'Roxo Escuro', hex: '#4C1D95' },
-  { name: 'Roxo Claro', hex: '#C4B5FD' },
-  { name: 'Marrom Claro', hex: '#C19A6B' },
-  { name: 'Marrom Escuro', hex: '#654321' },
-  { name: 'Branco', hex: '#FFFFFF' },
-  { name: 'Laranja', hex: '#F97316' },
-  { name: 'Verde', hex: '#22C55E' }
-];
-
-const getTypeIcon = (typeName: string, size = 14) => {
-  const upper = typeName.toUpperCase();
-  if (upper.includes('RETA')) return <Anchor size={size} />;
-  if (upper.includes('FIO')) return <Waves size={size} />;
-  if (upper.includes('ELÁSTICO') || upper.includes('ELASTICO')) return <SlidersHorizontal size={size} />;
-  if (upper.includes('ARGOLA') || upper.includes('BOJO')) return <LifeBuoy size={size} />;
-  if (upper.includes('ETIQUETA') || upper.includes('FITA')) return <Sparkles size={size} />;
-  if (upper.includes('SOL') || upper.includes('TECIDO') || upper.includes('FORRO')) return <Sun size={size} />;
-  return <PackagePlus size={size} />;
-};
-
-function ColorCodeInput({ 
-  colorName, 
-  initialCode, 
-  updateThreadColorCode, 
-  isReadOnly,
-  isElastic 
-}: { 
-  colorName: string; 
-  initialCode: string; 
-  updateThreadColorCode: (colorName: string, code: string) => void; 
-  isReadOnly?: boolean; 
-  isElastic?: boolean;
-}) {
-  const [localCode, setLocalCode] = useState(initialCode || '');
-  const isFocusedRef = React.useRef(false);
-
-  useEffect(() => {
-    if (!isFocusedRef.current) {
-      setLocalCode(initialCode || '');
-    }
-  }, [initialCode]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalCode(e.target.value);
-  };
-
-  const handleFocus = () => {
-    isFocusedRef.current = true;
-  };
-
-  const handleBlur = () => {
-    isFocusedRef.current = false;
-    if (localCode !== (initialCode || '')) {
-      updateThreadColorCode(colorName, localCode);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      (e.target as HTMLInputElement).blur();
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-1.5 bg-[#ebdcb9]/15 border border-[#ebdcb9]/40 hover:border-[#ebdcb9] focus-within:border-[#ebdcb9] focus-within:bg-black/80 px-2 py-0.5 rounded-xl shadow-inner transition-all w-fit mt-1">
-      <span className="text-[9px] font-black text-[#ebdcb9] uppercase tracking-wider whitespace-nowrap select-none">
-        {isElastic ? 'Nº:' : 'CÓD:'}
-      </span>
-      <input 
-        type="text"
-        disabled={isReadOnly}
-        placeholder={isElastic ? "7" : "163"}
-        value={localCode}
-        onChange={handleChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        className="w-16 bg-transparent text-amber-300 font-mono font-black text-xs focus:outline-none placeholder:text-stone-500 uppercase tracking-wider select-text"
-        title={isElastic ? "Digite o número / tamanho do elástico" : "Digite o código da cor"}
-      />
-    </div>
-  );
-}
-
 export function Threads() {
-  const { threads, updateThreadStock, setThreadStock, updateThreadColorCode, addThread, removeThread, isReadOnly, theme } = useInventory();
-  const isLight = theme === 'light';
-  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const { threads, updateThreadStock, setThreadStock } = useInventory();
   const [search, setSearch] = useState('');
-  const [filterCriticalOnly, setFilterCriticalOnly] = useState<boolean>(false);
-  
-  // Modal states for adding new threads
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newType, setNewType] = useState('ELÁSTICO');
-  const [customType, setCustomType] = useState('');
-  const [newColorName, setNewColorName] = useState('');
-  const [newColorCode, setNewColorCode] = useState('');
-  const [newColorHex, setNewColorHex] = useState('#EC4899');
-  const [newInitialStock, setNewInitialStock] = useState<number>(10);
-  const [newMinStock, setNewMinStock] = useState<number>(20);
+  const [selectedType, setSelectedType] = useState<'FIO' | 'RETA'>('FIO');
+  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
 
-  const customTypeInputRef = React.useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (newType === 'OUTRO') {
-      setTimeout(() => customTypeInputRef.current?.focus(), 50);
-    } else if (newType === 'ELÁSTICO') {
-      setNewColorName('BRANCO');
-      setNewColorHex('#FFFFFF');
-    } else if (newType === 'ARGOLAS OASIS') {
-      setNewColorName('DOURADO AMARELADO');
-      setNewColorHex('#EAB308');
-      setNewColorCode('PADRÃO');
-    }
-  }, [newType]);
-  
-  // Delete confirm modal
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  // Success toast message
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
-
-  // Get unique categories/types from existing threads
-  const availableTypes = useMemo(() => {
-    const typesSet = new Set<string>();
-    threads.forEach(t => typesSet.add(t.name.toUpperCase()));
-    return Array.from(typesSet).sort();
-  }, [threads]);
-
-  // Auto-select first category if none is selected
-  useEffect(() => {
-    if (availableTypes.length > 0 && (!selectedType || !availableTypes.includes(selectedType))) {
-      setSelectedType(availableTypes[0]);
-    }
-  }, [availableTypes, selectedType]);
-
-  // Total metrics
-  const totalStock = useMemo(() => {
-    return threads.reduce((sum, item) => sum + item.stock, 0);
-  }, [threads]);
-
-  // Items for the selected category
-  const activeTypeThreads = useMemo(() => {
-    if (!selectedType) return [];
-    return threads.filter(t => t.name.toUpperCase() === selectedType.toUpperCase());
-  }, [threads, selectedType]);
-
-  // Filter active items by search query & critical status
+  // Filter threads based on Type AND Search
   const filteredThreads = useMemo(() => {
-    return activeTypeThreads.filter(t => {
-      const matchesSearch = !search.trim() || 
-        t.colorName.toLowerCase().includes(search.toLowerCase()) ||
-        (t.colorCode && t.colorCode.toLowerCase().includes(search.toLowerCase())) ||
-        t.name.toLowerCase().includes(search.toLowerCase());
-      const matchesCritical = !filterCriticalOnly || t.stock <= t.minStockAlert;
-      return matchesSearch && matchesCritical;
+    return threads.filter(t => {
+      const matchesType = t.name.toUpperCase() === selectedType;
+      const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase()) || 
+                            t.colorName.toLowerCase().includes(search.toLowerCase());
+      return matchesType && matchesSearch;
     });
-  }, [activeTypeThreads, search, filterCriticalOnly]);
+  }, [threads, search, selectedType]);
 
-  // Group filtered items by color
+  // Group filtered threads by color for vertical grouping layout
   const groupedByColor = useMemo(() => {
-    const grouped: Record<string, { cardTitle: string; colorName: string; colorCode: string; colorHex: string; items: Thread[] }> = {};
-    
+    const grouped: Record<string, { colorHex: string; items: Thread[] }> = {};
     filteredThreads.forEach(item => {
-      const isElastic = item.name.toUpperCase().includes('ELÁSTICO') || item.name.toUpperCase().includes('ELASTICO');
-      
-      let key = `${item.name.toUpperCase()}_${item.colorName.toUpperCase()}`;
-      if (item.colorCode && item.colorCode.trim()) {
-        key += `_${item.colorCode.trim().toUpperCase()}`;
-      } else {
-        key += `_${item.id}`;
-      }
-
-      let cardTitle = item.colorName;
-      if (isElastic) {
-        cardTitle = item.colorCode ? `ELÁSTICO NÚMERO ${item.colorCode}` : `ELÁSTICO`;
-      }
-
-      if (!grouped[key]) {
-        grouped[key] = {
-          cardTitle,
-          colorName: item.colorName,
-          colorCode: item.colorCode || '',
-          colorHex: item.colorHex || '#FFFFFF',
+      if (!grouped[item.colorName]) {
+        grouped[item.colorName] = {
+          colorHex: item.colorHex,
           items: []
         };
       }
-      grouped[key].items.push(item);
+      grouped[item.colorName].items.push(item);
     });
-
-    return Object.entries(grouped)
-      .map(([key, data]) => [key, data] as const)
-      .sort((a, b) => a[1].cardTitle.localeCompare(b[1].cardTitle, undefined, { numeric: true }));
+    return Object.entries(grouped).sort(([colorA], [colorB]) => colorA.localeCompare(colorB));
   }, [filteredThreads]);
 
-  const handleCreateThread = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isReadOnly) return;
-    
-    const finalTypeName = (newType === 'OUTRO' ? customType : newType).trim().toUpperCase();
-    const isElastic = finalTypeName.includes('ELÁSTICO') || finalTypeName.includes('ELASTICO');
-    const isArgolas = finalTypeName.includes('ARGOLA') || finalTypeName.includes('OASIS');
-    
-    let finalColorName = isElastic ? 'BRANCO' : newColorName.trim();
-    if (isArgolas) {
-      if (!finalColorName || (finalColorName.toUpperCase() !== 'DOURADO AMARELADO' && finalColorName.toUpperCase() !== 'DOURADO ROSADO')) {
-        finalColorName = 'DOURADO AMARELADO';
-      } else {
-        finalColorName = finalColorName.toUpperCase();
-      }
-    }
+  // Aggregate stats
+  const totalStock = useMemo(() => {
+    return filteredThreads.reduce((sum, item) => sum + item.stock, 0);
+  }, [filteredThreads]);
 
-    let finalColorHex = isElastic 
-      ? '#FFFFFF' 
-      : isArgolas 
-        ? (finalColorName.toUpperCase().includes('ROSADO') ? '#FB7185' : '#EAB308')
-        : newColorHex;
+  const criticalItems = useMemo(() => {
+    return filteredThreads.filter(t => t.stock <= t.minStockAlert);
+  }, [filteredThreads]);
 
-    let finalColorCode = newColorCode.trim();
-    if (isArgolas && !finalColorCode) {
-      finalColorCode = 'PADRÃO';
-    }
+  const normalItems = useMemo(() => {
+    return filteredThreads.filter(t => t.stock > t.minStockAlert);
+  }, [filteredThreads]);
 
-    if (!finalTypeName) {
-      alert('Por favor, selecione ou digite o tipo/categoria do insumo.');
-      return;
-    }
+  // Coastal wave percentage calculator (for the custom animated SVG wave)
+  const tidePercentage = useMemo(() => {
+    if (filteredThreads.length === 0) return 0;
+    const maxReference = filteredThreads.length * 80; // Assuming 80 units is 100% capacity per thread
+    const percentage = Math.min(100, Math.round((totalStock / maxReference) * 100));
+    return percentage;
+  }, [filteredThreads, totalStock]);
 
-    if (!finalColorName) {
-      finalColorName = 'PADRÃO';
-    }
+  // Prepare chart data formatting for Recharts
+  const chartData = useMemo(() => {
+    return filteredThreads.map(t => ({
+      name: t.colorName,
+      tipo: t.name,
+      Estoque: t.stock,
+      Alerta: t.minStockAlert,
+      color: t.colorHex
+    })).sort((a, b) => b.Estoque - a.Estoque);
+  }, [filteredThreads]);
 
-    const exists = threads.some(
-      t => t.name.toUpperCase() === finalTypeName && 
-           t.colorName.toLowerCase() === finalColorName.toLowerCase() &&
-           (t.colorCode || '').trim().toLowerCase() === finalColorCode.toLowerCase()
-    );
-
-    if (exists) {
-      const codeMsg = finalColorCode ? ` (Nº/Cód: ${finalColorCode})` : '';
-      alert(`O insumo "${finalTypeName}" na cor "${finalColorName}"${codeMsg} já está cadastrado.`);
-      return;
-    }
-
-    addThread({
-      name: finalTypeName,
-      colorName: finalColorName,
-      colorCode: finalColorCode,
-      colorHex: finalColorHex,
-      stock: Math.max(0, newInitialStock),
-      minStockAlert: Math.max(0, newMinStock)
-    });
-
-    setIsAddModalOpen(false);
-    setSelectedType(finalTypeName);
-    setNewColorName(newType === 'ELÁSTICO' ? 'BRANCO' : '');
-    setNewColorCode('');
-    setCustomType('');
-    showToast(`Insumo ${finalTypeName} (${finalColorName}) cadastrado!`);
-  };
-
-  const handleDeleteThread = (id: string) => {
-    if (isReadOnly) return;
-    const item = threads.find(t => t.id === id);
-    removeThread(id);
-    setDeletingId(null);
-    if (item) {
-      showToast(`Insumo ${item.name} (${item.colorName}) removido!`);
-    }
+  // Dynamically assign beach-beachfront icons based on the stock state and item id
+  const getLagoonIcon = (item: Thread, index: number) => {
+    if (item.stock <= item.minStockAlert) return <LifeBuoy className="w-5 h-5 text-rose-500 animate-spin" style={{ animationDuration: '4s' }} />;
+    const icons = [
+      <Anchor className="w-5 h-5 text-sky-400" />,
+      <Compass className="w-5 h-5 text-pink-400" />,
+      <Waves className="w-5 h-5 text-sky-300" />,
+      <Wind className="w-5 h-5 text-fuchsia-400" />,
+      <Sun className="w-5 h-5 text-yellow-400 font-bold" />,
+      <Droplet className="w-5 h-5 text-blue-400" />,
+      <Flame className="w-5 h-5 text-pink-500" />
+    ];
+    return icons[index % icons.length];
   };
 
   return (
-    <div className={cn(
-      "relative md:rounded-[2.5rem] overflow-hidden md:border backdrop-blur-xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] p-4 md:p-8 space-y-6 md:space-y-8 min-h-full transition-colors duration-300",
-      isLight ? "bg-white border-slate-200 text-black shadow-slate-200/50" : "bg-[#130d08]/75 border-[#ebdcb9]/15 text-white"
-    )}>
+    <div className="relative rounded-[2rem] overflow-hidden border border-white/10 bg-[#0c0d12]/90 backdrop-blur-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] text-white p-6 md:p-8 space-y-8">
       
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-6 right-6 z-50 bg-emerald-500/90 text-white font-black px-6 py-4 rounded-2xl shadow-2xl border border-emerald-400/30 flex items-center gap-3 backdrop-blur-md animate-bounce">
-          <Check size={20} className="text-white" />
-          <span className="text-xs uppercase tracking-wider">{toastMessage}</span>
-        </div>
-      )}
+      {/* 1. PARALLAX SEA OVERLAY - Visual Ocean Deep Background */}
+      <div 
+        className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center opacity-[0.05] mix-blend-overlay pointer-events-none"
+      />
 
-      {/* Background Effects */}
-      {!isLight && (
-        <div 
-          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80')] bg-cover bg-center tracking-normal opacity-[0.05] mix-blend-overlay pointer-events-none"
-        />
-      )}
+      {/* Tropical glowing neon orbs */}
+      <div className="absolute top-0 right-1/3 w-[600px] h-[350px] bg-[#ebdcb9]/5 blur-[140px] rounded-full pointer-events-none -translate-y-24" />
+      <div className="absolute bottom-0 left-1/4 w-[500px] h-[300px] bg-[#c5a880]/5 blur-[130px] rounded-full pointer-events-none translate-y-20" />
 
-      <div className={cn(
-        "absolute top-0 right-1/4 w-[500px] h-[350px] blur-[130px] rounded-full pointer-events-none -translate-y-20",
-        isLight ? "bg-pink-100/30" : "bg-pink-500/10"
-      )} />
-      <div className={cn(
-        "absolute bottom-10 left-1/4 w-[400px] h-[300px] blur-[120px] rounded-full pointer-events-none translate-y-20",
-        isLight ? "bg-blue-100/20" : "bg-sky-500/10"
-      )} />
-
-      {/* Luxury Beach Header Section */}
-      <div className={cn(
-        "relative rounded-2xl sm:rounded-[2.2rem] border p-4 sm:p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 backdrop-blur-xl overflow-hidden shadow-inner select-none transition-all",
-        isLight 
-          ? "bg-gradient-to-r from-amber-50 to-blue-50 border-slate-100" 
-          : "bg-gradient-to-r from-[#ebdcb9]/10 via-[#c5a880]/5 to-black/40 border-white/5"
-      )}>
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center opacity-[0.05] pointer-events-none" />
+      {/* 2. THE HIGH-END LUXURY HEADER WITH SHORELINE CARA */}
+      <div className="relative bg-gradient-to-r from-[#ebdcb9]/15 via-black/50 to-[#c5a880]/10 rounded-[2.8rem] border border-white/5 p-6 md:p-10 flex flex-col xl:flex-row items-center justify-between gap-8 backdrop-blur-3xl overflow-hidden shadow-2xl select-none">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center opacity-5 pointer-events-none" />
         
-        {/* Glowing Compass and Waves visual title */}
-        <div className="flex items-center gap-3.5 sm:gap-5 relative z-10 w-full md:w-auto">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] p-0.5 shadow-lg flex items-center justify-center relative group overflow-hidden shrink-0">
-            <div className="w-full h-full bg-[#3d2723] rounded-[14px] flex items-center justify-center text-[#ebdcb9]">
-              <Compass className="w-6 h-6 sm:w-8 sm:h-8 animate-pulse text-[#ebdcb9]" />
+        {/* Floating Yacht header */}
+        <div className="flex items-center gap-6 relative z-10 w-full xl:w-auto">
+          <div className="w-20 h-20 rounded-[2rem] bg-gradient-to-tr from-[#ebdcb9] to-[#ad9e7a] p-0.5 shadow-xl flex items-center justify-center relative group overflow-hidden shrink-0">
+            <div className="w-full h-full bg-[#3d2723] rounded-[28px] flex items-center justify-center text-[#ebdcb9]">
+              <Compass className="w-10 h-10 animate-spin text-[#ebdcb9]" style={{ animationDuration: '25s' }} />
             </div>
-            <Waves className="absolute bottom-1.5 right-1.5 w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ebdcb9] animate-bounce" />
+            <Waves className="absolute bottom-2 right-2 w-5 h-5 text-[#ebdcb9] animate-bounce" />
           </div>
-          <div className="min-w-0">
-            <span className={cn(
-              "text-[9px] sm:text-[10px] font-black tracking-[0.25em] uppercase px-2.5 py-1 rounded-full border flex items-center gap-1.5 w-fit shadow-sm",
-              isLight 
-                ? "text-amber-700 bg-amber-50 border-amber-200" 
-                : "text-[#ebdcb9] bg-[#ebdcb9]/10 border-[#cbdcb9]/20"
-            )}>
-              <Sparkles size={11} className={cn("animate-pulse", isLight ? "text-amber-500" : "text-[#ebdcb9]")} /> PORTAL DE INSUMOS
+          <div>
+            <span className="text-[10px] font-black tracking-[0.3em] text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-3 py-1 rounded-full border border-[#ebdcb9]/25 flex items-center gap-2 w-fit shadow-lg">
+              <Sparkles size={12} className="animate-pulse text-sky-400" /> TROPICAL EMBROIDERY SYSTEM
             </span>
-            <h2 className={cn(
-              "text-xl sm:text-3xl font-serif tracking-wide mt-1",
-              isLight ? "text-slate-900" : "text-[#fbf8f2]"
-            )}>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white via-pink-100 to-sky-200 tracking-tight mt-1.5 font-sans">
               Insumos & Fios
             </h2>
+            <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-mono">Artesanato de Linhas na Maré Ativa</p>
           </div>
         </div>
 
-        {/* Dynamic visual dashboard stats bar in Header */}
-        <div className="flex items-center gap-4 sm:gap-6 bg-white/[0.03] border border-white/10 rounded-2xl px-4 py-3 sm:px-6 sm:py-4 backdrop-blur-md relative z-10 shadow-lg shrink-0 w-full md:w-auto justify-around md:justify-start">
-          <div className="text-center md:text-right border-r border-[#ebdcb9]/10 pr-4 sm:pr-6 mr-1 sm:mr-2">
-            <p className="text-[8px] sm:text-[9px] text-[#c5a880] font-bold uppercase tracking-widest">Categorias</p>
-            <p className="text-lg sm:text-xl font-extrabold text-[#ebdcb9] font-mono mt-0.5">{availableTypes.length}</p>
+        {/* 3. COOP INTEGRATED MARITIME WEATHER GAUGE & DASH MINIS */}
+        <div className="flex flex-col sm:flex-row items-stretch gap-5 w-full xl:w-auto z-10">
+          
+          {/* Animated Water / Tide Wave Level Indicator (Cara Praiana) */}
+          <div className="flex-1 bg-slate-950/50 hover:bg-slate-950/70 border border-white/10 rounded-3xl p-4 flex items-center gap-4 transition-all hover:border-sky-500/30 overflow-hidden relative group">
+            {/* Live dynamic tidal wave backdrop inside. Filled depending on tidePercentage */}
+            <div 
+              className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-sky-400/15 via-pink-500/5 to-transparent transition-all duration-1000 ease-out z-0" 
+              style={{ height: `${tidePercentage}%` }}
+            />
+            {/* Animated ocean foam wave line */}
+            <svg className="absolute bottom-[10%] left-0 w-full h-8 opacity-25 text-sky-400 pointer-events-none animate-pulse" viewBox="0 0 120 28" fill="none">
+              <path d="M0 15C30 5 60 25 90 15C105 10 120 15 120 15V28H0V15Z" fill="currentColor"/>
+            </svg>
+
+            <div className="w-12 h-12 rounded-2xl bg-sky-500/10 flex items-center justify-center text-sky-300 border border-sky-400/20 relative z-10 shrink-0">
+              <Waves className="w-6 h-6 animate-pulse" />
+            </div>
+            <div className="relative z-10">
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Nível da Maré</p>
+              <p className="text-lg font-black text-sky-300 font-mono">{tidePercentage}% <span className="text-[10px] text-slate-500 font-normal">Capacidade</span></p>
+              <p className="text-[9px] text-slate-500 font-sans mt-0.5 font-bold uppercase tracking-wider">
+                {tidePercentage > 75 
+                  ? '🌊 MARÉ CHEIA (ESTOQUE ALTO)' 
+                  : tidePercentage > 35 
+                    ? '🌤️ MARÉ AMENA (ESTABILIZADO)' 
+                    : '🚨 BAIXA-MAR (REPOSIÇÃO URGENTE)'}
+              </p>
+            </div>
           </div>
-          <div className="text-center md:text-right flex items-center gap-2.5 sm:gap-3">
+
+          {/* Critical Alarm Badge */}
+          <div className="bg-slate-950/50 hover:bg-slate-950/70 border border-white/10 rounded-3xl p-4 flex items-center gap-4 transition-all hover:border-pink-500/30 shrink-0 relative group">
+            <div className="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center text-pink-400 border border-pink-400/25 shrink-0 relative">
+              <LifeBuoy className="w-6 h-6 animate-spin" style={{ animationDuration: '8s' }} />
+              {criticalItems.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full text-[9px] font-black flex items-center justify-center animate-bounce shadow-md">
+                  {criticalItems.length}
+                </span>
+              )}
+            </div>
             <div>
-              <p className="text-[8px] sm:text-[9px] text-[#c5a880] font-bold uppercase tracking-widest">Disponibilidade</p>
-              <p className="text-lg sm:text-xl font-black text-[#ebdcb9] font-mono mt-0.5">{totalStock} <span className="text-[9px] sm:text-[10px] text-[#c5a880]/60 font-bold font-sans">un</span></p>
-            </div>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#ebdcb9]/15 flex items-center justify-center text-[#ebdcb9] border border-[#ebdcb9]/20">
-              <Anchor size={14} className="animate-pulse" />
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Alertas de Porto</p>
+              <p className="text-lg font-black text-pink-300 font-mono">{criticalItems.length} <span className="text-[10px] text-slate-500 font-normal">críticos</span></p>
+              <p className="text-[9px] text-slate-500 font-sans mt-0.5 uppercase tracking-wider font-bold">Incorrendo Maré Baixa</p>
             </div>
           </div>
+
         </div>
       </div>
 
-      {/* Mobile Quick Category Selector Carousel (lg:hidden) */}
-      {availableTypes.length > 0 && (
-        <div className="lg:hidden w-full overflow-x-auto no-scrollbar flex items-center gap-2 pb-1 scrollbar-none">
-          {availableTypes.map(type => {
-            const isSelected = selectedType === type;
-            const typeItems = threads.filter(t => t.name.toUpperCase() === type);
-            const typeStock = typeItems.reduce((sum, t) => sum + t.stock, 0);
+      {/* 4. THE LUXURY DESCRIPTIVE STATISTICS & TROPICAL WAVE CHARTS (VISUAL SPECTACLE) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+        
+        {/* Oceanscape bar chart container (Recharts visual highlight, 100% custom styled) */}
+        <div className="lg:col-span-8 bg-slate-900/35 border border-white/10 rounded-[2.8rem] p-6 backdrop-blur-xl shadow-2xl relative overflow-hidden flex flex-col justify-between group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-sky-400/5 blur-2xl rounded-full pointer-events-none" />
+          
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 select-none">
+            <div>
+              <span className="text-[9px] font-black px-2.5 py-1 bg-sky-500/10 text-sky-400 border border-sky-500/10 rounded-full tracking-wider uppercase">
+                Análise de Corrente
+              </span>
+              <h3 className="text-lg font-extrabold text-white tracking-wider mt-1 flex items-center gap-2">
+                <Palette size={16} className="text-pink-400 animate-pulse" /> Maré de Estoques por Linha
+              </h3>
+            </div>
+
+            <div className="flex items-center gap-4 text-xs font-mono font-bold">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_6px_#38bdf8]" />
+                <span className="text-slate-400 uppercase text-[10px]">Estoque Suficiente</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-pink-500 shadow-[0_0_6px_#ec4899]" />
+                <span className="text-pink-300 uppercase text-[10px]">Ponto Crítico</span>
+              </div>
+            </div>
+          </div>
+
+          {chartData.length === 0 ? (
+            <div className="h-64 flex items-center justify-center text-slate-500 text-xs font-bold uppercase tracking-wider font-sans">
+              Veleje o filtro de busca para ver tendências
+            </div>
+          ) : (
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#ffffff30" 
+                    tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 'bold' }}
+                    axisLine={false}
+                  />
+                  <YAxis 
+                    stroke="#ffffff30" 
+                    tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 'bold' }}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{ 
+                      backgroundColor: '#020617ef', 
+                      borderRadius: '1.5rem', 
+                      borderColor: '#ffffff10',
+                      color: '#ffffff',
+                      fontSize: '11px',
+                      fontFamily: 'Outfit, sans-serif'
+                    }}
+                    cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+                  />
+                  <Bar dataKey="Estoque" radius={[12, 12, 0, 0]} maxBarSize={30}>
+                    {chartData.map((entry, index) => {
+                      const isLow = entry.Estoque <= entry.Alerta;
+                      // Glow colors matching the thread hex but using sea blue/neon pink highlights based on state
+                      const fillGradient = isLow ? '#EC4899' : '#38BDF8';
+                      return (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={fillGradient}
+                          fillOpacity={0.8}
+                          stroke={isLow ? '#f43f5e30' : '#0ea5e930'}
+                          strokeWidth={1}
+                        />
+                      );
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        {/* Info card of current beach selection (Gauge / details, 100% custom) */}
+        <div className="lg:col-span-4 bg-gradient-to-br from-slate-900/60 to-slate-950/80 border border-white/10 rounded-[2.8rem] p-6 backdrop-blur-xl shadow-2xl relative overflow-hidden flex flex-col justify-between">
+          <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-pink-500/5 blur-2xl rounded-full pointer-events-none" />
+          
+          <div className="space-y-4 select-none">
+            <span className="text-[9px] font-black px-2.5 py-1 bg-pink-500/10 text-pink-400 border border-pink-500/10 rounded-full tracking-wider uppercase">
+              Resumo Costeiro
+            </span>
+            <h3 className="text-lg font-extrabold text-white tracking-wider">Metrologia de Linhas</h3>
+
+            <div className="space-y-3.5 pt-2">
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.02] border border-white/5">
+                <span className="text-xs text-slate-400 uppercase tracking-wider font-bold">Total Enrolado</span>
+                <span className="text-lg font-bold text-sky-300 font-mono">{totalStock} <span className="text-[9px] text-slate-500">vol</span></span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.02] border border-white/5">
+                <span className="text-xs text-slate-400 uppercase tracking-wider font-bold">Insumos Saudáveis</span>
+                <span className="text-lg font-bold text-teal-400 font-mono">{normalItems.length} <span className="text-[9px] text-slate-500">cores</span></span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.02] border border-white/5">
+                <span className="text-xs text-slate-400 uppercase tracking-wider font-bold">Maré Vermelha (Críticos)</span>
+                <span className="text-lg font-bold text-pink-400 font-mono">{criticalItems.length} <span className="text-[9px] text-slate-500 font-bold">cores</span></span>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-6 border-t border-white/5 mt-4 text-[10px] text-slate-500 leading-relaxed font-sans uppercase font-bold flex items-center gap-2">
+            <TrendingUp size={12} className="text-pink-400 animate-pulse" /> Sincronizado com os teares acqualogic em tempo real.
+          </div>
+        </div>
+
+      </div>
+
+      {/* 5. PORTO DE SELEÇÃO - BEACH FILTER BAR AND SEARCH SEARCH DECK */}
+      <div className="relative bg-slate-900/30 border border-white/10 rounded-[2.5rem] p-4 flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-xl z-10 shadow-lg">
+        
+        {/* Deluxe Beach Filter Tabs (No list style!) */}
+        <div className="flex items-center p-1.5 bg-black/40 rounded-2xl border border-white/5 shrink-0 w-full md:w-auto">
+          {[
+            { value: 'FIO', label: 'Fios', icon: <Waves size={13} /> },
+            { value: 'RETA', label: 'Retas', icon: <Anchor size={13} /> }
+          ].map(tab => {
+            const isActive = selectedType === tab.value;
             return (
               <button
-                key={type}
-                onClick={() => setSelectedType(type)}
+                key={tab.value}
+                onClick={() => setSelectedType(tab.value as any)}
                 className={cn(
-                  "flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold shrink-0 transition-all cursor-pointer whitespace-nowrap active:scale-95",
-                  isSelected
-                    ? "border-[#ebdcb9] bg-[#ebdcb9]/20 text-[#ebdcb9] shadow-md ring-1 ring-[#ebdcb9]/40"
-                    : (isLight ? "border-slate-200 bg-slate-100 text-slate-600" : "border-white/10 bg-slate-900/60 text-stone-300 hover:bg-white/5")
+                  "flex-1 md:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all duration-300",
+                  isActive 
+                    ? "bg-gradient-to-r from-sky-400 to-pink-500 text-white shadow-md shadow-pink-500/10 scale-105" 
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
                 )}
               >
-                {getTypeIcon(type, 13)}
-                <span>{type}</span>
-                <span className={cn(
-                  "text-[10px] font-mono px-1.5 py-0.5 rounded",
-                  isLight ? "bg-slate-200 text-slate-500" : "bg-black/40 text-stone-400"
-                )}>
-                  {typeStock}u
-                </span>
+                {tab.icon}
+                <span>{tab.label}</span>
               </button>
             );
           })}
         </div>
-      )}
 
-      {/* Immersive Column Split Layout: Left vertical grouped "CATEGORIAS DISPONÍVEIS", Right showing "Insumos Ativos" */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 relative z-10">
-        
-        {/* Left Column: CATEGORIAS DISPONÍVEIS (Hidden on mobile when pill bar is shown) */}
-        <div className="hidden lg:block lg:col-span-4 xl:col-span-3 space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-white/5">
-            <span className="text-[11px] font-black tracking-widest text-[#ebdcb9] uppercase bg-[#ebdcb9]/10 px-3 py-1 rounded-full border border-[#ebdcb9]/25 flex items-center gap-1.5 shadow-sm">
-              <Layers size={12} className="text-[#ebdcb9] animate-pulse" /> CATEGORIAS DISPONÍVEIS
-            </span>
-            {!isReadOnly && (
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="text-[10px] font-bold text-sky-400 hover:text-white bg-sky-500/10 hover:bg-sky-500 border border-sky-500/25 px-2.5 py-1 rounded-lg transition-all cursor-pointer hover:scale-[1.03] active:scale-[0.97]"
-                title="Adicionar Novo Insumo"
-              >
-                + Novo
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-3 max-h-[80vh] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-            {availableTypes.map(type => {
-              const isSelected = selectedType === type;
-              const typeItems = threads.filter(t => t.name.toUpperCase() === type);
-              const typeStock = typeItems.reduce((sum, t) => sum + t.stock, 0);
-              const isLowStock = typeItems.some(v => v.stock <= v.minStockAlert);
-
-              return (
-                <button
-                  key={type}
-                  onClick={() => setSelectedType(type)}
-                  className={cn(
-                    "relative group rounded-[2rem] border text-left p-4 transition-all duration-300 select-none overflow-hidden flex items-center justify-between backdrop-blur-md shadow-lg w-full cursor-pointer",
-                    isSelected 
-                      ? (isLight ? "border-amber-400 bg-amber-50 text-amber-900 shadow-amber-100 ring-2 ring-amber-200" : "border-pink-500/60 bg-gradient-to-r from-pink-500/[0.15] via-slate-900/40 to-slate-950/80 shadow-pink-500/10 ring-2 ring-pink-500/20")
-                      : (isLight ? "border-slate-100 bg-slate-50 hover:bg-slate-100 text-slate-600" : "border-white/5 bg-slate-900/35 hover:border-sky-500/30 hover:bg-slate-900/40")
-                  )}
-                >
-                  <div className="flex items-center gap-3.5 relative z-10 min-w-0 flex-1">
-                    <div className={cn(
-                      "w-10 h-10 rounded-2xl font-bold flex items-center justify-center text-sm tracking-wider border shrink-0 transition-all duration-300",
-                      isSelected 
-                        ? "bg-gradient-to-tr from-pink-500 to-sky-400 border-pink-400/20 text-white shadow-md shadow-pink-500/15" 
-                        : "bg-white/5 border-white/10 group-hover:border-sky-400/40"
-                    )}>
-                      {getTypeIcon(type, 16)}
-                    </div>
-
-                    <div className="min-w-0">
-                      <h3 className={cn(
-                        "text-[11px] font-black tracking-widest uppercase truncate transition-colors",
-                        isSelected ? "text-[#ebdcb9]" : "text-[#d7cab5] group-hover:text-white"
-                      )}>
-                        {type}
-                      </h3>
-                      <span className="text-[8px] text-[#c5a880]/80 uppercase tracking-widest font-extrabold mt-0.5 block">
-                        {typeItems.length} itens
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 relative z-10 shrink-0">
-                    {isLowStock && (
-                      <div className="w-2 h-2 rounded-full bg-orange-600 animate-ping shadow-[0_0_8px_#ea580c]" title="Estoque Baixo" />
-                    )}
-                    <span className={cn(
-                      "text-[10px] font-mono px-2.5 py-1 rounded-xl border font-bold shrink-0",
-                      isSelected 
-                        ? "bg-[#ebdcb9]/20 text-[#ebdcb9] border-[#ebdcb9]/40" 
-                        : "bg-black/40 text-stone-400 border-white/5"
-                    )}>
-                      {typeStock} u
-                    </span>
-                  </div>
-
-                  <div className={cn(
-                    "absolute left-0 inset-y-0 w-1 transition-all duration-300",
-                    isSelected ? "bg-gradient-to-b from-[#ebdcb9] to-[#c5a880]" : "bg-transparent"
-                  )} />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right Column: Active category variations details / workbench */}
-        <div className="col-span-1 lg:col-span-8 xl:col-span-9">
-          {selectedType ? (
-            <div className={cn(
-              "relative z-10 border rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-6 md:p-8 space-y-6 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-top-4 duration-500",
-              isLight ? "bg-slate-50/50 border-slate-100" : "border-[#ebdcb9]/15 bg-black/20"
-            )}>
-              
-              {/* Detailed Workstation Header */}
-              <div className={cn(
-                "flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b",
-                isLight ? "border-slate-200" : "border-[#ebdcb9]/10"
-              )}>
-                <div className="flex items-center gap-4">
-                  <div className={cn(
-                    "w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0",
-                    isLight ? "bg-amber-100 border-amber-200 text-amber-600" : "bg-gradient-to-tr from-[#ebdcb9]/20 to-[#c5a880]/10 border-[#ebdcb9]/15 text-[#ebdcb9]"
-                  )}>
-                    {getTypeIcon(selectedType, 20)}
-                  </div>
-                  <div>
-                    <span className={cn(
-                      "text-[9px] font-black border px-2 py-0.5 rounded-full uppercase tracking-wider",
-                      isLight ? "bg-amber-100 border-amber-200 text-amber-700" : "text-[#ebdcb9] bg-[#ebdcb9]/10 border border-[#ebdcb9]/25"
-                    )}>
-                      Insumos Ativos
-                    </span>
-                    <div className="flex items-center gap-3.5 mt-1.5 flex-wrap">
-                      <h3 className={cn("text-xl font-extrabold tracking-widest uppercase leading-none", isLight ? "text-slate-900" : "text-white")}>{selectedType}</h3>
-                      {!isReadOnly && (
-                        <button
-                          type="button"
-                          onClick={() => setIsAddModalOpen(true)}
-                          className="text-[9px] font-bold text-sky-400 hover:text-white bg-sky-500/10 hover:bg-sky-500 border border-sky-500/25 px-2.5 py-1 rounded-xl transition duration-150 cursor-pointer shadow-sm"
-                        >
-                          + Adicionar Insumo
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Interactive Search Tool & Filters */}
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <button
-                    onClick={() => setFilterCriticalOnly(!filterCriticalOnly)}
-                    className={cn(
-                      "px-3 py-2 rounded-full border text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5",
-                      filterCriticalOnly 
-                        ? "bg-rose-500/20 text-rose-300 border-rose-500/40" 
-                        : (isLight ? "bg-white border-slate-200 text-slate-600" : "bg-black/40 border-white/10 text-stone-400 hover:text-white")
-                    )}
-                  >
-                    <AlertCircle size={12} />
-                    {filterCriticalOnly ? "Críticos" : "Filtrar Críticos"}
-                  </button>
-
-                  <div className="relative flex-1 sm:flex-initial">
-                    <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2", isLight ? "text-slate-400" : "text-[#c5a880]")} size={13} />
-                    <input 
-                      type="text" 
-                      placeholder="Buscar cor ou código..." 
-                      value={search}
-                      onChange={e => setSearch(e.target.value)}
-                      className={cn(
-                        "w-full sm:w-56 pl-8 pr-4 py-2 border transition-all rounded-full text-[11px] focus:outline-none",
-                        isLight 
-                          ? "bg-white border-slate-200 text-black placeholder:text-slate-400 focus:border-amber-400" 
-                          : "bg-black/40 border border-[#ebdcb9]/15 text-white hover:border-[#ebdcb9]/45 placeholder:text-stone-600"
-                      )}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Visual Capsules Grid (Grouped by Color) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {groupedByColor.length === 0 ? (
-                  <div className="col-span-full py-16 text-center text-slate-500 text-xs uppercase tracking-wider font-bold">
-                    Nenhum insumo atende aos filtros selecionados
-                  </div>
-                ) : (
-                  groupedByColor.map(([cardKey, group]) => {
-                    const colorGroupTotalStock = group.items.reduce((sum, item) => sum + item.stock, 0);
-                    const isElasticGroup = group.items.some(i => i.name.toUpperCase().includes('ELÁSTICO') || i.name.toUpperCase().includes('ELASTICO'));
-                    const mainItemId = group.items[0]?.id;
-                    const stableCardKey = mainItemId ? `card_${mainItemId}` : cardKey;
-
-                    return (
-                      <div 
-                        key={stableCardKey}
-                        className={cn(
-                          "border rounded-[2.5rem] p-5 space-y-4 shadow-xl relative overflow-hidden group/color-card",
-                          isLight ? "bg-white border-slate-100 shadow-slate-200/50" : "border-[#ebdcb9]/10 bg-black/30"
-                        )}
-                      >
-                        {/* Background color glow on hover */}
-                        <div 
-                          className="absolute -top-10 -right-10 w-28 h-28 blur-3xl rounded-full opacity-0 group-hover/color-card:opacity-10 transition-opacity duration-500 pointer-events-none" 
-                          style={{ backgroundColor: group.colorHex }}
-                        />
-                        
-                        {/* Color Info Header */}
-                        <div className={cn(
-                          "flex items-center justify-between pb-3 border-b relative z-10 select-none",
-                          isLight ? "border-slate-50" : "border-white/5"
-                        )}>
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <div 
-                              className="w-6 h-6 rounded-full border border-white/20 shadow-lg relative shrink-0" 
-                              style={{ 
-                                backgroundColor: group.colorHex,
-                                boxShadow: `0 0 12px ${group.colorHex}65, inset 0 1px 1px rgba(255,255,255,0.4)`
-                              }} 
-                            />
-                            <div className="min-w-0 flex-1">
-                              <h4 className={cn("text-sm font-black tracking-wider uppercase truncate", isLight ? "text-slate-800" : "text-slate-100")}>
-                                {isElasticGroup ? (group.colorCode ? `ELÁSTICO Nº ${group.colorCode}` : 'ELÁSTICO') : group.colorName}
-                              </h4>
-                              <ColorCodeInput 
-                                colorName={mainItemId || group.colorName}
-                                initialCode={group.colorCode}
-                                updateThreadColorCode={updateThreadColorCode}
-                                isReadOnly={isReadOnly}
-                                isElastic={isElasticGroup}
-                              />
-                            </div>
-                          </div>
-                          
-                          <div className={cn(
-                            "border px-2.5 py-1 rounded-xl text-right shrink-0 ml-2",
-                            isLight ? "bg-slate-50 border-slate-100" : "bg-white/5 border-white/5"
-                          )}>
-                            <span className="text-[10px] text-stone-400 font-mono tracking-wider uppercase">Total: </span>
-                            <span className={cn("text-xs font-black font-mono", isLight ? "text-slate-900" : "text-[#ebdcb9]")}>{colorGroupTotalStock} u</span>
-                          </div>
-                        </div>
-
-                        {/* Items Grid inside Color Card */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 relative z-10">
-                          {group.items.map(v => {
-                            const isCritical = v.stock <= v.minStockAlert;
-                            return (
-                              <div 
-                                key={v.id} 
-                                className={cn(
-                                  "p-3 rounded-2xl border flex flex-col justify-between gap-2.5 hover:bg-opacity-80 transition-all relative overflow-hidden",
-                                  isCritical 
-                                    ? (isLight ? "border-rose-200 bg-rose-50" : "border-rose-500/20 bg-rose-500/[0.02]")
-                                    : (isLight ? "bg-slate-50 border-slate-100 hover:border-amber-200" : "bg-white/[0.015] border-white/5 hover:border-sky-500/20 hover:bg-white/[0.03]")
-                                )}
-                              >
-                                {isCritical && (
-                                  <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_6px_#f43f5e] animate-ping" />
-                                )}
-
-                                <div className="flex items-center justify-between pointer-events-none">
-                                  <span className={cn(
-                                    "font-black text-[10px] border px-1.5 py-0.5 rounded-lg truncate max-w-[80px]",
-                                    isLight ? "text-amber-700 bg-amber-50 border-amber-100" : "text-sky-400 bg-sky-500/10 border-sky-500/10"
-                                  )}>
-                                    {v.colorCode ? `#${v.colorCode}` : v.name}
-                                  </span>
-                                  {!isReadOnly && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setDeletingId(v.id)}
-                                      className="pointer-events-auto text-slate-500 hover:text-rose-400 p-0.5"
-                                      title="Excluir"
-                                    >
-                                      <Trash2 size={11} />
-                                    </button>
-                                  )}
-                                </div>
-
-                                {/* Stock Input & Controls */}
-                                <div className="text-center py-0.5 relative z-10 w-full">
-                                  <div className="flex items-center justify-center gap-1 my-1">
-                                    {!isReadOnly && (
-                                      <button
-                                        type="button"
-                                        onClick={() => updateThreadStock(v.id, -1)}
-                                        className={cn(
-                                          "w-6 h-6 rounded-lg border flex items-center justify-center transition-all cursor-pointer active:scale-90 shrink-0",
-                                          isLight ? "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700" : "bg-white/10 hover:bg-white/20 border-white/10 text-white"
-                                        )}
-                                      >
-                                        <Minus size={11} />
-                                      </button>
-                                    )}
-                                    <input
-                                      type="number"
-                                      value={v.stock === 0 ? '' : v.stock}
-                                      onChange={(e) => {
-                                        const parsed = parseInt(e.target.value, 10);
-                                        setThreadStock(v.id, isNaN(parsed) ? 0 : Math.max(0, parsed));
-                                      }}
-                                      onWheel={(e) => (e.target as HTMLElement).blur()}
-                                      placeholder="0"
-                                      disabled={isReadOnly}
-                                      className={cn(
-                                        "w-14 text-center py-1 border rounded-xl font-mono text-base font-black select-text focus:outline-none focus:ring-0 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                                        isLight 
-                                          ? "bg-white border-slate-200 text-slate-900 focus:border-amber-400" 
-                                          : "bg-white/5 hover:bg-white/10 focus:bg-slate-950/90 border-white/5 focus:border-pink-500/40 text-white focus:text-pink-300"
-                                      )}
-                                    />
-                                    {!isReadOnly && (
-                                      <button
-                                        type="button"
-                                        onClick={() => updateThreadStock(v.id, 1)}
-                                        className={cn(
-                                          "w-6 h-6 rounded-lg border flex items-center justify-center transition-all cursor-pointer active:scale-90 shrink-0",
-                                          isLight ? "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700" : "bg-white/10 hover:bg-white/20 border-white/10 text-white"
-                                        )}
-                                      >
-                                        <Plus size={11} />
-                                      </button>
-                                    )}
-                                  </div>
-                                  <span className="text-[8px] text-slate-500 font-mono block uppercase mt-0.5 tracking-widest">Estoque</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className={cn(
-              "rounded-[3rem] border py-24 text-center shadow-xl backdrop-blur-xl flex flex-col items-center justify-center gap-4",
-              isLight ? "bg-slate-50 border-slate-100" : "bg-slate-900/40 border-white/5"
-            )}>
-              <Waves size={40} className="text-pink-500 opacity-20 animate-bounce" />
-              <p className="font-sans tracking-widest font-bold text-xs uppercase text-slate-400">Selecione uma categoria de insumo.</p>
-            </div>
-          )}
+        {/* Luxury Search Deck */}
+        <div className="relative w-full md:w-80">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+          <input 
+            type="text" 
+            placeholder="Navegar cores do porto..." 
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-10 pr-6 py-3 bg-white/5 border border-white/10 hover:border-sky-500/20 focus:border-pink-500/40 transition-all rounded-full text-xs text-white focus:outline-none placeholder:text-slate-500 font-sans"
+          />
         </div>
       </div>
 
-      {/* CREATE NEW INSUMO / THREAD MODAL */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
-          <div className="bg-[#2a1c13] border border-[#ebdcb9]/30 rounded-3xl p-5 sm:p-6 max-w-lg w-full space-y-4 shadow-2xl relative my-8">
-            <button
-              onClick={() => setIsAddModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer p-2 rounded-xl bg-white/5"
-            >
-              <X size={18} />
-            </button>
+      {/* 6. COLEÇÃO DE PÉROLAS DE COSTURA - 100% ICON-BASED MULTIDIMENSIONAL CARD GRID */}
+      <div className="relative z-10 space-y-4">
+        <div className="flex items-center justify-between select-none">
+          <span className="text-xs font-bold font-mono tracking-widest text-[#EC4899] uppercase bg-pink-500/10 px-3 py-1 rounded-full border border-pink-500/20 flex items-center gap-1.5 shadow-sm">
+            <Palette size={13} className="text-pink-300 animate-bounce" /> CORES DE EMBARCAÇÃO
+          </span>
+          <span className="text-[10px] text-slate-500 font-sans tracking-tight uppercase font-bold">Use os giroscópios de ajuste para alterar estoque</span>
+        </div>
 
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-[#ebdcb9]/10 border border-[#ebdcb9]/30 flex items-center justify-center text-[#ebdcb9]">
-                <PackagePlus size={24} />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-white uppercase tracking-tight">Cadastrar Novo Insumo</h3>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Adicionar Linha, Reta, Elástico ou Aviamento</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleCreateThread} className="space-y-4">
-              {/* Tipo de Insumo */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                  Tipo / Categoria do Insumo
-                </label>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {['ELÁSTICO', 'FIO', 'RETA', 'ARGOLAS OASIS', 'ETIQUETA', 'SOL OASIS', 'OUTRO'].map(t => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setNewType(t)}
-                      className={cn(
-                        "py-2 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-1",
-                        newType === t 
-                          ? "bg-[#ebdcb9] text-[#3d2723] border-[#ebdcb9] shadow-md font-extrabold" 
-                          : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
-                      )}
-                    >
-                      {getTypeIcon(t, 12)}
-                      <span>{t}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {newType === 'OUTRO' && (
-                  <input
-                    ref={customTypeInputRef}
-                    type="text"
-                    required
-                    placeholder="Digite a nova categoria (Ex: FORRO, FITA, AVIAMENTOS)..."
-                    value={customType}
-                    onChange={(e) => setCustomType(e.target.value)}
-                    className="w-full mt-2 bg-white/5 border border-[#ebdcb9]/40 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:border-[#ebdcb9]"
+        {groupedByColor.length === 0 ? (
+          <div className="bg-slate-900/40 rounded-[3rem] border border-white/5 py-20 text-center shadow-xl backdrop-blur-xl flex flex-col items-center justify-center gap-4">
+            <Waves size={40} className="text-pink-500 opacity-20 animate-bounce" />
+            <p className="text-slate-400 font-sans tracking-widest font-bold text-xs uppercase">Estoque do porto completamente vazio.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {groupedByColor.map(([colorName, group]) => {
+              const colorGroupTotalStock = group.items.reduce((sum, item) => sum + item.stock, 0);
+              
+              return (
+                <div 
+                  key={colorName}
+                  className="border border-white/10 bg-slate-950/40 rounded-[2.5rem] p-5 space-y-4 shadow-xl relative overflow-hidden group/color-card"
+                >
+                  {/* Light subtle glow of the color itself at the background on hover */}
+                  <div 
+                    className="absolute -top-10 -right-10 w-28 h-28 blur-3xl rounded-full opacity-0 group-hover/color-card:opacity-10 transition-opacity duration-500 pointer-events-none" 
+                    style={{ backgroundColor: group.colorHex }}
                   />
-                )}
-              </div>
-
-              {/* Nome da Cor e Código/Número do Insumo */}
-              {(() => {
-                const isElasticForm = newType === 'ELÁSTICO' || (newType === 'OUTRO' && customType.toUpperCase().includes('ELÁSTICO'));
-                const isArgolasForm = newType === 'ARGOLAS OASIS' || (newType === 'OUTRO' && (customType.toUpperCase().includes('ARGOLA') || customType.toUpperCase().includes('OASIS')));
-
-                return (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="sm:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 flex items-center justify-between">
-                          <span>
-                            {isElasticForm 
-                              ? 'Cor do Elástico' 
-                              : isArgolasForm 
-                                ? 'Cor da Argola Oasis' 
-                                : 'Nome da Cor / Tonalidade'}
-                          </span>
-                          {isElasticForm && (
-                            <span className="text-[9px] text-amber-300 font-black bg-amber-400/15 px-2 py-0.5 rounded border border-amber-400/30">
-                              FIXO EM BRANCO
-                            </span>
-                          )}
-                          {isArgolasForm && (
-                            <span className="text-[9px] text-amber-300 font-black bg-amber-400/15 px-2 py-0.5 rounded border border-amber-400/30">
-                              OPÇÕES FIXAS (2 CORES)
-                            </span>
-                          )}
-                        </label>
-
-                        {isArgolasForm ? (
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNewColorName('DOURADO AMARELADO');
-                                setNewColorHex('#EAB308');
-                              }}
-                              className={cn(
-                                "flex items-center gap-2 p-2.5 rounded-xl border transition-all text-left cursor-pointer",
-                                newColorName.toUpperCase().includes('AMARELADO') || !newColorName.toUpperCase().includes('ROSADO')
-                                  ? "bg-amber-400/15 border-amber-400 text-amber-200 shadow-md ring-1 ring-amber-400/30 font-black"
-                                  : "bg-white/5 border-white/10 text-slate-400 hover:border-white/20"
-                              )}
-                            >
-                              <div className="w-4 h-4 rounded-full bg-[#EAB308] border border-amber-300 shrink-0 shadow-sm" />
-                              <div className="flex flex-col">
-                                <span className="text-[10px] uppercase font-bold tracking-tight text-amber-100">DOURADO</span>
-                                <span className="text-[8px] font-black tracking-wider text-amber-300">AMARELADO</span>
-                              </div>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNewColorName('DOURADO ROSADO');
-                                setNewColorHex('#FB7185');
-                              }}
-                              className={cn(
-                                "flex items-center gap-2 p-2.5 rounded-xl border transition-all text-left cursor-pointer",
-                                newColorName.toUpperCase().includes('ROSADO')
-                                  ? "bg-rose-500/15 border-rose-400 text-rose-200 shadow-md ring-1 ring-rose-400/30 font-black"
-                                  : "bg-white/5 border-white/10 text-slate-400 hover:border-white/20"
-                              )}
-                            >
-                              <div className="w-4 h-4 rounded-full bg-[#FB7185] border border-rose-300 shrink-0 shadow-sm" />
-                              <div className="flex flex-col">
-                                <span className="text-[10px] uppercase font-bold tracking-tight text-rose-100">DOURADO</span>
-                                <span className="text-[8px] font-black tracking-wider text-rose-300">ROSADO</span>
-                              </div>
-                            </button>
-                          </div>
-                        ) : (
-                          <input
-                            type="text"
-                            required
-                            readOnly={isElasticForm}
-                            placeholder="Ex: Verde, Rosa Bebê..."
-                            value={isElasticForm ? 'BRANCO' : newColorName}
-                            onChange={(e) => !isElasticForm && setNewColorName(e.target.value)}
-                            className={cn(
-                              "w-full bg-white/5 border rounded-xl px-3.5 py-2.5 text-xs font-bold outline-none",
-                              isElasticForm 
-                                ? "border-amber-400/40 text-amber-200 cursor-not-allowed bg-amber-400/5 font-extrabold" 
-                                : "border-[#ebdcb9]/20 text-white focus:border-[#ebdcb9]"
-                            )}
-                          />
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                          {isElasticForm 
-                            ? 'Número = Tamanho' 
-                            : isArgolasForm 
-                              ? 'Variação / Tam' 
-                              : 'Código (Ex: 163)'}
-                        </label>
-                        <input
-                          type="text"
-                          readOnly={isArgolasForm}
-                          placeholder={
-                            isElasticForm 
-                              ? "Ex: 7, 10mm" 
-                              : isArgolasForm 
-                                ? "PADRÃO" 
-                                : "Ex: 163"
-                          }
-                          value={isArgolasForm ? 'PADRÃO' : newColorCode}
-                          onChange={(e) => setNewColorCode(e.target.value)}
-                          className="w-full bg-white/5 border border-[#ebdcb9]/20 rounded-xl px-3.5 py-2.5 text-xs font-bold font-mono text-amber-300 outline-none focus:border-[#ebdcb9]"
-                        />
-                        {isElasticForm && (
-                          <div className="space-y-1 pt-1">
-                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest pl-1">
-                              Atalhos:
-                            </span>
-                            <div className="flex flex-wrap gap-1">
-                              {['5', '6', '7', '8', '10', '12', '14'].map(num => (
-                                <button
-                                  key={num}
-                                  type="button"
-                                  onClick={() => setNewColorCode(num)}
-                                  className={cn(
-                                    "px-2 py-0.5 rounded-lg text-[9px] font-mono font-bold transition-all cursor-pointer border",
-                                    newColorCode === num 
-                                      ? "bg-amber-400 text-black border-amber-300 font-extrabold shadow-sm scale-105" 
-                                      : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-amber-300"
-                                  )}
-                                >
-                                  Nº {num}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                  
+                  {/* Color Info Header */}
+                  <div className="flex items-center justify-between pb-3 border-b border-white/5 relative z-10 select-none">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-6 h-6 rounded-full border border-white/20 shadow-lg relative" 
+                        style={{ 
+                          backgroundColor: group.colorHex,
+                          boxShadow: `0 0 12px ${group.colorHex}65, inset 0 1px 1px rgba(255,255,255,0.4)`
+                        }} 
+                      />
+                      <div>
+                        <h4 className="text-sm font-black tracking-wider uppercase text-slate-100">{colorName}</h4>
+                        <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Insumo ativo</p>
                       </div>
                     </div>
+                    
+                    <div className="bg-white/5 border border-white/5 px-2.5 py-1 rounded-xl text-right">
+                      <span className="text-[10px] text-slate-400 font-mono tracking-wider uppercase">Total: </span>
+                      <span className="text-xs font-black text-pink-300 font-mono">{colorGroupTotalStock} u</span>
+                    </div>
+                  </div>
 
-                    {/* Palette Color Presets */}
-                    {!isElasticForm && !isArgolasForm && (
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 flex items-center justify-between">
-                          <span>Selecione a Cor Visual</span>
-                          <span className="font-mono text-[#ebdcb9]">{newColorHex}</span>
-                        </label>
-                        
-                        <div className="flex flex-wrap gap-2 p-2.5 bg-white/5 rounded-xl border border-white/10 max-h-28 overflow-y-auto">
-                          {PRESET_COLORS.map(c => (
-                            <button
-                              key={c.name}
-                              type="button"
-                              onClick={() => {
-                                setNewColorHex(c.hex);
-                                if (!newColorName) setNewColorName(c.name);
-                              }}
-                              title={c.name}
-                              className={cn(
-                                "w-6 h-6 rounded-full border-2 transition-all cursor-pointer relative shrink-0",
-                                newColorHex.toLowerCase() === c.hex.toLowerCase()
-                                  ? "border-amber-400 scale-110 shadow-lg"
-                                  : "border-white/20 hover:scale-105"
+                  {/* Vertical Stack inside this Color Group */}
+                  <div className="space-y-2.5 relative z-10">
+                    {group.items.map((v) => {
+                      const isCritical = v.stock <= v.minStockAlert;
+                      return (
+                        <div 
+                          key={v.id} 
+                          className={cn(
+                            "p-3 rounded-2xl bg-white/[0.015] border flex items-center justify-between gap-3 hover:bg-white/[0.03] transition-all relative overflow-hidden",
+                            isCritical 
+                              ? "border-rose-500/25 bg-rose-500/[0.02]" 
+                              : "border-white/5 hover:border-sky-500/20"
+                          )}
+                        >
+                          {isCritical && (
+                            <div className="absolute top-1.5 right-1.5 w-1 h-1 rounded-full bg-rose-500 shadow-[0_0_6px_#f43f5e] animate-ping" />
+                          )}
+
+                          {/* Variation Name and indicator */}
+                          <div className="flex items-center gap-2.5">
+                            <div className={cn(
+                              "w-8 h-8 rounded-xl flex items-center justify-center border transition-transform duration-300",
+                              v.name === 'RETA' 
+                                ? 'bg-sky-500/10 border-sky-400/20 text-sky-400' 
+                                : 'bg-pink-500/10 border-pink-400/20 text-pink-400'
+                            )}>
+                              {v.name === 'RETA' ? <Anchor size={12} /> : <Waves size={12} />}
+                            </div>
+                            <div>
+                              <span className="font-extrabold text-[12px] uppercase tracking-wider text-slate-200">
+                                {v.name}
+                              </span>
+                              {isCritical && (
+                                <span className="text-[7.5px] text-rose-400 font-black tracking-widest uppercase block mt-0.5 animate-pulse">Min</span>
                               )}
-                              style={{ backgroundColor: c.hex }}
-                            />
-                          ))}
-                          <input
-                            type="color"
-                            value={newColorHex}
-                            onChange={(e) => setNewColorHex(e.target.value)}
-                            className="w-6 h-6 rounded-full bg-transparent border-0 cursor-pointer p-0"
-                            title="Seletor Personalizado"
-                          />
+                            </div>
+                          </div>
+
+                          {/* Stocks and Direct manual input aligned on the horizontal row inside card */}
+                          <div className="flex items-center gap-3">
+                            <div className="w-[84px] relative z-10 animate-fade-in">
+                              <input
+                                type="number"
+                                value={v.stock === 0 ? '' : v.stock}
+                                onChange={(e) => {
+                                  const parsed = parseInt(e.target.value, 10);
+                                  setThreadStock(v.id, isNaN(parsed) ? 0 : Math.max(0, parsed));
+                                }}
+                                onWheel={(e) => (e.target as HTMLElement).blur()}
+                                placeholder="0"
+                                className={cn(
+                                  "w-full text-center py-1.5 bg-white/5 hover:bg-white/10 focus:bg-slate-950 border border-white/5 focus:border-pink-500/40 rounded-xl font-mono text-sm font-black select-text focus:outline-none focus:ring-0 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                                  isCritical ? "text-rose-400 focus:text-rose-400" : "text-white focus:text-pink-300"
+                                )}
+                              />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-
-              {/* Quantidade Inicial & Alerta Mínimo */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                    Estoque Inicial
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={newInitialStock}
-                    onChange={(e) => setNewInitialStock(parseInt(e.target.value) || 0)}
-                    className="w-full bg-white/5 border border-[#ebdcb9]/20 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white outline-none focus:border-[#ebdcb9]"
-                  />
+                      );
+                    })}
+                  </div>
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
-                    Alerta Mínimo
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={newMinStock}
-                    onChange={(e) => setNewMinStock(parseInt(e.target.value) || 0)}
-                    className="w-full bg-white/5 border border-[#ebdcb9]/20 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white outline-none focus:border-[#ebdcb9]"
-                  />
-                </div>
-              </div>
-
-              {/* Modal Actions */}
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="bg-gradient-to-tr from-[#ebdcb9] via-[#ad9e7a] to-[#c5a880] text-[#3d2723] px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer shadow-lg hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
-                >
-                  <PackagePlus size={15} /> Confirmar
-                </button>
-              </div>
-            </form>
+              );
+            })}
           </div>
-        </div>
-      )}
-
-      {/* CONFIRM DELETE MODAL */}
-      {deletingId && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#130d08] border border-rose-500/30 rounded-[2rem] p-6 max-w-sm w-full space-y-5 text-center shadow-2xl">
-            <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center mx-auto">
-              <Trash2 size={24} />
-            </div>
-            <div>
-              <h3 className="text-lg font-black text-white uppercase tracking-tight">Excluir Insumo?</h3>
-              <p className="text-xs text-slate-400 font-bold mt-1">
-                Esta ação removerá este insumo do controle de estoque do sistema.
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <button
-                onClick={() => setDeletingId(null)}
-                className="px-4 py-2.5 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-white cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => handleDeleteThread(deletingId)}
-                className="bg-rose-500 hover:bg-rose-600 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer shadow-lg transition-all"
-              >
-                Excluir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
     </div>
   );
+
+  // Simple state bridge for hover
+  function setHoverCardId(id: string | null) {
+    setHoveredCardId(id);
+  }
 }

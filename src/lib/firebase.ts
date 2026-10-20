@@ -1,6 +1,5 @@
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
-import { getAuth, signInAnonymously } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAWQcPEAgpKRYF63hArVYb02zY2kGkuA8M",
@@ -16,12 +15,5 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth & attempt anonymous authentication to grant database access
-export const auth = getAuth(app);
-signInAnonymously(auth).catch((err) => {
-  console.warn("Firebase anonymous auth notice:", err?.message || err);
-});
-
 // Initialize Realtime Database
 export const rtdb = getDatabase(app);
-

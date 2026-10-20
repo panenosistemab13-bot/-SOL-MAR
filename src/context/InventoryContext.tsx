@@ -1,9 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Bikini, Thread, Sale, BikiniStockDivided, UserProfileClient, ActionLog, UserStory, GalleryPost } from '../types';
+import { Bikini, Thread, Sale, BikiniStockDivided, UserProfileClient, ActionLog } from '../types';
 import { rtdb } from '../lib/firebase';
 import { ref, onValue, set, update } from 'firebase/database';
-
-import { moderateContent } from '../lib/ai';
 
 interface InventoryContextType {
   bikinis: Bikini[];
@@ -11,11 +9,9 @@ interface InventoryContextType {
   sales: Sale[];
   users: UserProfileClient[];
   logs: ActionLog[];
-  stories: UserStory[];
-  galleryPosts: GalleryPost[];
   currentUser: UserProfileClient | null;
   addBikini: (b: Omit<Bikini, 'id'>) => void;
-  addBikiniModel: (modelName: string) => Promise<void>;
+  addBikiniModel: (modelName: string) => void;
   updateBikiniStock: (id: string, delta: number) => void;
   setBikiniStock: (id: string, stock: number) => void;
   updateBikiniDividedStock: (id: string, divided: BikiniStockDivided) => void;
@@ -24,38 +20,18 @@ interface InventoryContextType {
   addThread: (t: Omit<Thread, 'id'>) => void;
   updateThreadStock: (id: string, delta: number) => void;
   setThreadStock: (id: string, stock: number) => void;
-  updateThreadColorCode: (colorName: string, colorCode: string) => void;
   removeThread: (id: string) => void;
   registerSale: (s: Omit<Sale, 'id'>) => void;
   resetAllStockToZero: () => void;
   lowStockItemsCount: number;
   unreadMessagesCount: number;
-  groupUnreadCounts: Record<string, number>;
 
   // New Authentication & User Management operations
   login: (username: string, password: string) => boolean;
   logout: () => void;
-  addUser: (user: Omit<UserProfileClient, 'id'> & { id?: string }) => Promise<void>;
+  addUser: (user: Omit<UserProfileClient, 'id'> & { id?: string }) => void;
   removeUser: (id: string) => void;
-  addStory: (story: Omit<UserStory, 'id' | 'createdAt'>) => Promise<void>;
-  deleteStory: (id: string) => void;
-  addGalleryPost: (post: Omit<GalleryPost, 'id' | 'createdAt' | 'likes'>) => Promise<void>;
-  likeGalleryPost: (id: string) => void;
-  deleteGalleryPost: (id: string) => void;
-  editGalleryPost: (id: string, caption: string) => Promise<void>;
-  pinGalleryPost: (id: string) => void;
-  addPostComment: (postId: string, text: string) => Promise<void>;
-  deletePostComment: (postId: string, commentId: string) => void;
-  editPostComment: (postId: string, commentId: string, text: string) => Promise<void>;
-  clearNotifications: () => void;
-  clearAllGalleryPosts: () => void;
-  clearAllStories: () => void;
-  restoreAllGalleryPosts: () => void;
-  galleryPostsBackup: GalleryPost[];
   isReadOnly: boolean;
-  theme: 'dark' | 'light';
-  isMobile: boolean;
-  setTheme: (theme: 'dark' | 'light') => void;
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
@@ -63,57 +39,6 @@ const InventoryContext = createContext<InventoryContextType | undefined>(undefin
 function cleanData<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj)) as T;
 }
-
-let globalAudioCtx: AudioContext | null = null;
-
-const getGlobalAudioContext = () => {
-  if (!globalAudioCtx && typeof window !== 'undefined') {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (AudioContextClass) {
-      globalAudioCtx = new AudioContextClass();
-    }
-  }
-  if (globalAudioCtx && globalAudioCtx.state === 'suspended') {
-    globalAudioCtx.resume().catch(() => {});
-  }
-  return globalAudioCtx;
-};
-
-if (typeof window !== 'undefined') {
-  const unlockAudio = () => {
-    getGlobalAudioContext();
-    window.removeEventListener('touchstart', unlockAudio);
-    window.removeEventListener('click', unlockAudio);
-  };
-  window.addEventListener('touchstart', unlockAudio, { once: true });
-  window.addEventListener('click', unlockAudio, { once: true });
-}
-
-export const playMobileMessageSound = () => {
-  try {
-    const ctx = getGlobalAudioContext();
-    if (!ctx) return;
-    
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
-    osc.frequency.setValueAtTime(987.77, ctx.currentTime + 0.08); // B5
-    
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
-    
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.28);
-  } catch (e) {
-    console.error("Audio playback error:", e);
-  }
-};
 
 
 const MODELS = [
@@ -195,14 +120,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [users, setUsers] = useState<UserProfileClient[]>(() => {
-    const saved = localStorage.getItem('sol_mar_users');
-    return saved ? JSON.parse(saved) : DEFAULT_USERS;
-  });
+  const [users, setUsers] = useState<UserProfileClient[]>(DEFAULT_USERS);
   const [logs, setLogs] = useState<ActionLog[]>([]);
-  const [stories, setStories] = useState<UserStory[]>([]);
-  const [galleryPosts, setGalleryPosts] = useState<GalleryPost[]>([]);
-  const [galleryPostsBackup, setGalleryPostsBackup] = useState<GalleryPost[]>([]);
 
   const [currentUser, setCurrentUser] = useState<UserProfileClient | null>(() => {
     const saved = localStorage.getItem('sol_mar_currentUser');
@@ -212,111 +131,34 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const isReadOnly = currentUser?.role === 'FUNCIONARIO_B';
 
   const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
-  const [groupUnreadCounts, setGroupUnreadCounts] = useState<Record<string, number>>({});
-  const isInitialLoadRef = React.useRef(true);
-  const prevUnreadMsgIdsRef = React.useRef<Set<string>>(new Set());
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  const [themeState, setThemeState] = useState<'dark' | 'light'>('dark');
-
-  useEffect(() => {
-    if (currentUser) {
-      const saved = localStorage.getItem(`sol_mar_theme_${currentUser.id}`);
-      if (saved) {
-        setThemeState(saved as 'dark' | 'light');
-      } else {
-        setThemeState('dark');
-      }
-    } else {
-      setThemeState('dark');
-    }
-  }, [currentUser]);
-
-  const theme = isMobile ? themeState : 'dark';
-
-  const setTheme = (newTheme: 'dark' | 'light') => {
-    if (!isMobile) return;
-    setThemeState(newTheme);
-    if (currentUser) {
-      localStorage.setItem(`sol_mar_theme_${currentUser.id}`, newTheme);
-    }
-  };
 
   useEffect(() => {
     if (!currentUser) {
       setUnreadMessagesCount(0);
-      setGroupUnreadCounts({});
-      prevUnreadMsgIdsRef.current = new Set();
-      isInitialLoadRef.current = true;
       return;
     }
 
-    const groupsRef = ref(rtdb, 'chat/groups');
-    const unsubscribe = onValue(groupsRef, (snapshot) => {
+    const messagesRef = ref(rtdb, 'chat/messages');
+    const unsubscribe = onValue(messagesRef, (snapshot) => {
       if (snapshot.exists()) {
-        const groupsData = snapshot.val();
-        let totalUnread = 0;
-        const countsByGroup: Record<string, number> = {};
-        const currentUnreadIds = new Set<string>();
-
-        Object.entries(groupsData).forEach(([groupId, groupObj]: [string, any]) => {
-          let groupUnread = 0;
-          const messages = groupObj?.messages;
-          if (messages) {
-            Object.entries(messages).forEach(([msgId, msg]: [string, any]) => {
-              const isMine = msg.senderId === currentUser.id || msg.senderName === currentUser.name;
-              const views = msg.views || {};
-              const viewed = Boolean(views[currentUser.username]);
-
-              if (!isMine && !viewed) {
-                groupUnread++;
-                totalUnread++;
-                currentUnreadIds.add(`${groupId}_${msgId}`);
-              }
-            });
-          }
-          countsByGroup[groupId] = groupUnread;
-        });
-
-        // Detect if new unread incoming message arrived
-        let hasNewIncoming = false;
-        currentUnreadIds.forEach((id) => {
-          if (!prevUnreadMsgIdsRef.current.has(id)) {
-            hasNewIncoming = true;
+        const data = snapshot.val();
+        let unread = 0;
+        Object.values(data).forEach((msg: any) => {
+          const views = msg.views || {};
+          if (!views[currentUser.username]) {
+            unread++;
           }
         });
-
-        if (!isInitialLoadRef.current && hasNewIncoming && isMobile) {
-          playMobileMessageSound();
-        }
-
-        prevUnreadMsgIdsRef.current = currentUnreadIds;
-        isInitialLoadRef.current = false;
-
-        setUnreadMessagesCount(totalUnread);
-        setGroupUnreadCounts(countsByGroup);
+        setUnreadMessagesCount(unread);
       } else {
         setUnreadMessagesCount(0);
-        setGroupUnreadCounts({});
-        prevUnreadMsgIdsRef.current = new Set();
-        isInitialLoadRef.current = false;
       }
     }, () => {
       setUnreadMessagesCount(0);
-      setGroupUnreadCounts({});
     });
 
     return () => unsubscribe();
-  }, [currentUser, isMobile]);
+  }, [currentUser]);
 
   // Sync with Realtime Database
   useEffect(() => {
@@ -334,53 +176,39 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
           if (jeffIndex !== -1 && (
             loadedUsers[jeffIndex].password !== '#trescafe28' || 
             loadedUsers[jeffIndex].username !== 'Jeff' ||
-            !loadedUsers[jeffIndex].avatarUrl
+            loadedUsers[jeffIndex].avatarUrl === 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80' || 
+            !loadedUsers[jeffIndex].avatarUrl?.includes('Whats-App')
           )) {
             const updatedUsers = [...loadedUsers];
             updatedUsers[jeffIndex] = {
               ...updatedUsers[jeffIndex],
               username: 'Jeff',
               password: '#trescafe28',
-              avatarUrl: loadedUsers[jeffIndex].avatarUrl || 'https://i.postimg.cc/dVfY4TLn/Whats-App-Image-2026-06-06-at-02-34-52.jpg'
+              avatarUrl: 'https://i.postimg.cc/dVfY4TLn/Whats-App-Image-2026-06-06-at-02-34-52.jpg'
             };
-            set(ref(rtdb, 'inventory/users'), updatedUsers).catch(err => console.warn('Users sync notice:', err?.message));
+            set(ref(rtdb, 'inventory/users'), updatedUsers);
             setUsers(updatedUsers);
-            localStorage.setItem('sol_mar_users', JSON.stringify(updatedUsers));
           } else {
             setUsers(loadedUsers);
-            localStorage.setItem('sol_mar_users', JSON.stringify(loadedUsers));
           }
           // If our current user was updated, keep it in sync
-          setCurrentUser(prevUser => {
-            if (!prevUser) return null;
-            const fresh = (data.users as UserProfileClient[]).find(u => u.id === prevUser.id || u.username.toLowerCase() === prevUser.username.toLowerCase());
+          if (currentUser) {
+            const fresh = (data.users as UserProfileClient[]).find(u => u.id === currentUser.id);
             if (fresh) {
-              localStorage.setItem('sol_mar_currentUser', JSON.stringify(fresh));
-              return fresh;
+              if (JSON.stringify(fresh) !== JSON.stringify(currentUser)) {
+                setCurrentUser(fresh);
+                localStorage.setItem('sol_mar_currentUser', JSON.stringify(fresh));
+              }
             } else {
+              // Deleted
+              setCurrentUser(null);
               localStorage.removeItem('sol_mar_currentUser');
-              return null;
             }
-          });
+          }
         } else {
-          set(ref(rtdb, 'inventory/users'), DEFAULT_USERS).catch(err => console.warn('Default users sync notice:', err?.message));
+          set(ref(rtdb, 'inventory/users'), DEFAULT_USERS);
         }
         setLogs(data.logs || []);
-        
-        // Cleanup expired stories (older than 24h)
-        const loadedStories = (data.stories || []) as UserStory[];
-        const now = Date.now();
-        const activeStories = loadedStories.filter(s => {
-          const storyTime = new Date(s.createdAt).getTime();
-          return now - storyTime < 24 * 60 * 60 * 1000;
-        });
-        
-        if (loadedStories.length !== activeStories.length) {
-          set(ref(rtdb, 'inventory/stories'), activeStories).catch(err => console.warn('Stories cleanup notice:', err?.message));
-        }
-        setStories(activeStories);
-        setGalleryPosts(data.galleryPosts || []);
-        setGalleryPostsBackup(data.galleryPostsBackup || []);
       } else {
         // Uninitialized cloud database
         const initialData = {
@@ -388,14 +216,12 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
           threads: threads.length > 0 ? threads : INITIAL_THREADS,
           sales: sales,
           users: DEFAULT_USERS,
-          logs: [],
-          stories: [],
-          galleryPosts: []
+          logs: []
         };
-        set(inventoryRef, cleanData(initialData)).catch(err => console.warn('Initial data sync notice:', err?.message));
+        set(inventoryRef, cleanData(initialData));
       }
     }, (error) => {
-      console.warn('Realtime Database read notice:', error?.message || error);
+      console.error('Realtime Database sync error:', error);
     });
 
     return () => unsubscribe();
@@ -422,8 +248,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       timestamp: new Date().toISOString()
     };
     const updated = [newLog, ...logs].slice(0, 100);
-    setLogs(updated);
-    set(ref(rtdb, 'inventory/logs'), cleanData(updated)).catch(err => console.warn('Log sync notice:', err?.message));
+    set(ref(rtdb, 'inventory/logs'), cleanData(updated));
   };
 
   const pushLog = (actionText: string) => {
@@ -453,17 +278,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('sol_mar_currentUser');
   };
 
-  const addUser = async (newUser: Omit<UserProfileClient, 'id'> & { id?: string }) => {
-    if (isReadOnly && newUser.id !== currentUser?.id) return;
-
-    if (newUser.name) {
-      const safety = await moderateContent(newUser.name);
-      if (!safety.isSafe) {
-        alert(`Nome de usuário impróprio detectado: ${safety.reason}`);
-        return;
-      }
-    }
-
+  const addUser = (newUser: Omit<UserProfileClient, 'id'> & { id?: string }) => {
+    if (isReadOnly) return;
     const cleanUsername = newUser.username.trim();
     
     let formattedUsername = cleanUsername;
@@ -491,15 +307,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       ...users.filter(u => u.id !== createdUser.id && u.username.toLowerCase() !== formattedUsername.toLowerCase()),
       createdUser
     ];
-    setUsers(updated);
-    localStorage.setItem('sol_mar_users', JSON.stringify(updated));
-
-    if (currentUser && (createdUser.id === currentUser.id || createdUser.username.toLowerCase() === currentUser.username.toLowerCase())) {
-      setCurrentUser(createdUser);
-      localStorage.setItem('sol_mar_currentUser', JSON.stringify(createdUser));
-    }
-
-    set(ref(rtdb, 'inventory/users'), cleanData(updated)).catch(err => console.warn('User sync notice:', err?.message));
+    set(ref(rtdb, 'inventory/users'), cleanData(updated));
     pushLog(`${newUser.id ? 'Editou' : 'Criou/atualizou'} usuário: ${createdUser.name} (${createdUser.role})`);
   };
 
@@ -514,8 +322,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       return; 
     }
     const updated = users.filter(u => u.id !== id);
-    setUsers(updated);
-    set(ref(rtdb, 'inventory/users'), cleanData(updated)).catch(err => console.warn('User remove notice:', err?.message));
+    set(ref(rtdb, 'inventory/users'), cleanData(updated));
     pushLog(`Excluiu o usuário: ${found.name} (${found.role})`);
   };
 
@@ -523,21 +330,14 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     if (isReadOnly) return;
     const newBikini = { ...b, id: Math.random().toString(36).substr(2, 9) };
     const updated = [...bikinis, newBikini];
-    setBikinis(updated);
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Bikini sync notice:', err?.message));
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
     pushLog(`Adicionou biquíni: ${b.model} (${b.colorName} / ${b.size})`);
   };
 
-  const addBikiniModel = async (modelName: string) => {
+  const addBikiniModel = (modelName: string) => {
     if (isReadOnly) return;
     const cleanName = modelName.trim().toUpperCase();
     if (!cleanName) return;
-
-    const safety = await moderateContent(cleanName);
-    if (!safety.isSafe) {
-      alert(`Nome de modelo impróprio detectado: ${safety.reason}`);
-      return;
-    }
 
     if (bikinis.some(b => b.model.toUpperCase() === cleanName)) {
       return;
@@ -556,8 +356,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     );
 
     const updated = [...bikinis, ...newVariations];
-    setBikinis(updated);
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Model sync notice:', err?.message));
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
     pushLog(`Criou novo modelo de biquíni: ${cleanName}`);
   };
 
@@ -567,8 +366,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     if (!item) return;
     const newStock = Math.max(0, item.stock + delta);
     const updated = bikinis.map(b => b.id === id ? { ...b, stock: newStock } : b);
-    setBikinis(updated);
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Stock update notice:', err?.message));
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
     pushLog(`Alterou estoque de ${item.model} (${item.colorName} / ${item.size}): ${item.stock} para ${newStock} (${delta > 0 ? '+' : ''}${delta})`);
   };
 
@@ -578,8 +376,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     if (!item) return;
     const targetStock = Math.max(0, stock);
     const updated = bikinis.map(b => b.id === id ? { ...b, stock: targetStock } : b);
-    setBikinis(updated);
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Set stock notice:', err?.message));
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
     pushLog(`Definiu o estoque de ${item.model} (${item.colorName} / ${item.size}) de ${item.stock} para ${targetStock}`);
   };
 
@@ -588,8 +385,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     const item = bikinis.find(b => b.id === id);
     if (!item) return;
     const updated = bikinis.map(b => b.id === id ? { ...b, dividedStock } : b);
-    setBikinis(updated);
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Divided stock notice:', err?.message));
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
     pushLog(`Dividiu lote de ${item.model} (${item.colorName} / ${item.size})`);
   };
 
@@ -598,8 +394,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     const item = bikinis.find(b => b.id === id);
     if (!item) return;
     const updated = bikinis.filter(b => b.id !== id);
-    setBikinis(updated);
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Remove bikini notice:', err?.message));
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
     pushLog(`Removeu biquíni: ${item.model} (${item.colorName} / ${item.size})`);
   };
 
@@ -607,20 +402,16 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     if (isReadOnly) return;
     const cleanName = modelName.trim().toUpperCase();
     const updated = bikinis.filter(b => b.model.toUpperCase() !== cleanName);
-    setBikinis(updated);
-    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated)).catch(err => console.warn('Remove model notice:', err?.message));
+    set(ref(rtdb, 'inventory/bikinis'), cleanData(updated));
     pushLog(`Removeu o modelo de biquíni: ${cleanName}`);
   };
 
   const addThread = (t: Omit<Thread, 'id'>) => {
     if (isReadOnly) return;
-    
     const newThread = { ...t, id: Math.random().toString(36).substr(2, 9) };
     const updated = [...threads, newThread];
-
-    setThreads(updated);
-    set(ref(rtdb, 'inventory/threads'), cleanData(updated)).catch(err => console.warn('Add thread notice:', err?.message));
-    pushLog(`Adicionou insumo: ${t.name} (${t.colorName}${t.colorCode ? ` - Nº/Cód: ${t.colorCode}` : ''})`);
+    set(ref(rtdb, 'inventory/threads'), cleanData(updated));
+    pushLog(`Adicionou insumo: ${t.name} (${t.colorName})`);
   };
 
   const updateThreadStock = (id: string, delta: number) => {
@@ -629,8 +420,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     if (!item) return;
     const newStock = Math.max(0, item.stock + delta);
     const updated = threads.map(t => t.id === id ? { ...t, stock: newStock } : t);
-    setThreads(updated);
-    set(ref(rtdb, 'inventory/threads'), cleanData(updated)).catch(err => console.warn('Thread stock notice:', err?.message));
+    set(ref(rtdb, 'inventory/threads'), cleanData(updated));
     pushLog(`Alterou estoque de ${item.name} (${item.colorName}): ${item.stock} para ${newStock} (${delta > 0 ? '+' : ''}${delta})`);
   };
 
@@ -640,26 +430,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     if (!item) return;
     const targetStock = Math.max(0, stock);
     const updated = threads.map(t => t.id === id ? { ...t, stock: targetStock } : t);
-    setThreads(updated);
-    set(ref(rtdb, 'inventory/threads'), cleanData(updated)).catch(err => console.warn('Set thread stock notice:', err?.message));
+    set(ref(rtdb, 'inventory/threads'), cleanData(updated));
     pushLog(`Definiu o estoque de ${item.name} (${item.colorName}) de ${item.stock} para ${targetStock}`);
-  };
-
-  const updateThreadColorCode = (idOrColorName: string, colorCode: string) => {
-    if (isReadOnly) return;
-    const hasExactId = threads.some(t => t.id === idOrColorName);
-    const updated = threads.map(t => {
-      if (hasExactId) {
-        return t.id === idOrColorName ? { ...t, colorCode: colorCode } : t;
-      }
-      if (t.colorName.toLowerCase() === idOrColorName.toLowerCase()) {
-        return { ...t, colorCode: colorCode };
-      }
-      return t;
-    });
-    setThreads(updated);
-    set(ref(rtdb, 'inventory/threads'), cleanData(updated)).catch(err => console.warn('Thread color code notice:', err?.message));
-    pushLog(`Atualizou código/número: ${colorCode}`);
   };
 
   const removeThread = (id: string) => {
@@ -667,8 +439,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     const item = threads.find(t => t.id === id);
     if (!item) return;
     const updated = threads.filter(b => b.id !== id);
-    setThreads(updated);
-    set(ref(rtdb, 'inventory/threads'), cleanData(updated)).catch(err => console.warn('Remove thread notice:', err?.message));
+    set(ref(rtdb, 'inventory/threads'), cleanData(updated));
     pushLog(`Removeu insumo: ${item.name} (${item.colorName})`);
   };
 
@@ -687,15 +458,11 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       return item ? { ...t, stock: Math.max(0, t.stock - item.quantity) } : t;
     });
 
-    setSales(updatedSales);
-    setBikinis(updatedBikinis);
-    setThreads(updatedThreads);
-
     update(ref(rtdb, 'inventory'), cleanData({
       sales: updatedSales,
       bikinis: updatedBikinis,
       threads: updatedThreads
-    })).catch(err => console.warn('Register sale notice:', err?.message));
+    }));
     pushLog(`Vendeu ${s.items.reduce((acc, current) => acc + current.quantity, 0)} itens - R$ ${s.total.toFixed(2)}`);
   };
 
@@ -731,257 +498,16 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     pushLog('Zeru todos os estoques e dados de teste do sistema');
   };
 
-  const addStory = async (storyData: Omit<UserStory, 'id' | 'createdAt'>) => {
-    if (!currentUser) return;
-    
-    // Moderation for text stories
-    if (storyData.type === 'text' && storyData.content) {
-      const safety = await moderateContent(storyData.content);
-      if (!safety.isSafe) {
-        alert(`Conteúdo impróprio detectado: ${safety.reason || 'Siga as diretrizes do SOL & MAR.'}`);
-        return;
-      }
-    }
-
-    const newStory: UserStory = {
-      ...storyData,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString()
-    };
-    const updated = [...stories, newStory];
-    setStories(updated);
-    set(ref(rtdb, 'inventory/stories'), cleanData(updated)).catch(err => console.warn('Story sync notice:', err?.message));
-  };
-
-  const addGalleryPost = async (postData: Omit<GalleryPost, 'id' | 'createdAt' | 'likes'>) => {
-    if (!currentUser) return;
-    console.log('addGalleryPost called', postData);
-
-    if (postData.caption) {
-      const safety = await moderateContent(postData.caption);
-      if (!safety.isSafe) {
-        alert(`Legenda imprópria detectada: ${safety.reason || 'Siga as diretrizes do SOL & MAR.'}`);
-        return;
-      }
-    }
-
-    const newPost: GalleryPost = {
-      ...postData,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-      likes: []
-    };
-    const updated = [newPost, ...galleryPosts];
-    setGalleryPosts(updated);
-    try {
-      await set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated));
-      console.log('addGalleryPost saved successfully');
-    } catch (err: any) {
-      console.error('addGalleryPost error:', err?.message);
-    }
-  };
-
-  const addPostComment = async (postId: string, text: string) => {
-    if (!currentUser) return;
-
-    const safety = await moderateContent(text);
-    if (!safety.isSafe) {
-      alert(`Comentário impróprio detectado: ${safety.reason || 'Siga as diretrizes do SOL & MAR.'}`);
-      return;
-    }
-
-    const updated = galleryPosts.map(post => {
-      if (post.id === postId) {
-        const comments = post.comments || [];
-        return {
-          ...post,
-          comments: [...comments, {
-            id: Math.random().toString(36).substr(2, 9),
-            userId: currentUser.id,
-            text,
-            createdAt: new Date().toISOString()
-          }]
-        };
-      }
-      return post;
-    });
-    setGalleryPosts(updated);
-    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost comment notice:', err?.message));
-  };
-
-  const editPostComment = async (postId: string, commentId: string, text: string) => {
-    if (!currentUser) return;
-
-    const safety = await moderateContent(text);
-    if (!safety.isSafe) {
-      alert(`Conteúdo impróprio detectado: ${safety.reason || 'Siga as diretrizes do SOL & MAR.'}`);
-      return;
-    }
-
-    const updated = galleryPosts.map(post => {
-      if (post.id === postId && post.comments) {
-        return {
-          ...post,
-          comments: post.comments.map(c => c.id === commentId ? { ...c, text } : c)
-        };
-      }
-      return post;
-    });
-    setGalleryPosts(updated);
-    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost comment edit notice:', err?.message));
-  };
-
-  const deleteStory = (id: string) => {
-    if (!currentUser) return;
-    const updated = stories.filter(s => s.id !== id);
-    setStories(updated);
-    set(ref(rtdb, 'inventory/stories'), cleanData(updated)).catch(err => console.warn('Story remove notice:', err?.message));
-  };
-
-  const clearAllStories = () => {
-    if (!currentUser || currentUser.role !== 'mestre') return;
-    setStories([]);
-    set(ref(rtdb, 'inventory/stories'), []).catch(err => console.warn('Clear stories notice:', err?.message));
-  };
-
-  const likeGalleryPost = (id: string) => {
-    if (!currentUser) return;
-    const updated = galleryPosts.map(post => {
-      if (post.id === id) {
-        const likes = post.likes || [];
-        const hasLiked = likes.includes(currentUser.id);
-        return {
-          ...post,
-          likes: hasLiked ? likes.filter(userId => userId !== currentUser.id) : [...likes, currentUser.id]
-        };
-      }
-      return post;
-    });
-    setGalleryPosts(updated);
-    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost like notice:', err?.message));
-  };
-
-
-  const pinGalleryPost = (id: string) => {
-    if (!currentUser) return;
-    const updated = galleryPosts.map(p => {
-      if (p.id === id) {
-        return { ...p, isPinned: !p.isPinned };
-      }
-      return p;
-    });
-    setGalleryPosts(updated);
-    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost pin notice:', err?.message));
-  };
-
-  const deletePostComment = (postId: string, commentId: string) => {
-    if (!currentUser) return;
-    const updated = galleryPosts.map(post => {
-      if (post.id === postId && post.comments) {
-        return {
-          ...post,
-          comments: post.comments.filter(c => c.id !== commentId)
-        };
-      }
-      return post;
-    });
-    setGalleryPosts(updated);
-    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost comment delete notice:', err?.message));
-  };
-
-
-  const editGalleryPost = async (id: string, caption: string) => {
-    if (!currentUser) return;
-
-    if (caption) {
-      const safety = await moderateContent(caption);
-      if (!safety.isSafe) {
-        alert(`Legenda imprópria detectada: ${safety.reason || 'Siga as diretrizes do SOL & MAR.'}`);
-        return;
-      }
-    }
-
-    const updated = galleryPosts.map(p => {
-      if (p.id === id) {
-        return { ...p, caption };
-      }
-      return p;
-    });
-    setGalleryPosts(updated);
-    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost edit notice:', err?.message));
-  };
-
-  const clearNotifications = () => {
-    if (!currentUser) return;
-    const now = new Date().toISOString();
-    const updatedUsers = users.map(u => u.id === currentUser.id ? { ...u, lastNotificationsClear: now } : u);
-    set(ref(rtdb, 'inventory/users'), cleanData(updatedUsers)).catch(err => console.warn('Clear notifications notice:', err?.message));
-  };
-
-  const deleteGalleryPost = (id: string) => {
-    if (!currentUser) return;
-    const post = galleryPosts.find(p => p.id === id);
-    if (!post) return;
-    const author = users.find(u => u.id === post.userId);
-    // Restriction: only on mobile, mestre posts cannot be deleted
-    if (isMobile && author?.role === 'MESTRE') return;
-    
-    const updated = galleryPosts.filter(p => p.id !== id);
-    setGalleryPosts(updated);
-    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(updated)).catch(err => console.warn('GalleryPost remove notice:', err?.message));
-  };
-
-  const clearAllGalleryPosts = () => {
-    if (currentUser?.role !== 'MESTRE') return;
-    
-    // Restriction: on mobile, keep mestre posts
-    const postsToKeep = isMobile 
-      ? galleryPosts.filter(p => {
-          const author = users.find(u => u.id === p.userId);
-          return author?.role === 'MESTRE';
-        })
-      : [];
-      
-    const postsToDelete = isMobile
-      ? galleryPosts.filter(p => {
-          const author = users.find(u => u.id === p.userId);
-          return author?.role !== 'MESTRE';
-        })
-      : galleryPosts;
-
-    if (postsToDelete.length === 0) return;
-
-    const backup = [...postsToDelete];
-    setGalleryPostsBackup(backup);
-    setGalleryPosts(postsToKeep);
-
-    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(postsToKeep)).catch(err => console.warn('Clear posts notice:', err?.message));
-    set(ref(rtdb, 'inventory/galleryPostsBackup'), cleanData(backup)).catch(err => console.warn('Backup posts notice:', err?.message));
-  };
-
-  const restoreAllGalleryPosts = () => {
-    if (currentUser?.role !== 'MESTRE') return;
-    if (galleryPostsBackup.length === 0) return;
-
-    const restored = [...galleryPostsBackup];
-    setGalleryPosts(restored);
-    setGalleryPostsBackup([]);
-
-    set(ref(rtdb, 'inventory/galleryPosts'), cleanData(restored)).catch(err => console.warn('Restore posts notice:', err?.message));
-    set(ref(rtdb, 'inventory/galleryPostsBackup'), []).catch(err => console.warn('Clear backup posts notice:', err?.message));
-  };
-
   const lowStockItemsCount = bikinis.filter(b => b.stock <= b.minStockAlert).length +
                              threads.filter(t => t.stock <= t.minStockAlert).length;
 
   return (
     <InventoryContext.Provider value={{
-      bikinis, threads, sales, users, logs, stories, galleryPosts, galleryPostsBackup, currentUser,
+      bikinis, threads, sales, users, logs, currentUser,
       addBikini, addBikiniModel, updateBikiniStock, setBikiniStock, updateBikiniDividedStock, removeBikini, removeBikiniModel,
-      addThread, updateThreadStock, setThreadStock, updateThreadColorCode, removeThread,
-      registerSale, resetAllStockToZero, lowStockItemsCount, unreadMessagesCount, groupUnreadCounts,
-      login, logout, addUser, removeUser, addStory, deleteStory, clearAllStories, addGalleryPost, likeGalleryPost, deleteGalleryPost, editGalleryPost, pinGalleryPost, addPostComment, deletePostComment, editPostComment, clearNotifications, clearAllGalleryPosts, restoreAllGalleryPosts, isReadOnly,
-      theme, setTheme, isMobile
+      addThread, updateThreadStock, setThreadStock, removeThread,
+      registerSale, resetAllStockToZero, lowStockItemsCount, unreadMessagesCount,
+      login, logout, addUser, removeUser, isReadOnly
     }}>
       {children}
     </InventoryContext.Provider>

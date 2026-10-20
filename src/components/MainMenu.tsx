@@ -1,856 +1,337 @@
-import React, { useState, useRef } from 'react';
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Camera, X, LogOut, MoreVertical, CalendarCheck, ShoppingCart, Edit3, Trash2, Settings, Sun, Moon, RotateCcw, ShieldAlert } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  LayoutDashboard, 
+  Tag, 
+  Scissors, 
+  Package, 
+  Settings, 
+  Clock,
+  Calendar,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useInventory } from '../context/InventoryContext';
-import { InstagramStoriesRow, UserProfileGalleryModal } from './InstagramMobileNav';
 
 // @ts-ignore
 import backgroundImage from '../assets/images/sol_mar_bg_1781047598977.png';
 
-export function MainMenu({ 
-  onSelect, 
-  onlyMyPosts = false, 
-  showPostCreator = false,
-  autoOpenGallery = false,
-  hideCameraMobile = false,
-  viewingProfileUserId: propProfileId,
-  onSelectProfile
-}: { 
-  onSelect: (tab: string) => void; 
-  onlyMyPosts?: boolean; 
-  showPostCreator?: boolean;
-  autoOpenGallery?: boolean;
-  hideCameraMobile?: boolean;
-  viewingProfileUserId?: string | null;
-  onSelectProfile?: (id: string | null) => void;
-}) {
-  const { galleryPosts, galleryPostsBackup, clearAllGalleryPosts, restoreAllGalleryPosts, addGalleryPost, likeGalleryPost, deleteGalleryPost, currentUser, users, addPostComment, deletePostComment, editPostComment, editGalleryPost, pinGalleryPost, logout, theme, setTheme, isMobile } = useInventory();
-  
-  const [newPostImageUrl, setNewPostImageUrl] = useState('');
-  const [newPostCaption, setNewPostCaption] = useState('');
-  const [showCaptionInput, setShowCaptionInput] = useState(false);
-  const [newComments, setNewComments] = useState<Record<string, string>>({});
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const [editingPostId, setEditingPostId] = useState<string | null>(null);
-  const [editCaption, setEditCaption] = useState('');
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [confirmClearModalOpen, setConfirmClearModalOpen] = useState(false);
-  
-  const [internalViewingProfileUserId, setInternalViewingProfileUserId] = useState<string | null>(null);
-  const [showLikesModalForPostId, setShowLikesModalForPostId] = useState<string | null>(null);
-  
-  const viewingProfileUserId = propProfileId !== undefined ? propProfileId : internalViewingProfileUserId;
-  const setViewingProfileUserId = onSelectProfile || setInternalViewingProfileUserId;
-  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
-  const [editCommentText, setEditCommentText] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+interface MainMenuProps {
+  onSelect: (tab: string) => void;
+}
 
-  React.useEffect(() => {
-    if (autoOpenGallery && fileInputRef.current) {
-      const timer = setTimeout(() => {
-        fileInputRef.current?.click();
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [autoOpenGallery]);
+const menuItems = [
+  { 
+    id: 'dashboard', 
+    title: 'Dashboard', 
+    subtitle: 'Visão Geral', 
+    description: 'Gestão inteligente de estoque e alertas críticos.',
+    icon: LayoutDashboard,
+    glow: 'rgba(125, 211, 252, 0.4)'
+  },
+  { 
+    id: 'bikinis', 
+    title: 'Biquínis', 
+    subtitle: 'Coleção Lu Confecções', 
+    description: 'Gestão detalhada de biquínis, modelos, cores e tamanhos.',
+    icon: Tag,
+    glow: 'rgba(244, 114, 182, 0.4)'
+  },
+  { 
+    id: 'estoque_encomenda', 
+    title: 'Encomendas', 
+    subtitle: 'Separação', 
+    description: 'Divisão de itens por estágio de produção, controle e prazos.',
+    icon: Package,
+    glow: 'rgba(244, 114, 182, 0.4)'
+  },
+  { 
+    id: 'threads', 
+    title: 'Insumos', 
+    subtitle: 'Materiais', 
+    description: 'Controle de linhas, fios, aviamentos e suprimentos.',
+    icon: Scissors,
+    glow: 'rgba(125, 211, 252, 0.4)'
+  }
+];
 
-  const isAdmOrMestre = currentUser?.role === 'MESTRE' || currentUser?.role === 'ADM';
-  const isMestre = currentUser?.role === 'MESTRE';
+export function MainMenu({ onSelect }: MainMenuProps) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [timeString, setTimeString] = useState('');
+  const { lowStockItemsCount } = useInventory();
 
-  const handlePost = () => {
-    console.log('handlePost clicked', { hasImage: !!newPostImageUrl, captionLength: newPostCaption.trim().length, currentUser: !!currentUser });
-    if (!newPostImageUrl && !newPostCaption.trim()) return;
-    
-    if (!currentUser) {
-      console.error('handlePost: Falha ao publicar - currentUser é nulo.');
-      alert('Erro ao identificar usuário. Tente fazer login novamente.');
-      return;
-    }
-    
-    addGalleryPost({
-      userId: currentUser.id,
-      imageUrl: newPostImageUrl,
-      caption: newPostCaption.trim(),
-    });
-    setNewPostImageUrl('');
-    setNewPostCaption('');
-    setShowCaptionInput(false);
+  // Allowed menu items includes Settings page
+  const allowedMenuItems = [
+    ...menuItems,
+    {
+      id: 'configuracoes',
+      title: 'Configurações',
+      subtitle: 'Ajustes do Sistema',
+      description: 'Gestão de usuários, foto de perfil, controle de acessos e dados.',
+      icon: Settings,
+      glow: 'rgba(168, 85, 247, 0.4)',
+    },
+  ];
+
+  // Dynamic Ticking Clock Hook with exact formatting "9 de jun. de 2026 • 20:24:02"
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const formattedDate = new Intl.DateTimeFormat('pt-BR', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      }).format(now);
+      
+      const formattedTime = new Intl.DateTimeFormat('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).format(now);
+      
+      setTimeString(`${formattedDate} • ${formattedTime}`);
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % allowedMenuItems.length);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewPostImageUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev - 1 + allowedMenuItems.length) % allowedMenuItems.length);
   };
 
-  const displayedPosts = onlyMyPosts 
-    ? galleryPosts.filter(p => p.userId === currentUser?.id)
-    : galleryPosts;
+  const currentItem = allowedMenuItems[currentIndex] || allowedMenuItems[0];
+  const Icon = currentItem.icon;
+
+  // Keyboard Navigation Support
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      const isInputActive = activeElement && (
+        activeElement.tagName === 'INPUT' || 
+        activeElement.tagName === 'TEXTAREA' || 
+        (activeElement as HTMLElement).isContentEditable
+      );
+      if (isInputActive) return;
+
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        handleNext();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        handlePrev();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        onSelect(currentItem.id);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [currentIndex, onSelect, allowedMenuItems]);
 
   return (
     <div 
-      className={cn(
-        "min-h-screen flex flex-col font-sans relative pb-24 md:pb-0 transition-colors duration-500",
-        theme === 'dark' ? "text-white bg-[#1a130c]" : "text-[#3d2723] bg-[#fbf8f2]"
-      )}
+      className="min-h-screen flex flex-col items-center justify-between font-sans selection:bg-[#e4cb9c]/30 selection:text-[#3e2723] relative overflow-hidden text-white bg-[#1a130c] bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${backgroundImage})` }}
     >
-      <div className={cn(
-        "absolute inset-0 z-0 pointer-events-none transition-opacity duration-500",
-        theme === 'dark' ? "bg-black/90 md:bg-black/80 opacity-100" : "bg-white/50 opacity-0"
-      )} />
+      {/* Dark Vignette Overlay to ensure text contrast while retaining the beautiful background */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/80 z-0 pointer-events-none" />
       
-      <div className="relative z-10 flex flex-col w-full max-w-md mx-auto h-full">
-        {/* Inline Post Creator */}
-        {showPostCreator && (
-          <div className="px-4 py-3">
-            <div className={cn(
-              "w-full border rounded-2xl p-4 flex flex-col gap-3 shadow-lg transition-colors duration-500",
-              theme === 'dark' ? "bg-white/5 border-white/10" : "bg-white border-black/5"
-            )}>
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#f09433] to-[#bc1888] flex items-center justify-center p-[2px] shrink-0 mt-0.5">
-                  <img src={currentUser?.avatarUrl} alt="Avatar" className={cn(
-                    "w-full h-full rounded-full object-cover transition-colors duration-500",
-                    theme === 'dark' ? "bg-black" : "bg-white"
-                  )} />
-                </div>
-                
-                <div className="flex-1 flex flex-col gap-2">
-                  {showCaptionInput ? (
-                    <textarea
-                      placeholder="Escreva algo..."
-                      value={newPostCaption}
-                      onChange={e => setNewPostCaption(e.target.value)}
-                      className={cn(
-                        "bg-transparent text-sm outline-none w-full resize-none min-h-[40px] transition-colors duration-500",
-                        theme === 'dark' ? "text-white placeholder:text-white/50" : "text-[#3d2723] placeholder:text-[#3d2723]/50"
-                      )}
-                      autoFocus
-                    />
-                  ) : (
-                    <div 
-                      onClick={() => setShowCaptionInput(true)} 
-                      className={cn(
-                        "text-sm cursor-pointer pt-1.5 transition-colors duration-500",
-                        theme === 'dark' ? "text-white/50" : "text-[#3d2723]/50"
-                      )}
-                    >
-                      O que você quer compartilhar hoje?
-                    </div>
-                  )}
-                  
-                  {newPostImageUrl && (
-                    <div className="relative w-full aspect-square md:aspect-video rounded-xl overflow-hidden mt-2 bg-black/50">
-                      <img src={newPostImageUrl} className="w-full h-full object-cover" />
-                      <button 
-                        onClick={() => setNewPostImageUrl('')} 
-                        className="absolute top-2 right-2 bg-black/60 text-white p-1.5 rounded-full hover:bg-black"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  )}
-                </div>
+      {/* Decorative ambient color glow reflecting current card */}
+      <div 
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] blur-[150px] opacity-15 pointer-events-none transition-all duration-1000 ease-in-out z-0"
+        style={{ backgroundColor: currentItem.glow }}
+      />
+
+      {/* 1. Header Area with Brand Logo & Realtime Clock Pill */}
+      <header className="w-full px-8 md:px-12 py-8 flex items-center justify-between relative z-10">
+        <div className="flex items-center gap-3">
+          {/* Sol & Mar Wavy Rise Icon */}
+          <div className="w-10 h-10 flex items-center justify-center relative shrink-0">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#e4cb9c" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              {/* Sun */}
+              <circle cx="12" cy="11" r="3.5" fill="currentColor" fillOpacity="0.1" />
+              <path d="M12 4V5.5" />
+              <path d="M12 16.5V18" />
+              <path d="M5 11h1.5" />
+              <path d="M17.5 11H19" />
+              <path d="m7.05 6.05 1.06 1.06" />
+              <path d="m15.89 14.89 1.06 1.06" />
+              <path d="m16.95 6.05-1.06 1.06" />
+              <path d="m7.05 14.89 1.06 1.06" />
+              {/* Waves */}
+              <path d="M4 19.5c1.5-1 3-1 4.5 0s3 1 4.5 0s3-1 4.5 0" strokeWidth="1.2" />
+              <path d="M5.5 21.5C6.5 21 7.5 21 8.5 21.5s2 0.5 3 0s2-0.5 3 0" strokeWidth="1" opacity="0.7" />
+            </svg>
+          </div>
+          <div className="leading-tight">
+            <h1 className="text-lg font-serif font-bold tracking-[0.2em] text-[#fbf8f2] m-0">
+              SOL & MAR
+            </h1>
+            <p className="text-[9px] text-[#c5a880] uppercase tracking-[0.25em] font-medium leading-none mt-1">
+              Coleção LU CONFECÇÕES
+            </p>
+          </div>
+        </div>
+
+        {/* Real-time Ticking Date-Time Pill */}
+        <div className="flex items-center gap-2.5 bg-black/25 border border-white/5 hover:border-white/10 px-5 py-2.5 rounded-full shadow-lg backdrop-blur-md transition-colors">
+          <Clock size={13} className="text-[#c5a880]" />
+          <span className="text-[11px] text-[#ebdcb9] font-mono tracking-wider">
+            {timeString}
+          </span>
+        </div>
+      </header>
+
+      {/* 2. Main Carousel Content Area */}
+      <main className="flex-grow flex items-center justify-center w-full px-6 relative z-10 my-[3vh]">
+        <div className="w-full max-w-[1100px] flex items-center justify-between relative">
+          
+          {/* Left Navigation Arrow */}
+          <button 
+            onClick={handlePrev}
+            className="w-11 h-11 rounded-full bg-black/20 border border-[#ebdcb9]/15 flex items-center justify-center text-[#ebdcb9] hover:text-white hover:bg-[#ebdcb9]/10 hover:border-[#ebdcb9]/30 transition-all hover:scale-105 active:scale-95 shadow-xl group z-20 self-center"
+            title="Anterior"
+          >
+            <ChevronLeft size={18} className="group-hover:-translate-x-0.5 transition-transform" />
+          </button>
+
+          {/* Center Card and Content Block */}
+          <div className="flex flex-col items-center justify-center relative flex-1 mx-4">
+            
+            {/* The 3D Debossed Clay Sand-Style Squirle Card */}
+            <button 
+              onClick={() => onSelect(currentItem.id)}
+              className="group relative cursor-pointer outline-none w-[270px] h-[270px] flex items-center justify-center transition-transform hover:scale-[1.03] duration-500"
+            >
+              {/* Outer Glow behind card */}
+              <div 
+                className="absolute inset-4 blur-[40px] opacity-15 group-hover:opacity-30 transition-all duration-500 rounded-full"
+                style={{ backgroundColor: currentItem.glow }}
+              />
+
+              {/* 3D Tactile Sand-Colored Clay Card Body */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#ebdcb9] via-[#c6b694] to-[#ad9e7a] rounded-[2.8rem] shadow-[inset_-2px_-2px_8px_rgba(255,255,255,0.45),inset_2px_2px_8px_rgba(0,0,0,0.35),0_15px_45px_rgba(0,0,0,0.65)] border border-[#ebdcb9]/30 flex items-center justify-center transition-all duration-500 group-hover:shadow-[inset_-1px_-1px_6px_rgba(255,255,255,0.45),inset_1px_1px_6px_rgba(0,0,0,0.35),0_25px_60px_rgba(0,0,0,0.8)] overflow-hidden">
+                {/* Subtle internal ring to emphasize luxury finish */}
+                <div className="absolute inset-4 rounded-[2rem] border border-[#f5ebce]/25 pointer-events-none" />
+                {/* Visual sand noise overlay inside card texture */}
+                <div className="absolute inset-0 bg-[#3d2c16] opacity-[0.02] mix-blend-overlay pointer-events-none" />
               </div>
 
-              <div className={cn(
-                "flex items-center justify-between pt-3 border-t transition-colors duration-500",
-                theme === 'dark' ? "border-white/10" : "border-black/10"
-              )}>
-                <div className="flex items-center gap-4">
-                  {!hideCameraMobile && (
-                    <button 
-                      onClick={() => fileInputRef.current?.click()}
-                      className={cn(
-                        "transition-colors",
-                        theme === 'dark' ? "text-white/70 hover:text-white" : "text-[#3d2723]/70 hover:text-[#3d2723]"
-                      )}
-                      title="Adicionar imagem"
-                    >
-                      <Camera size={22} />
-                    </button>
-                  )}
-                  <input 
-                    type="file" 
-                    accept="image/*"
-                    ref={fileInputRef}
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                  
-                  <button 
-                    onClick={() => setShowCaptionInput(true)} 
-                    className={cn("transition-colors font-serif italic text-xl font-bold leading-none", showCaptionInput ? "text-white" : "text-white/70 hover:text-white")}
-                    title="Adicionar texto"
-                  >
-                    T
-                  </button>
+              {/* Inner Engraved/Debossed 3D outline Icon */}
+              <div className="relative z-10 flex items-center justify-center">
+                <Icon 
+                  size={84} 
+                  className="text-[#64492c] relative z-10 transition-transform duration-500 group-hover:scale-[1.06]" 
+                  style={{
+                    filter: 'drop-shadow(1px 1.5px 1px rgba(255, 255, 255, 0.45)) drop-shadow(-1px -1.5px 1px rgba(0, 0, 0, 0.355))'
+                  }}
+                  strokeWidth={1.2} 
+                />
+              </div>
+              
+              {/* Floating Alert Indicator Badges */}
+              {currentItem.id === 'dashboard' && lowStockItemsCount > 0 && (
+                <div className="absolute top-5 right-5 bg-rose-600 border border-rose-400 text-white w-7 h-7 rounded-full flex items-center justify-center font-black text-xs shadow-[0_4px_15px_rgba(220,38,38,0.7)] animate-pulse z-30">
+                  !
                 </div>
-                
-                <button 
-                  onClick={handlePost}
-                  disabled={!newPostImageUrl && !newPostCaption.trim()}
-                  className="bg-[#c5a880] text-[#3d2723] px-4 py-1.5 rounded-full text-xs font-bold disabled:opacity-50 transition-opacity"
-                >
-                  Publicar
-                </button>
+              )}
+            </button>
+            
+            {/* 3. Description Section under Card */}
+            <div className="mt-8 flex flex-col items-center text-center max-w-lg">
+              {/* Category Subtitle */}
+              <div className="flex items-center gap-4 mb-3">
+                <div className="h-[1px] w-10 bg-gradient-to-r from-transparent to-[#c5a880]/30" />
+                <h3 className="text-[10px] font-bold text-[#c5a880] tracking-[0.35em] uppercase">
+                  {currentItem.subtitle}
+                </h3>
+                <div className="h-[1px] w-10 bg-gradient-to-l from-transparent to-[#c5a880]/30" />
+              </div>
+              
+              {/* Large Title in elegant Playfair Display Serif */}
+              <h2 className="text-[44px] md:text-5xl font-serif text-[#fbf8f2] tracking-wide mb-3 select-none leading-none drop-shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
+                {currentItem.title}
+              </h2>
+              
+              {/* Paragraph details */}
+              <p className="text-[#d7cab5] text-sm font-light tracking-wide px-4 max-w-md leading-relaxed select-none">
+                {currentItem.description}
+              </p>
+
+              {/* Keyboard navigation helper pill */}
+              <div className="mt-7 flex items-center justify-center gap-1.5 bg-black/20 border border-[#ebdcb9]/10 px-5 py-2.5 rounded-full text-[10px] font-medium tracking-wide text-[#cbd4c4]/70 shadow-lg select-none backdrop-blur-sm">
+                <span className="flex items-center gap-0.5 bg-white/5 px-1.5 py-0.5 rounded text-[9px] font-bold text-[#ebdcb9] border border-[#ebdcb9]/15">← →</span> ou
+                <span className="flex items-center gap-0.5 bg-white/5 px-1.5 py-0.5 rounded text-[9px] font-bold text-[#ebdcb9] border border-[#ebdcb9]/15">↑ ↓</span>
+                <span className="text-[#c5a880]/40 mx-1">•</span>
+                <span className="bg-white/5 px-1.5 py-0.5 rounded text-[9px] font-bold text-[#ebdcb9] border border-[#ebdcb9]/15">Enter</span> para Entrar
               </div>
             </div>
           </div>
-        )}
 
-        {/* Gallery Feed */}
-        <div className="flex flex-col gap-6 pb-6">
-          {/* Mestre Controls for Clearing / Restoring Posts */}
-          {isMestre && !onlyMyPosts && (
-            <div className="px-4 pt-2">
-              <div className={cn(
-                "border rounded-2xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md transition-colors duration-500",
-                theme === 'dark' ? "bg-stone-900/80 border-amber-500/20" : "bg-amber-50/80 border-amber-200"
-              )}>
-                <div className="flex items-center gap-2.5 w-full sm:w-auto">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-                    <ShieldAlert size={18} />
-                  </div>
-                  <div>
-                    <p className={cn(
-                      "text-xs font-black uppercase tracking-wider",
-                      theme === 'dark' ? "text-amber-200" : "text-amber-900"
-                    )}>
-                      Painel do Mestre
-                    </p>
-                    <p className="text-[10px] text-stone-400 font-medium">
-                      Gerenciamento de publicações
-                    </p>
-                  </div>
-                </div>
+          {/* Right Navigation Arrow */}
+          <button 
+            onClick={handleNext}
+            className="w-11 h-11 rounded-full bg-black/20 border border-[#ebdcb9]/15 flex items-center justify-center text-[#ebdcb9] hover:text-white hover:bg-[#ebdcb9]/10 hover:border-[#ebdcb9]/30 transition-all hover:scale-105 active:scale-95 shadow-xl group z-20 self-center"
+            title="Próximo"
+          >
+            <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
+          </button>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                  {galleryPosts.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmClearModalOpen(true)}
-                      className="flex items-center justify-center gap-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer active:scale-95 w-full sm:w-auto"
-                      title="Limpar todas as publicações de todos os usuários"
-                    >
-                      <Trash2 size={14} />
-                      <span>Limpar todas as publicações ({galleryPosts.length})</span>
-                    </button>
-                  )}
+        </div>
+      </main>
 
-                  {galleryPostsBackup.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => restoreAllGalleryPosts()}
-                      className="flex items-center justify-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-xl text-xs font-black transition-all shadow-md cursor-pointer active:scale-95 w-full sm:w-auto animate-pulse"
-                      title="Restaurar todas as publicações apagadas anteriormente"
-                    >
-                      <RotateCcw size={14} />
-                      <span>Voltar com tudo ({galleryPostsBackup.length})</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {onlyMyPosts && (
-            <div className="px-4 pt-2">
-              <div className={cn(
-                "border rounded-2xl p-4 flex items-center justify-between shadow-lg relative transition-colors duration-500",
-                theme === 'dark' ? "bg-white/5 border-white/10" : "bg-white border-black/10"
-              )}>
-                <div className="flex items-center gap-4">
-                  <img src={currentUser?.avatarUrl} alt="Avatar" className={cn(
-                    "w-16 h-16 rounded-full object-cover border-2 transition-colors duration-500",
-                    theme === 'dark' ? "border-[#ebdcb9] bg-black" : "border-black/20 bg-white"
-                  )} />
-                  <div>
-                    <h2 className={cn(
-                      "text-base font-bold transition-colors duration-500",
-                      theme === 'dark' ? "text-white" : "text-[#3d2723]"
-                    )}>{currentUser?.name || currentUser?.username}</h2>
-                    <p className={cn(
-                      "text-xs transition-colors duration-500",
-                      theme === 'dark' ? "text-white/60" : "text-[#3d2723]/60"
-                    )}>Suas publicações ({displayedPosts.length})</p>
-                  </div>
-                </div>
-
-                <div className="relative">
-                  <button
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className={cn(
-                      "p-2 rounded-xl transition-all cursor-pointer",
-                      theme === 'dark' ? "text-white/70 hover:text-white bg-white/5 hover:bg-white/10" : "text-[#3d2723]/70 hover:text-[#3d2723] bg-black/5 hover:bg-black/10"
-                    )}
-                    title="Opções do perfil"
-                  >
-                    <MoreVertical size={20} />
-                  </button>
-
-                  {showProfileMenu && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
-                      <div className={cn(
-                        "absolute right-0 mt-2 w-48 border rounded-xl shadow-2xl z-50 py-1.5 flex flex-col transition-colors duration-500",
-                        theme === 'dark' ? "bg-[#1f1610] border-white/15" : "bg-white border-black/10"
-                      )}>
-                        <button
-                          onClick={() => {
-                            setShowProfileMenu(false);
-                            onSelect('configuracoes');
-                          }}
-                          className={cn(
-                            "flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-colors",
-                            theme === 'dark' ? "text-white hover:bg-white/10" : "text-[#3d2723] hover:bg-black/5"
-                          )}
-                        >
-                          <Settings size={16} className="text-[#ebdcb9]" />
-                          Configurações
-                        </button>
-                        <div className={cn("h-px my-1", theme === 'dark' ? "bg-white/10" : "bg-black/10")} />
-                        
-                        {isMobile && (
-                          <button
-                            onClick={() => {
-                              setTheme(theme === 'dark' ? 'light' : 'dark');
-                              setShowProfileMenu(false);
-                            }}
-                            className={cn(
-                              "flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-colors",
-                              theme === 'dark' ? "text-white hover:bg-white/10" : "text-[#3d2723] hover:bg-black/5"
-                            )}
-                          >
-                            {theme === 'dark' ? (
-                              <>
-                                <Sun size={16} className="text-[#ebdcb9]" />
-                                Tema Claro
-                              </>
-                            ) : (
-                              <>
-                                <Moon size={16} className="text-[#ebdcb9]" />
-                                Tema Escuro
-                              </>
-                            )}
-                          </button>
-                        )}
-
-                        <div className={cn("h-px my-1", theme === 'dark' ? "bg-white/10" : "bg-black/10")} />
-                        {isAdmOrMestre && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setShowProfileMenu(false);
-                                onSelect('attendance');
-                              }}
-                              className={cn(
-                                "flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-colors",
-                                theme === 'dark' ? "text-white hover:bg-white/10" : "text-[#3d2723] hover:bg-black/5"
-                              )}
-                            >
-                              <CalendarCheck size={16} className="text-[#ebdcb9]" />
-                              Presença
-                            </button>
-                            <button
-                              onClick={() => {
-                                setShowProfileMenu(false);
-                                onSelect('sales');
-                              }}
-                              className={cn(
-                                "flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-colors",
-                                theme === 'dark' ? "text-white hover:bg-white/10" : "text-[#3d2723] hover:bg-black/5"
-                              )}
-                            >
-                              <ShoppingCart size={16} className="text-[#ebdcb9]" />
-                              Vendas
-                            </button>
-                            <div className={cn("h-px my-1", theme === 'dark' ? "bg-white/10" : "bg-black/10")} />
-                          </>
-                        )}
-                        <button
-                          onClick={() => {
-                            setShowProfileMenu(false);
-                            logout();
-                          }}
-                          className={cn(
-                            "flex items-center gap-2.5 px-4 py-2.5 text-xs text-left transition-colors font-semibold",
-                            theme === 'dark' ? "text-rose-400 hover:bg-rose-500/10" : "text-rose-600 hover:bg-rose-500/5"
-                          )}
-                        >
-                          <LogOut size={16} />
-                          Sair da conta
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {displayedPosts.length === 0 ? (
-            <div className={cn(
-              "text-center py-16 px-4 flex flex-col items-center justify-center gap-3 transition-colors duration-500",
-              theme === 'dark' ? "text-white/50" : "text-[#3d2723]/50"
-            )}>
-              <Camera size={48} className="mb-2 opacity-20" />
-              <p className="font-semibold text-sm">{onlyMyPosts ? 'Você ainda não fez nenhuma publicação.' : 'Nenhuma publicação ainda.'}</p>
-              <p className="text-xs">Compartilhe momentos no mural!</p>
-
-              {isMestre && !onlyMyPosts && galleryPostsBackup.length > 0 && (
-                <div className="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col items-center gap-2.5 max-w-sm w-full animate-in fade-in zoom-in-95 duration-200">
-                  <p className="text-xs text-amber-300 font-bold">
-                    As publicações foram apagadas.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => restoreAllGalleryPosts()}
-                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-900 hover:from-amber-300 hover:to-amber-400 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-lg cursor-pointer active:scale-95"
-                  >
-                    <RotateCcw size={16} />
-                    <span>Voltar com tudo ({galleryPostsBackup.length})</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            [...displayedPosts].sort((a, b) => {
-              if (a.isPinned && !b.isPinned) return -1;
-              if (!a.isPinned && b.isPinned) return 1;
-              return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-            }).filter(p => {
-              const pUser = users.find(u => u.id === p.userId);
-              return pUser?.username !== 'jeff';
-            }).map(post => {
-              const hasLiked = currentUser ? (post.likes || []).includes(currentUser.id) : false;
-              const postUser = users.find(u => u.id === post.userId);
-              
-              return (
-                <div key={post.id} className={cn(
-                  "w-full border-y md:border md:rounded-2xl flex flex-col transition-colors duration-500",
-                  theme === 'dark' ? "bg-black/40 border-white/10" : "bg-white border-black/5"
-                )}>
-                  {/* Post Header */}
-                  <div className="flex items-center justify-between p-3 relative">
-                    <div 
-                      onClick={() => {
-                        setViewingProfileUserId(post.userId);
-                      }}
-                      className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-opacity"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] p-[1.5px]">
-                        <img 
-                          src={postUser?.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"}
-                          alt="User"
-                          className={cn(
-                            "w-full h-full object-cover rounded-full transition-colors duration-500",
-                            theme === 'dark' ? "bg-black" : "bg-white"
-                          )}
-                        />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className={cn(
-                          "font-bold md:font-semibold text-sm flex items-center gap-2 transition-colors duration-500",
-                          theme === 'dark' ? "text-white" : "text-[#3d2723]"
-                        )}>
-                          {postUser?.name || postUser?.username || 'Usuário'}
-                          {post.isPinned && <span className="text-[10px] text-[#c5a880] bg-[#c5a880]/10 px-1.5 py-0.5 rounded">Fixado</span>}
-                        </span>
-                      </div>
-                    </div>
-                    {currentUser?.id === post.userId && (
-                      <div className="relative">
-                        <button 
-                          onClick={() => setActiveMenuId(activeMenuId === post.id ? null : post.id)}
-                          className={cn(
-                            "p-1 transition-colors duration-500",
-                            theme === 'dark' ? "text-white/50 hover:text-white" : "text-[#3d2723]/50 hover:text-[#3d2723]"
-                          )}
-                        >
-                          <MoreHorizontal size={20} />
-                        </button>
-
-                        {activeMenuId === post.id && (
-                          <>
-                            <div className="fixed inset-0 z-40" onClick={() => setActiveMenuId(null)} />
-                            <div className={cn(
-                              "absolute right-0 mt-2 w-48 border rounded-xl shadow-xl z-50 overflow-hidden transition-colors duration-500",
-                              theme === 'dark' ? "bg-[#1a1412] border-white/10" : "bg-white border-black/10"
-                            )}>
-                              <button
-                                onClick={() => {
-                                  setEditingPostId(post.id);
-                                  setEditCaption(post.caption);
-                                  setActiveMenuId(null);
-                                }}
-                                className={cn(
-                                  "w-full text-left px-4 py-3 text-sm transition-colors",
-                                  theme === 'dark' ? "text-white hover:bg-white/5" : "text-[#3d2723] hover:bg-black/5"
-                                )}
-                              >
-                                Editar publicação
-                              </button>
-                              <button
-                                onClick={() => {
-                                  pinGalleryPost(post.id);
-                                  setActiveMenuId(null);
-                                }}
-                                className={cn(
-                                  "w-full text-left px-4 py-3 text-sm transition-colors",
-                                  theme === 'dark' ? "text-white hover:bg-white/5" : "text-[#3d2723] hover:bg-black/5"
-                                )}
-                              >
-                                {post.isPinned ? 'Desfixar do topo' : 'Fixar no topo'}
-                              </button>
-                              <div className={cn("h-px w-full", theme === 'dark' ? "bg-white/10" : "bg-black/10")} />
-                              <button
-                                onClick={() => {
-                                  if (window.confirm('Apagar publicação?')) {
-                                    deleteGalleryPost(post.id);
-                                    setActiveMenuId(null);
-                                  }
-                                }}
-                                className="w-full text-left px-4 py-3 text-sm text-rose-500 hover:bg-rose-500/10 transition-colors"
-                              >
-                                Apagar publicação
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Post Image */}
-                  {post.imageUrl && (
-                    <div className="w-full aspect-square bg-white/5 relative">
-                      <img 
-                        src={post.imageUrl} 
-                        alt="Post" 
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    </div>
-                  )}
-
-                  {/* Post Actions */}
-                  <div className="p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <button 
-                        onClick={() => likeGalleryPost(post.id)}
-                        className={cn("transition-transform active:scale-75", hasLiked ? "text-rose-500 fill-rose-500" : (theme === 'dark' ? "text-white hover:text-gray-300" : "text-black hover:text-gray-700"))}
-                      >
-                        <Heart size={24} className={hasLiked ? "fill-rose-500" : ""} />
-                      </button>
-                      <button className={cn("transition-transform active:scale-75", theme === 'dark' ? "text-white hover:text-gray-300" : "text-black hover:text-gray-700")}>
-                        <MessageCircle size={24} />
-                      </button>
-                    </div>
-                    <button className={cn("transition-transform active:scale-75", theme === 'dark' ? "text-white hover:text-gray-300" : "text-black hover:text-gray-700")}>
-                      <Bookmark size={24} />
-                    </button>
-                  </div>
-
-                  {/* Post Details */}
-                  <div className="px-3 pb-4 space-y-1">
-                    <p 
-                      className={cn(
-                        "text-sm font-semibold cursor-pointer hover:underline transition-colors duration-500",
-                        theme === 'dark' ? "text-white/95" : "text-[#3d2723]/95"
-                      )}
-                      onClick={() => setShowLikesModalForPostId(post.id)}
-                    >
-                      {(post.likes || []).length} curtidas
-                    </p>
-                    <div className="text-sm">
-                      {editingPostId === post.id ? (
-                        <div className="flex flex-col gap-2 mt-2">
-                          <textarea
-                            value={editCaption}
-                            onChange={(e) => setEditCaption(e.target.value)}
-                            className={cn(
-                              "text-sm w-full rounded-lg p-2 outline-none resize-none min-h-[60px] transition-colors duration-500",
-                              theme === 'dark' ? "bg-white/10 text-white" : "bg-black/5 text-[#3d2723]"
-                            )}
-                            autoFocus
-                          />
-                          <div className="flex justify-end gap-2">
-                            <button
-                              onClick={() => setEditingPostId(null)}
-                              className={cn(
-                                "text-xs px-3 py-1.5 transition-colors duration-500",
-                                theme === 'dark' ? "text-white/50" : "text-[#3d2723]/50"
-                              )}
-                            >
-                              Cancelar
-                            </button>
-                            <button
-                              onClick={() => {
-                                editGalleryPost(post.id, editCaption);
-                                setEditingPostId(null);
-                              }}
-                              className="text-xs bg-[#c5a880] text-[#3d2723] font-bold px-3 py-1.5 rounded-full"
-                            >
-                              Salvar
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        post.imageUrl ? (
-                          <>
-                            <span className={cn(
-                              "font-bold md:font-semibold mr-2 transition-colors duration-500",
-                              theme === 'dark' ? "text-white" : "text-[#3d2723]"
-                            )}>{postUser?.name || postUser?.username || 'Usuário'}</span>
-                            <span className={cn(
-                              "whitespace-pre-wrap break-words transition-colors duration-500",
-                              theme === 'dark' ? "text-white/90" : "text-[#3d2723]/90"
-                            )}>{post.caption}</span>
-                          </>
-                        ) : (
-                          <div className="mt-1 mb-3">
-                            <span className={cn(
-                              "text-base md:text-lg font-medium whitespace-pre-wrap break-words leading-relaxed transition-colors duration-500",
-                              theme === 'dark' ? "text-white" : "text-[#3d2723]"
-                            )}>{post.caption}</span>
-                          </div>
-                        )
-                      )}
-                    </div>
-                    <p className={cn(
-                      "text-[10px] uppercase tracking-wide mt-1 mb-2 transition-colors duration-500",
-                      theme === 'dark' ? "text-white/50" : "text-[#3d2723]/50"
-                    )}>
-                      {new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date(post.createdAt))}
-                    </p>
-
-                    {/* Comments List */}
-                    {post.comments && post.comments.length > 0 && (
-                      <div className="space-y-1.5 mt-2">
-                        {post.comments
-                          .filter(c => {
-                            const cUser = users.find(u => u.id === c.userId);
-                            return cUser?.username !== 'jeff';
-                          })
-                          .map(comment => {
-                          const commentUser = users.find(u => u.id === comment.userId);
-                          const isMyComment = currentUser?.id === comment.userId;
-                          
-                          // Rule: Edit only after 5 minutes
-                          const commentTime = new Date(comment.createdAt).getTime();
-                          const fiveMinutesInMs = 5 * 60 * 1000;
-                          const canEdit = isMyComment && (Date.now() - commentTime >= fiveMinutesInMs);
-                          
-                          return (
-                            <div key={comment.id} className="group relative flex flex-col gap-1 bg-white/[0.06] md:bg-transparent p-2.5 md:p-0 rounded-xl md:rounded-none border border-white/10 md:border-none mb-1.5 md:mb-0">
-                              <div className="flex items-start justify-between">
-                                <div className="text-sm">
-                                  <span className="font-bold md:font-semibold mr-2">{commentUser?.name || commentUser?.username || 'Usuário'}</span>
-                                  {editingCommentId === comment.id ? (
-                                    <div className="flex flex-col gap-2 mt-1">
-                                      <textarea
-                                        value={editCommentText}
-                                        onChange={(e) => setEditCommentText(e.target.value)}
-                                        className="w-full bg-black/40 border border-[#ebdcb9]/30 rounded-lg p-2 text-white text-sm outline-none focus:border-[#ebdcb9]"
-                                        rows={2}
-                                      />
-                                      <div className="flex items-center gap-2">
-                                        <button 
-                                          onClick={() => {
-                                            if (editCommentText.trim()) {
-                                              editPostComment(post.id, comment.id, editCommentText);
-                                              setEditingCommentId(null);
-                                            }
-                                          }}
-                                          className="text-[10px] bg-[#ebdcb9] text-black px-2 py-1 rounded font-bold"
-                                        >
-                                          Salvar
-                                        </button>
-                                        <button 
-                                          onClick={() => setEditingCommentId(null)}
-                                          className="text-[10px] bg-white/10 text-white px-2 py-1 rounded font-bold"
-                                        >
-                                          Cancelar
-                                        </button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <span className="text-white/90 whitespace-pre-wrap break-words">{comment.text}</span>
-                                  )}
-                                </div>
-
-                                {isMyComment && !editingCommentId && (
-                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {canEdit && (
-                                      <button 
-                                        onClick={() => {
-                                          setEditingCommentId(comment.id);
-                                          setEditCommentText(comment.text);
-                                        }}
-                                        className="p-1 text-white/40 hover:text-[#ebdcb9]"
-                                        title="Editar (Disponível após 5 min)"
-                                      >
-                                        <Edit3 size={14} />
-                                      </button>
-                                    )}
-                                    <button 
-                                      onClick={() => {
-                                        if (window.confirm('Apagar comentário?')) {
-                                          deletePostComment(post.id, comment.id);
-                                        }
-                                      }}
-                                      className="p-1 text-white/40 hover:text-rose-500"
-                                      title="Apagar"
-                                    >
-                                      <Trash2 size={14} />
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                              <span className="text-[9px] text-white/40">{new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Add Comment */}
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
-                      <div className="w-7 h-7 rounded-full bg-black/40 overflow-hidden shrink-0">
-                        <img src={currentUser?.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                      </div>
-                      <input 
-                        type="text" 
-                        placeholder="Adicione um comentário..."
-                        value={newComments[post.id] || ''}
-                        onChange={(e) => setNewComments(prev => ({ ...prev, [post.id]: e.target.value }))}
-                        className="bg-transparent text-sm text-white flex-1 outline-none placeholder:text-white/40"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && newComments[post.id]?.trim()) {
-                            addPostComment(post.id, newComments[post.id].trim());
-                            setNewComments(prev => ({ ...prev, [post.id]: '' }));
-                          }
-                        }}
-                      />
-                      {newComments[post.id]?.trim() && (
-                        <button 
-                          onClick={() => {
-                            addPostComment(post.id, newComments[post.id].trim());
-                            setNewComments(prev => ({ ...prev, [post.id]: '' }));
-                          }}
-                          className="text-[#c5a880] font-bold text-sm shrink-0"
-                        >
-                          Publicar
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
+      {/* Decorative Rotating circular typography badge "leve sua essência" */}
+      <div className="hidden lg:flex absolute right-10 xl:right-20 top-1/2 -translate-y-1/2 flex-col items-center justify-center z-10 pointer-events-none select-none">
+        <div className="relative w-36 h-36 flex items-center justify-center">
+          <svg width="150" height="150" viewBox="0 0 100 100" className="animate-[spin_45s_linear_infinite] opacity-45">
+            <path id="curvePath" d="M 50, 50 m -35, 0 a 35,35 0 1,1 70,0 a 35,35 0 1,1 -70,0" fill="none" />
+            <text fill="#c5a880" fontSize="5.5" letterSpacing="2.8" className="tracking-widest uppercase font-serif italic font-bold">
+              <textPath href="#curvePath">leve sua essência • leve sua essência •</textPath>
+            </text>
+          </svg>
+          {/* Static cursive brand signature center */}
+          <div className="absolute font-serif italic text-[11px] text-[#c5a880]/80 tracking-widest text-center mt-1">
+            Sol & Mar
+          </div>
         </div>
       </div>
 
-      {viewingProfileUserId && (
-        <div className="hidden md:block">
-          <UserProfileGalleryModal 
-            userId={viewingProfileUserId} 
-            onClose={() => setViewingProfileUserId(null)} 
-          />
-        </div>
-      )}
-
-      {showLikesModalForPostId && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1a120e] border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-fade-in">
-            <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/40">
-              <h3 className="font-serif font-bold text-white text-base">Curtidas</h3>
-              <button onClick={() => setShowLikesModalForPostId(null)} className="p-1 text-white/70 hover:text-white">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="max-h-80 overflow-y-auto divide-y divide-white/5 p-2">
-              {galleryPosts.find(p => p.id === showLikesModalForPostId)?.likes?.map(userId => {
-                const likedUser = users.find(u => u.id === userId);
-                if (!likedUser || likedUser.username === 'jeff') return null;
-                return (
-                  <div key={userId} className="flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors cursor-pointer" onClick={() => { 
-                      setShowLikesModalForPostId(null); 
-                      setViewingProfileUserId(userId); 
-                  }}>
-                    <img src={likedUser.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover border border-white/20 bg-black" />
-                    <div className="flex flex-col">
-                      <span className="font-bold text-sm text-white">{likedUser.name || likedUser.username}</span>
-                      <span className="text-xs text-white/50">@{likedUser.username}</span>
-                    </div>
-                  </div>
-                );
-              })}
-              {(!galleryPosts.find(p => p.id === showLikesModalForPostId)?.likes || galleryPosts.find(p => p.id === showLikesModalForPostId)?.likes?.length === 0) && (
-                <div className="text-center py-8 text-white/50 text-sm">Nenhuma curtida ainda.</div>
-              )}
-            </div>
+      {/* 4. Elegant Footer with Boundary Sunrise Divider */}
+      <div className="w-full shrink-0 z-10 mt-auto">
+        {/* Wavy/Sun Bound Divider */}
+        <div className="w-full relative flex items-center justify-center z-10 px-10">
+          <div className="absolute inset-x-12 h-[1px] bg-gradient-to-r from-transparent via-[#c5a880]/25 to-transparent"></div>
+          <div className="relative px-4 bg-transparent">
+            {/* Mini sunset logo inside line */}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c5a880" strokeWidth="1.5" className="animate-pulse">
+              <circle cx="12" cy="11" r="2.5" />
+              <path d="M12 5V6.5" />
+              <path d="M7 11H8.5" />
+              <path d="M15.5 11H17" />
+              <path d="m8.5 7.5.8.8" />
+              <path d="m15.5 7.5-.8.8" />
+              <path d="M4 16c2-0.5 4-0.5 6 0s4 0.5 6 0s4-0.5 4-0.5" strokeWidth="1" />
+            </svg>
           </div>
         </div>
-      )}
 
-      {/* CONFIRM CLEAR ALL POSTS MODAL FOR MESTRE */}
-      {confirmClearModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className={cn(
-            "border rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative animate-in zoom-in-95 duration-200",
-            theme === 'dark' ? "bg-[#1c140d] border-rose-500/30 text-white" : "bg-white border-rose-200 text-stone-900"
-          )}>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
-                <Trash2 size={24} />
-              </div>
-              <div>
-                <h3 className="text-base font-black uppercase tracking-tight text-rose-400">Limpar Mural?</h3>
-                <p className="text-xs text-stone-400 font-medium">Ação exclusiva do Mestre</p>
-              </div>
-            </div>
+        {/* Text columns */}
+        <footer className="w-full px-10 md:px-14 py-5 flex flex-col sm:flex-row items-center justify-between text-[11px] text-[#ebdcb9]/40 font-mono tracking-wider gap-3">
+          <p>© 2026 Sol & Mar • Todos os direitos reservados.</p>
+          <p>Sistema Web • Criado por Jefferson Augusto</p>
+        </footer>
+      </div>
 
-            <p className="text-xs leading-relaxed opacity-90">
-              Você tem certeza de que deseja apagar <strong>todas as {galleryPosts.length} publicações</strong> adicionadas por todos os usuários?
-            </p>
-            
-            <p className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl font-medium">
-              💡 Você poderá usar a opção <strong>"Voltar com tudo"</strong> para restaurar todas as publicações a qualquer momento.
-            </p>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setConfirmClearModalOpen(false)}
-                className={cn(
-                  "flex-1 py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer",
-                  theme === 'dark' ? "bg-white/5 border-white/10 text-stone-300 hover:bg-white/10" : "bg-stone-100 border-stone-200 text-stone-700 hover:bg-stone-200"
-                )}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  clearAllGalleryPosts();
-                  setConfirmClearModalOpen(false);
-                }}
-                className="flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-rose-600 hover:bg-rose-500 text-white transition-all shadow-lg cursor-pointer active:scale-95"
-              >
-                Limpar Tudo
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

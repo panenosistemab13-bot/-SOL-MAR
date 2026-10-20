@@ -5,31 +5,11 @@
   --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   
-  --color-coffee-bg: #e5dcc5;
-  --color-coffee-card: #f4eee0;
-  --color-coffee-dark: #3e2723;
-  --color-coffee-accent: #8d6e63;
-}
-
-@layer utilities {
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
-  }
-}
-
-/* Hide scrollbars globally as requested for mobile */
-::-webkit-scrollbar {
-  width: 0px;
-  background: transparent;
-  display: none;
-}
-* {
-  -ms-overflow-style: none !important;
-  scrollbar-width: none !important;
+  --color-coffee-bg: #FDFBF7;
+  --color-coffee-card: #FAF6EE;
+  --color-coffee-dark: #2C1E15;
+  --color-coffee-accent: #C59B27;
+  --color-gold: #D4AF37;
 }
 
 /* Remove default spin arrows on number inputs globally */
@@ -44,6 +24,7 @@ input[type=number] {
 }
 
 body {
-  background-color: var(--color-coffee-bg);
-  color: var(--color-coffee-dark);
+  background-color: #FDFBF7;
+  color: #2C1E15;
+  font-family: var(--font-sans);
 }
